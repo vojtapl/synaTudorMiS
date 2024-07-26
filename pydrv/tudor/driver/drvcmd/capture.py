@@ -3,6 +3,8 @@ from .context import *
 
 import tudor.sensor
 
+ID_ZERO = b'\x00'*16
+
 
 @cmd("enroll")
 class CmdEnroll(Command):
@@ -69,7 +71,7 @@ class CmdDB2GetObjectList(Command):
             raise Exception("No type given")
 
         if len(args) <= 1:
-            obj_id = b"\0" * 16
+            obj_id = ID_ZERO
             print(f"No object_id given, using {obj_id}")
         else:
             obj_id = eval(args[1])
@@ -105,7 +107,7 @@ class CmdDB2GetAllObjectInfo(Command):
             raise Exception("No type")
 
         if len(args) <= 1:
-            obj_id = b"\0" * 16
+            obj_id = ID_ZERO
         else:
             obj_id = eval(args[1])
 
@@ -154,7 +156,7 @@ class CmdDB2GetAllObjectData(Command):
             raise Exception("No type")
 
         if len(args) <= 1:
-            obj_id = b"\0" * 16
+            obj_id = ID_ZERO
         else:
             obj_id = eval(args[1])
 
@@ -176,24 +178,24 @@ class CmdDeleteEnrollment(Command):
         ctx.sensor.frame_capturer.delete_enrollment(tuid)
 
 
-@cmd("cleanup")
+@cmd("db2_cleanup")
 class CmdCleanup(Command):
     """
-    Usage: cleanup
+    Usage: db2_cleanup
     """
 
     def run(self, ctx: CmdContext, args: list):
-        ctx.sensor.frame_capturer.cleanup()
+        ctx.sensor.frame_capturer.db2_cleanup()
 
 
-@cmd("format")
+@cmd("db2_format")
 class CmdForamt(Command):
     """
-    Usage: format
+    Usage: db2_format
     """
 
     def run(self, ctx: CmdContext, args: list):
-        ctx.sensor.frame_capturer.format()
+        ctx.sensor.frame_capturer.db2_format()
 
 
 @cmd("storage_format")

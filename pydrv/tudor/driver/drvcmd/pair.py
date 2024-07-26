@@ -41,7 +41,7 @@ class CmdLoadPairdata(Command):
             if resp != "y":
                 return
 
-        ctx.pairing_data = tudor.sensor.SensorPairingData.load_sample()
+        ctx.pairing_data = tudor.sensor.SensorPairingData.load_windows_sample()
         print("Successfully loaded pairing data")
 
 

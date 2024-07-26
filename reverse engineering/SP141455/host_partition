@@ -1,0 +1,442 @@
+# Host partition
+
+## On a formatted partition
+### Get storage info
+- VCSFW_CMD_STORAGE_INFO_GET
+- on formatted partition
+   - msg data:
+      0 (cmd ID): 3e
+   - response:
+      0-1 (status): 00 00
+      2-3: ff ff
+      4-5: ff ff
+      6-7: ff ff
+      8-9: ff ff
+      10-11: ff ff
+      12-13: ff ff
+      14-15 (num partitions): 03 00
+      16-:
+         - partition info 1
+            0 (id): 01
+            1: 02
+            2-3: 04 00
+            4-7: 00 00 00 51
+            8-11: 00 e0 09 00
+         - partition info 2
+            0 (id): 02
+            1: 02
+            2-3: 07 00
+            4-7: 00 f0 09 51
+            8-11 (size): 00 10 00 00
+         - partition info 3:
+            0 (id): 03
+            1: 02
+            2-3: 00 00
+            4-7: 00 e0 09 51
+            8-11: 00 10 00 00
+
+                 -> elements are of size 12 (maybe evety 36 is possibly smt.)
+           i: id
+           i+1: some size
+           i+2-i+3: if == 2 then is hostPartitionEntry
+           i+4-i+7:
+           i+8-i+11:
+### Read VCSFW_CMD_STORAGE_PART_READ
+- msg data:
+   0 (cmd ID): 40
+   1: 02
+   2: 00
+   3-4: ff ff
+   5-8: 00 00 00 00
+   9 (read size): 00 10 00 00
+- response:
+   00000230`cf0b5700  00 00 00 10 00 00 00 00-ff ff ff ff ff ff ff ff  ................
+   00000230`cf0b5710  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+   00000230`cf0b5720  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+   ...
+   00000230`cf0b66e0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+   00000230`cf0b66f0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+   00000230`cf0b6700  ff ff ff ff ff ff ff ff                          ........
+
+
+## On a non-formatted partition
+
+### Write
+- msg:
+   - len: 0000100d
+   - data:
+        0: 41
+        1: 02
+        2: 00
+        3-4: ff ff
+        5-8: 00 00 00 00
+        9-12: 00 10 00 00
+        13-:
+            01 00 04 00 67 ab dd 72 10 24 f0 ff 4e 0b 3f 4c
+            2f c1 3b c5 ba d4 2d 0b 78 51 d4 56 d8 8d 20 3d
+            15 aa a4 50 01 00 00 00 02 00 fc 06 89 2d 2c d9
+            18 30 3a 09 72 fb 0e 14 31 64 18 7e 88 b6 9a 03
+            5c be c1 3c c3 72 8e 52 58 4e a4 73 01 00 00 00
+            00 00 00 00 e6 05 00 00 06 01 00 00 01 00 00 00
+            d0 8c 9d df 01 15 d1 11 8c 7a 00 c0 4f c2 97 eb
+            01 00 00 00 2c 0b d9 cb 41 c9 0a 42 b8 92 9b c0
+            9f e2 54 b0 00 00 00 00 02 00 00 00 00 00 10 66
+            00 00 00 01 00 00 20 00 00 00 75 06 66 a4 ee 24
+            c0 10 8c 50 9c fa 5d 91 01 ea 12 92 1b a3 52 94
+            61 5f b3 c7 8c d2 39 5d c7 e4 00 00 00 00 0e 80
+            00 00 00 02 00 00 20 00 00 00 6f 7b b1 81 51 cc
+            ee 28 2b 65 f4 4c 3d 0d 14 0e b3 14 c6 18 9d 96
+            a9 c2 ba ba ec 67 ee 08 a1 94 10 05 00 00 71 54
+            25 94 17 a1 b5 dd 24 04 2d 3d 01 43 27 a3 b3 0f
+            e3 3c 96 de cf b5 a6 4b 09 e6 51 e6 e2 8e 2d e6
+            b4 8a d9 4d 43 b5 bd 6f b1 0e 79 41 fb 38 e0 37
+            4e a5 99 73 ae 2b d5 6f 2a 26 2c 11 0d ef 35 c3
+            71 79 1f 2b 03 8f 08 f5 28 e9 92 5c d7 77 36 87
+            1b ff c8 74 33 8b 78 37 65 20 87 91 e2 0e 7c aa
+            2c 5f 72 fc fc 8a 40 6e 8c 55 6c e4 7c af 9f 33
+            e4 d4 14 de 03 ac 3b 0c 98 58 d8 4e a1 ba 43 48
+            11 3c 31 97 0d e5 40 fa eb 23 09 23 86 c5 bf 53
+            03 14 bf 28 38 17 2a aa d7 48 e3 fa 04 9c 68 d1
+            0b 7a 7d c8 44 ba ca b2 9c e5 76 3d 63 bb 83 cd
+            9e f5 bf 13 f2 03 3f ca 17 65 b8 82 71 2d b8 5f
+            1b 61 63 17 32 59 29 da a0 17 07 0a 42 1d 06 28
+            5e 54 9c ac 2f f1 8e e5 2b 71 44 2a b7 06 23 47
+            f9 5f 9e ec c0 05 18 3b 3c dd 81 4e e1 27 c0 ad
+            74 f8 9c 58 98 78 a1 1c d5 12 5b 1a 85 99 1d 51
+            46 84 e9 05 7f 83 83 5e 38 04 3b 87 ce 04 76 36
+            5e b0 73 b0 30 69 6d 83 42 79 75 3b 6a cc 83 ef
+            58 be 8a 13 9e f8 c2 6b 60 f4 6b 2a 8c ab 9a 57
+            6e 4e 06 dd 30 a5 cf c5 1d 0e 32 f8 a4 ef b1 21
+            89 5e 3f 45 a1 8b a9 9c 3c 70 0a ce f6 51 33 3b
+            c2 8f c0 b6 7b 89 fc 0e 92 37 8e d7 c4 c0 d4 3a
+            04 d0 b4 88 8e 49 37 c6 0c 7c 33 e4 dc f8 ce 1a
+            c3 83 ea 12 1f 0b 95 61 27 8b 23 e6 60 4c ef 65
+            ab d3 6b 56 d4 2c b4 85 54 fe 9a cb 50 55 99 96
+            af f5 a6 b6 7a e8 64 83 12 4d 31 b8 30 cc 6c 4f
+            2f c0 70 e4 e7 d8 c2 2d a9 3a a3 5c 28 00 87 7b
+            5a e2 d7 37 60 a0 30 56 3b be ae 8d 78 46 5c 3a
+            9e f8 ec eb 65 88 0a 11 22 2f e9 55 10 da cf a1
+            c6 66 7c 6a 7e 21 91 45 2e a5 f5 bb 90 cb 44 5a
+            f9 6b de ef ea d6 29 2c db 53 15 43 69 51 cb 0e
+            88 b8 c0 4e eb ef d7 1c 19 87 54 5b 82 36 cf 4a
+            f8 26 1d 40 b8 77 ae 29 9a 27 45 a9 32 9e 35 0c
+            a7 d8 be b0 23 9f 9d 66 12 38 c4 75 51 7a e9 12
+            be 16 d2 a2 dc 94 03 59 1e bd a7 c0 0a 43 72 e0
+            fc a5 2b 5d 61 0c 22 40 fa eb b6 f9 07 7f 52 96
+            92 7f 63 58 fd 9c 02 ca 17 f0 04 f2 47 51 0e a5
+            e8 ec f4 23 5c 1b 6a 86 07 df 02 a3 92 4c 23 b9
+            00 b7 a5 2e f6 66 9a 4a 7e 9c d2 73 a8 02 28 9a
+            52 a7 19 9a 83 79 68 e6 d2 b6 d4 ed 65 cd f6 d0
+            a7 1c 1b e5 58 04 f4 ef dd 4b 69 0b 25 12 42 e4
+            e1 90 5f e9 83 ea 2a 47 9a 68 92 6b 91 2f 02 88
+            65 da 12 03 6e e3 20 96 6b 1d f7 ad c8 68 e1 9a
+            9b 14 4b 10 1e 19 27 ab 69 61 92 eb 6e f5 1d 33
+            98 08 b7 7d a4 4e 32 f5 7e 29 3a 7e 6c bb 27 ba
+            3b fe 8b 43 6c b1 05 82 0b 0d 32 a8 36 c8 a7 3f
+            b8 62 f4 a6 1e 6c 43 27 e2 fd 68 e3 00 b0 b8 d5
+            51 8b 7b 55 9a b8 df e5 f5 d1 e6 6e 0a 50 d0 58
+            68 86 45 7d e6 f3 80 6d 50 b3 be ab 3a 77 10 18
+            a1 26 94 3b 18 87 ff a4 90 45 31 0a 50 a9 65 bc
+            ad 32 26 ed 6b 98 2a 2e 3e dc 52 10 99 1b 9b 41
+            b3 34 e8 6f 77 61 f4 50 c3 3a d9 e4 33 05 48 78
+            14 5b 67 6c ad 71 e4 a6 14 44 44 07 05 49 30 a1
+            ca d3 89 15 1a ac 2e d8 94 d2 a7 1a c8 ac c8 dc
+            2d 40 b9 87 6b 6c 84 ba df 72 b3 ea cb 74 c1 92
+            b9 51 2f 1a 3d 0a de 7e 69 9d 52 54 fb ed 06 ff
+            47 b0 7d 85 96 41 01 d0 1b e6 51 87 93 ad 0e 88
+            b9 b4 3b 6f 85 42 28 8c 18 40 9f 20 f7 d0 9c 94
+            d1 ee 1f b1 35 9e 32 65 57 0d 83 29 88 3a 89 b2
+            27 10 a0 63 9e 02 1b cb 3f 5e d1 58 83 6c b0 24
+            64 25 8e 46 6b 78 be bf c5 01 72 53 f9 22 39 2f
+            e7 64 f8 c6 8e 0f f6 8f e2 0d d6 17 94 af 72 bf
+            10 d7 fa 56 81 d9 e8 61 40 f3 4e 3c 54 2d 62 89
+            61 35 2a c5 34 e7 80 0f 34 34 a5 c2 48 d8 bd ce
+            87 9e 18 0f 38 b8 fd 08 b5 6e bf f3 e9 3f 51 cb
+            b6 67 90 bf de 6b c7 5f 69 cc 59 3d a2 f0 e6 21
+            67 b3 8b b0 53 95 8a 91 23 b9 67 e7 3d 66 c2 82
+            99 0c 06 d8 7a 62 14 13 9c d7 ba 3a 13 fb 75 7b
+            a1 3d ec f7 42 03 98 9c d4 80 e8 b0 20 94 f5 ca
+            89 b6 a9 b3 9f 47 db ad 81 f8 07 8b 3c 2d 34 02
+            cd 15 56 ae fe 68 59 90 44 5e a7 f1 07 1e df ca
+            55 a6 78 57 11 6f dc 9e 59 23 c3 e9 de bf a9 a4
+            e6 28 d4 97 8d ae ad 58 71 3f 23 d2 b2 72 8f 0b
+            28 02 e0 23 4b af 0b cf 41 42 ee 27 d2 31 7e cb
+            a4 d1 4f 37 83 6e 95 36 a9 df 32 5b 82 e5 54 64
+            f4 fa e5 62 3e 25 03 96 76 64 fc f1 7f 2c c6 76
+            fb 7a 50 ee 2d a2 77 f0 6c c1 99 f4 49 e8 78 7c
+            07 1e eb 0f 5f 45 c7 5e 01 10 dc 5c 49 a6 e7 fc
+            94 3d f1 24 af 5e 22 53 f8 d8 36 bc a0 d4 2d 88
+            5b 24 8c c2 b2 1b 6b da 9a f8 da c2 c8 65 f9 66
+            95 06 bd 59 54 f9 00 20 77 76 3f bb 44 c8 40 00
+            00 00 71 c5 07 85 49 42 fe 5d 1c d4 5f 03 f8 8b
+            68 7e 73 41 d8 53 82 ef 68 b4 f2 1d 66 2d 98 27
+            b1 6f e1 6b 0c 35 c4 e7 bd 8a 18 5e ff 59 af 85
+            c1 f6 19 3b 04 1b 1e c8 64 fb 40 81 3f 3c 58 81
+            67 8d 01 00 00 00 d0 8c 9d df 01 15 d1 11 8c 7a
+            00 c0 4f c2 97 eb 01 00 00 00 2c 0b d9 cb 41 c9
+            0a 42 b8 92 9b c0 9f e2 54 b0 00 00 00 00 02 00
+            00 00 00 00 10 66 00 00 00 01 00 00 20 00 00 00
+            63 cf 93 46 34 33 fa 94 95 73 ba 1a f6 f7 59 ef
+            bc 72 9a 3b 47 80 4b 7a 2f ed ba 2a 2a 5f 9f 0a
+            00 00 00 00 0e 80 00 00 00 02 00 00 20 00 00 00
+            40 45 2f 0a 76 a4 11 cd 3a 56 5c d7 b3 c0 40 d3
+            15 d7 e6 28 e2 8f c3 27 07 63 bf 2b 51 ce 58 8f
+            30 00 00 00 93 21 74 7d c4 dd 52 1f b3 b4 a5 08
+            f7 bb 31 60 ed 4c 99 4d d7 23 a5 e0 4f 3b 0b ea
+            fc 56 9e ad 3b e5 ff 31 5a a3 b8 d3 7f f0 8c 1f
+            49 4d 0f ec 40 00 00 00 80 eb 76 cd 65 c4 42 3d
+            04 bf 0e 01 86 39 ef 7b be 47 11 0f f6 72 e1 2f
+            1d 04 4f 1c f9 73 52 87 ff f5 39 d3 f7 a0 4f 17
+            7c be 13 40 2d ea 06 b9 85 99 ad fe c9 47 e3 3f
+            d7 f3 eb 7a 84 30 a5 d3 ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+            ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+   - response:
+      0-1: 00 00
+      00 10 00 00
+
+
+### Format
+- msg data:
+   0 (cmd ID): 3f
+   1 (format type): 01
+- resp:
+   0-1 (status): 00 00
+- msg data:
+   0 (cmd ID): 3f
+   1 (format type): 02
+- resp:
+   0-1 (status): 00 00
+
+### Decoded sample container data
+00 00
+02 00 00 00
+00 00
+
+01 00
+90 01 00 00
+3f 5f 17 00 3d f7 e9 67 c0 d8 52 6a ea 3e 08 0b
+10 32 c1 7d 90 d3 9e 50 44 44 49 20 bb ad 14 e0
+c2 db f9 a8 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 42 8d 94 68 1d 09 a6 7a
+a1 b6 a1 86 3d 25 55 c8 7e a2 fe 18 18 38 fd 28
+c8 c9 a6 d5 b0 21 c6 ee 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 02 20 00
+4d 63 1a 68 a5 8d 4c ff 6f d2 ef 97 78 09 e8 2f
+0f 1d 61 b1 e2 e9 f7 ba 47 7b 6f df b7 d4 05 6c
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+02 00
+20 00 00 00
+6a 7f b2 f8 0d df 0c df 18 fe 1d 14 4a 80 9f 58
+e4 14 8a 80 cb 9a 75 da 82 19 55 06 ce 27 1a f7
+
+03 00
+90 01 00 00
+3f 5f 17 00 32 29 44 49 1e 0e 65 4d 1f 49 e7 23
+a2 33 25 0f 09 9d db 99 47 db b2 99 27 4f e6 b1
+6d 6c 88 3f 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 4e bf 09 77 46 48 52 1e
+ee 9b 75 45 0b 7d 86 b3 2e a9 8c 11 fc f3 f4 d5
+65 a2 3c 30 4b 18 bd 86 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 47 00
+30 45 02 20 04 01 61 18 e2 32 d4 c1 b3 69 d3 20
+48 08 36 19 fd 7c 66 5b 37 2e 13 b3 cf 24 b7 e1
+c8 bb 12 29 02 21 00 dc 4b 3b dd ff 2b 50 4e 85
+ed ba 2d 22 b5 e8 b2 1b 7a 89 05 db 1a 0c 52 f4
+d0 e4 5b d4 06 25 ca 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+04 00
+a4 01 00 00
+17 00 00 00 00 01 00 00 01 00 00 00 fc ff ff ff
+ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00
+00 00 00 00 01 00 00 00 ff ff ff ff 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+4b 60 d2 27 3e 3c ce 3b f6 b0 53 cc b0 06 1d 65
+bc 86 98 76 55 bd eb b3 e7 93 3a aa d8 35 c6 5a
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 96 c2 98 d8 45 39 a1 f4 a0 33 eb 2d
+81 7d 03 77 f2 40 a4 63 e5 e6 bc f8 47 42 2c e1
+f2 d1 17 6b 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 f5 51 bf 37 68 40 b6 cb
+ce 5e 31 6b 57 33 ce 2b 16 9e 0f 7c 4a eb e7 8e
+9b 7f 1a fe e2 42 e3 4f 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 51 25 63 fc
+c2 ca b9 f3 84 9e 17 a7 ad fa e6 bc ff ff ff ff
+ff ff ff ff 00 00 00 00 ff ff ff ff 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+ff ff ff ff ff ff ff ff ff ff ff ff 00 00 00 00
+00 00 00 00 00 00 00 00 01 00 00 00 ff ff ff ff
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00

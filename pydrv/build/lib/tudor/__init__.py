@@ -1,4 +1,4 @@
-from .log import * 
+from .log import *
 from .comm import *
 from . import tls
 from . import sensor

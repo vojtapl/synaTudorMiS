@@ -44,9 +44,11 @@ The fingerprint reader in my laptop (06CB:00FF) does not seem to support raw fra
     -> where does the function highLevelSetCommonProptery get its params from
 - How does BIOS format the host partition
 - What does the 0xa6 command do
+- cleanup logging
 - code cleanup
 - general cleanup
 - (not important) check for update and update
+- (not important) find the newest driver version and check for differences
 
 
 ### How to prepare for WinDbg

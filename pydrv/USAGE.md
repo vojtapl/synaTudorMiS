@@ -1,5 +1,4 @@
 # Note
-This document is not updated yet.
 
 # Usage of the driver script
 ## Invocation
@@ -16,6 +15,7 @@ Argument | Description
 --vid | The VID of the sensor. Defaults to 0x06cb
 --pid | The PID of the sensor. Defaults to 0x00ff
 --pair-data | The pairing data file to use,so it does not have to be added manually.
+--pair-sample | Loads sample Windows pairing data.
 -i | Init automatically if pair-data argument given.
 
 ## Shell
@@ -96,13 +96,8 @@ tudor> wait_event finger_press
 Event raised: SensorEvent(type=<SensorEventType.FINGER_PRESS: 1>)
 ```
 
-### Image capture
-You can now capture images using the command `capture_images`. It takes the number of images as an argument, and displays them in popup windows.
-```
-tudor> capture_images 1
-Waiting for finger to be lifted...
-Capturing images...
-```
+### Enrollment
+To launch an enrollment process use `enroll`. Then you will need to successfully add 10 frames for a successfull scan. If successful, the enrollment will be committed with sub ID and user ID which are currently hard-coded.
 
-### Enrollment & Authentication
-**TODO**
+### Authentication
+To try to authenticate use `auth`. If there is a match some details will be shown such as user ID, sub ID.

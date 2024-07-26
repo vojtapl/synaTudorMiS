@@ -73,7 +73,6 @@ class Sensor:
         self.tls_session = None
         self.event_handler = None
         self.initialized = False
-        self.host_partition = tudor.win.HashTagValContainer()
 
         # Initial reset of the sensor
         self.reset()

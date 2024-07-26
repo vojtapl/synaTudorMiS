@@ -107,24 +107,24 @@
         16-207: partitions array
            -> elements are of size 12 (maybe evety 36 is possibly smt.)
            i: id
-           i+1: some size
+           i+1:
            i+2-i+3: if == 2 then is hostPartitionEntry
            i+4-i+7:
-           i+8-i+11:
+           i+8-i+11: partition size
 
 - 0x3f: VCSFW_CMD_STORAGE_PART_FORMAT
     - req: size: 2
-        1: 2=VCSFW_STORAGE_TUDOR_PART_ID_HOST, 1=VCSFW_STORAGE_TUDOR_PART_ID_SSFS
+        1: partition id (see bellow)
     - resp: size: 2
 
 - 0x40: VCSFW_CMD_STORAGE_PART_READ
   - in _rudorHostPartitionRead
     - req: size: 13
-        1: 2
+        1: id (2)
         2: 0
         3-4: 0xffff
-        5-8: 0
-        9-12: size of readblob
+        5-8: read start offset
+        9-12: read length
     - resp: size: 8 + sizeof(ReadBlob)
         2-5: size of readblob
         6-7: unused
@@ -138,6 +138,7 @@
         5-8: (0)
         9-blob_len (size)
     - resp: size: 6
+      2-5: number of bytes written
 
 - 0x44: tls data
     - only when commands aren't encrypted
@@ -613,8 +614,8 @@
         0x4b6
         0x687 - smt like access error
         0x6db
-        0x6e1 - smt in host partition read
-        0x6e7 - smt in host partition read
+        0x6e1 - when reading a host partition - read out of range
+        0x6e7 - when reading a valid partition id which is not 2
 
 
 ### provision states:
@@ -806,8 +807,6 @@ certificate:
    1 - metadata
    2 - payload
 
-
-
 ### Registry values used / read
 - ??? path: Computer\HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\WinBio\SensorInfo\4cd81755-1411-4bb1-a230-d6ed329e025c
 - seems to be missing, path: Software\\Synaptics\\PairingData, name: 0
@@ -820,3 +819,9 @@ certificate:
 ### SBL recovery patches
 - are stored in synaWudfBioUsb111.dll - three lists of size, hash and data
 - hash list: 0xB63DEB5F, 0x8ABDEFD6, 0x15595CEA, 0x9ACC5A48, 0x59A1E20D
+
+### Storage partitions
+0 - ?
+1 - VCSFW_STORAGE_TUDOR_PART_ID_SSFS
+2 - VCSFW_STORAGE_TUDOR_PART_ID_HOST
+

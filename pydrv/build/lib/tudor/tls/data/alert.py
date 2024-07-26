@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import enum
 
+
 class TlsAlertLevel(enum.IntEnum):
     WARNING = 1
     FATAL = 2
+
 
 class TlsAlertDescription(enum.IntEnum):
     CLOSE_NOTIFY = 0
@@ -33,10 +35,14 @@ class TlsAlertDescription(enum.IntEnum):
     NO_RENEGOTIATION = 100
     UNSUPPORTED_EXTENSION = 110
 
+
 class TlsAlertException(Exception):
-    def __init__(self, descr : TlsAlertDescription, remote : bool = False):
+    def __init__(self, descr: TlsAlertDescription, remote: bool = False):
         self.descr = descr
         self.remote = remote
 
-    def __str__(self): return repr(self)
-    def __repr__(self): return "TlsAlertException(descr=%r remote=%r)" % (self.descr, self.remote)
+    def __str__(self):
+        return repr(self)
+
+    def __repr__(self):
+        return "TlsAlertException(descr=%r remote=%r)" % (self.descr, self.remote)

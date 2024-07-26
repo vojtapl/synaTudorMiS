@@ -3,19 +3,22 @@ let
 in pkgs.mkShell {
   name = "tudor-dev-env";
 
-  buildInputs = with pkgs; [
+  buildInputs =  with pkgs; [
     python3
     python3Packages.cryptography
-    python3Packages.matplotlib
     python3Packages.pyusb
-
-    libusb
+    python3Packages.pip
   ];
 
-  venvDir = "venv37";
+  shellHook = ''
+    # Tells pip to put packages into $PIP_PREFIX instead of the usual locations.
+    # See https://pip.pypa.io/en/stable/user_guide/#environment-variables.
+    export PIP_PREFIX=$(pwd)/_build/pip_packages
+    export PYTHONPATH="$PIP_PREFIX/${pkgs.python3.sitePackages}:$PYTHONPATH"
+    export PATH="$PIP_PREFIX/bin:$PATH"
+    unset SOURCE_DATE_EPOCH
 
-  postshellHook = ''
-    sudo pip install .
-    sudo python -m tudor.driver usb
+    pip install .
   '';
 }
+

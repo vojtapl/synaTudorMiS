@@ -1,11 +1,10 @@
-import usb.core
-import usb.util
 import argparse
 import logging
 import traceback
+import usb.core
+import usb.util
 from tudor import *
 from tudor.sensor import *
-
 from . import drvcmd
 
 if __name__ == "__main__":
@@ -28,6 +27,13 @@ if __name__ == "__main__":
         "--pair-data",
         help="The pairing data file to use",
         dest="pairfile",
+        required=False,
+    )
+    parser.add_argument(
+        "--pair-sample",
+        help="Load pairing data from Windows sample",
+        action="store_true",
+        dest="sample_pairfile",
         required=False,
     )
     parser.add_argument(
@@ -54,7 +60,7 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    if args.init and args.pairfile is None:
+    if args.init and (args.pairfile is None and not args.sample_pairfile):
         raise ValueError("unable to init without pairfile")
 
     # Configure logging
@@ -91,7 +97,9 @@ if __name__ == "__main__":
         cmd_ctx = drvcmd.CmdContext(sensor)
 
         # load pairfile if specified
-        if args.pairfile is not None:
+        if args.sample_pairfile:
+            drvcmd.Command.commands["load_sample_pdata"].run(cmd_ctx, [])
+        elif args.pairfile is not None:
             drvcmd.Command.commands["load_pdata"].run(cmd_ctx, [args.pairfile])
 
         if args.init:
