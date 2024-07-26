@@ -7,7 +7,7 @@ import cryptography.hazmat.primitives.asymmetric.ec as ecc
 import cryptography.hazmat.primitives.hashes as hashes
 import cryptography.hazmat.primitives.serialization as ser
 import cryptography.x509 as x509
-from sensor_keys.windows_pairing_data import RECV_HOST_CERT, SENSOR_CERT, PRIV_KEY
+from .windows_pairing_data import PRIV_KEY, SENSOR_CERT, RECV_HOST_CERT
 
 
 # It's called that in the Windows driver

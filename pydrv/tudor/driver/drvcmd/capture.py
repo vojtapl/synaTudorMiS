@@ -3,7 +3,7 @@ from .context import *
 
 import tudor.sensor
 
-ID_ZERO = b'\x00'*16
+ID_ZERO = b"\x00" * 16
 
 
 @cmd("enroll")
@@ -164,10 +164,10 @@ class CmdDB2GetAllObjectData(Command):
         ctx.sensor.frame_capturer.get_all_object_data(obj_type, obj_id)
 
 
-@cmd("delete_enrollment")
+@cmd("delete_template")
 class CmdDeleteEnrollment(Command):
     """
-    Usage: delete_enrollment <tuid>
+    Usage: delete_template <tuid>
     """
 
     def run(self, ctx: CmdContext, args: list):
@@ -175,7 +175,22 @@ class CmdDeleteEnrollment(Command):
             raise Exception("No tuid")
 
         tuid = eval(args[0])
-        ctx.sensor.frame_capturer.delete_enrollment(tuid)
+        ctx.sensor.frame_capturer.delete_template(tuid)
+
+
+@cmd("db2_delete_object")
+class CmdDB2DeleteObject(Command):
+    """
+    Usage: db2_delete_object <obj_type> <tuid>
+    """
+
+    def run(self, ctx: CmdContext, args: list):
+        if len(args) <= 1:
+            raise Exception("No obj_type or obj_id")
+
+        obj_type = int(args[0])
+        obj_id = eval(args[1])
+        ctx.sensor.frame_capturer.db2_delete_object(obj_type, obj_id)
 
 
 @cmd("db2_cleanup")
@@ -244,27 +259,27 @@ class CmdReadHostPartition(Command):
     """
 
     def run(self, ctx: CmdContext, args: list):
-        print(ctx.sensor.frame_capturer.read_host_partition())
+        print(ctx.sensor.frame_capturer.host_partition_read())
 
 
-@cmd("decode_host_partition")
-class CmdDecodeHostPartition(Command):
+@cmd("host_partition_decode")
+class CmdHostPartitionDecode(Command):
     """
-    Usage: decode_host_partition
-    """
-
-    def run(self, ctx: CmdContext, args: list):
-        ctx.sensor.frame_capturer.decode_host_partition()
-
-
-@cmd("get_storage_info")
-class CmdGetStorageInfo(Command):
-    """
-    Usage: get_storage_info
+    Usage: host_partition_decode
     """
 
     def run(self, ctx: CmdContext, args: list):
-        ctx.sensor.frame_capturer.get_storage_info()
+        ctx.sensor.frame_capturer.host_partition_decode()
+
+
+@cmd("storage_get_info")
+class CmdStorageGetInfo(Command):
+    """
+    Usage: storage_get_info
+    """
+
+    def run(self, ctx: CmdContext, args: list):
+        ctx.sensor.frame_capturer.storage_get_info()
 
 
 @cmd("reset_sbl_mode")
@@ -306,6 +321,40 @@ class CmdGetCommonProptery(Command):
     def run(self, ctx: CmdContext, args: list):
         common_prop = ctx.sensor.frame_capturer.get_common_property()
         print(f"common_property: {common_prop}")
+
+
+@cmd("host_partition_write_pairing_data")
+class CmdHostPartitionWritePairingData(Command):
+    """
+    Usage: host_partition_write_pairing_data
+    """
+
+    def run(self, ctx: CmdContext, args: list):
+        if ctx.pairing_data is None:
+            raise ValueError("No pairing data present!")
+
+        ctx.sensor.frame_capturer.host_partition_write_pairing_data(ctx.pairing_data)
+
+
+@cmd("host_partition_read_pairing_data")
+class CmdHostPartitionReadPairingData(Command):
+    """
+    Usage: host_partition_read_pairing_data
+    """
+
+    def run(self, ctx: CmdContext, args: list):
+        if ctx.pairing_data is not None:
+            resp = input("Do you want to override existing pairing data (y/n): ")
+            resp = resp.strip().lower()
+            if resp != "y":
+                return
+
+        ctx.pairing_data = ctx.sensor.frame_capturer.host_partition_read_pairing_data()
+
+        if ctx.pairing_data is not None:
+            print("Host partition data read successfully")
+        else:
+            print("Error occured somewhere")
 
 
 # @cmd("set_idle_timeout")

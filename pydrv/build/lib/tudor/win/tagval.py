@@ -41,6 +41,8 @@ class HashTagValContainer:
     def __init__(self, vals: dict = None, hashes: dict = None):
         self.vals = vals if vals != None else dict()
         self.hashes = hashes if hashes != None else dict()
+        if vals is not None and hashes is None:
+            self.generate_hashes()
 
     def __contains__(self, tag: int):
         return tag in self.vals
@@ -56,7 +58,13 @@ class HashTagValContainer:
         del self.vals[tag]
         del self.hashes[tag]
 
-    def check_hashes(self):
+    def generate_hashes(self) -> None:
+        for tag in self.vals.keys():
+            if tag not in self.hashes:
+                tag_hash = sha256(self.vals[tag]).digest()
+                self.hashes[tag] = tag_hash
+
+    def check_hashes(self) -> bool:
         for tag in self.vals.keys():
             stored_hash = sha256(self.vals[tag]).digest()
             if stored_hash != self.hashes[tag]:
