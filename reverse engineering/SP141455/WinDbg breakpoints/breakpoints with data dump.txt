@@ -1,0 +1,41 @@
+bu synawudfbiousb111!FxDriverEntryUm+622B0 ".printf\"\\ntudorSecureBioConnect SEND\\n\";.echo cmdId:;r edx;.echo sendBlobLen:;dd @r8  L1;.echo sendBlobData:;db poi(@r8 + 8) Lwo(@r8);g"
+bu synawudfbiousb111!FxDriverEntryUm+6260b ".printf\"\\ntudorSecureBioConnect RECV\\n\";.echo recvBlobLen:;dd @rax L1;.echo recvBlobData:;db poi(@rax + 8) Lwo(@rax);g"
+bu synawudfbiousb111!FxDriverEntryUm-1D720 ".printf\"\\DeviceIoControl\\n\"; .echo controlCode:; r r9;g"
+bu synawudfbiousb111!FxDriverEntryUm+3FA90 ".echo SetPropertyPriv; .echo param_2; r edx; .echo tagIdx; r r8w; .echo get0_set1; r r9d; .echo param_5; dw rsp+0x28 L1; .echo blobSize; dw rsp+0x30 L1; .echo blobData; db poi(rsp+0x38) Lwo (rsp+0x30);g"
+bu synawudfbiousb111!FxDriverEntryUm+3ED20 ".printf\"\\palTagValGetByteDataPropertyByRef\\n\"; .echo tag:; r dx;g"
+bu synawudfbiousb111!FxDriverEntryUm+3EF3D ".printf\"\\palTagValGetByteDataPropertyByRef data\\n\"; .echo length:; dq @r8 L1; .echo data:; db poi(@r9) Lwo(@r8);g"
+bu synawudfbiousb111!FxDriverEntryUm+679E0 ".echo tudorSecurityGetPairingData; .echo wrappedPairingDataLen; dq(@rcx + 0xf0) L1; .echo wrappedPairingDataData; db poi(@rcx + 0xf0 + 0x8) Lwo(@rcx+0xf0);g"
+bu synawudfbiousb111!FxDriverEntryUm+69710 ".echo _wrapPairingData; .echo plaintextDataLen:; dq @rcx L1; .echo plaintextData:; db poi(@rcx + 0x8) Lwo(@rcx);g"
+bu synawudfbiousb111!FxDriverEntryUm+47D80 ".printf\"\\palSecureWrap\\n\"; .echo plainTextDataLen:; dq @rcx L1; .echo plainTextData:; db poi(@rcx + 0x8) Lwo(@rcx); .echo param_3:; dd @r8 L1; .echo param_4:; dq @r9 L1; .echo param_5:; dd rsp+0x28 L1;g"
+bu synawudfbiousb111!FxDriverEntryUm+47F50 ".printf\"\\palSecureUnwrap\\n\"; .echo encryptedDataLen:; dq @rcx L1; .echo encryptedTextData:; db poi(@rcx + 0x8) Lwo(@rcx); .echo decrypted_ptr:; r rdx;g"
+
+
+bu synawudfbiousb111!FxDriverEntryUm+48088 ".printf\"\\palSecureUnwrap - after decryption\\n\";"
+bu synawudfbiousb111!FxDriverEntryUm+698AD ".printf\"\\_wrapPairingData - after encryption\\n\";"
+bu synawudfbiousb111!FxDriverEntryUm+28060 ".printf\"\\_vfmEnrollmentDataPack\\n\""
+bu synawudfbiousb111!FxDriverEntryUm+6BF70 ".printf \"createHashTag:\\n\\tid: 0x%x\\n\", dx; .printf \"\\ttagDataLen:\\n\\t\\t\"; dw @r8 L1; .printf \"\\ttagDataData:\\n\\t\\t\"; db poi(@r8+0x8) Lwo(@r8)"
+
+
+
+
+
+bu synawudfbiousb111!FxDriverEntryUm-0x2315C ".printf \"tracing_func_5: %ma, msgNum: 0x%x, msg: '%ma'\\n\", @rcx, r9, (@rsp+0x30);g"
+bu synawudfbiousb111!FxDriverEntryUm-0x188a4 ".printf \"tracing_func_7: %ma, msgNum: 0x%x, msg1: '%ma', msg2: '%ma'\\n\", @rcx, r9, (@rsp+0x30), (@rsp+0x38);g"
+bu synawudfbiousb111!FxDriverEntryUm-0x140d0 ".printf \"tracing_func_9: %ma, msgNum: 0x%x, msg1: '%ma', msg2: '%ma', msg3: '%ma', msg4: '%ma', msg5: '%ma'\\n\", @rcx, r9, (@rsp+0x30), (@rsp+0x38), (@rsp+0x40), (@rsp+0x48), (@rsp+0x50);g"
+bu synawudfbiousb111!FxDriverEntryUm-0x186fc ".printf \"tracing_func_8: %ma, msgNum: 0x%x, msg1: '%ma', msg2: '%ma', msg3: '%ma'\\n\", @rcx, r9, (@rsp+0x30), (@rsp+0x38), (@rsp+0x40);g"
+
+bu synawudfbiousb111!FxDriverEntryUm-0x23024 ".printf\"traceAndLog_3\\n\""
+bu synawudfbiousb111!FxDriverEntryUm-0x1933c ".printf\"wpp_trace\\n\""
+bu synawudfbiousb111!FxDriverEntryUm-0x19288 ".printf\"traceAndLog_6\\n\""
+bu synawudfbiousb111!FxDriverEntryUm-0x190f8 ".printf\"printDeviceInfoTrace\\n\""
+bu synawudfbiousb111!FxDriverEntryUm-0x18ee4 ".printf\"printDeviceInfoTrace_2\\n\""
+bu synawudfbiousb111!FxDriverEntryUm-0x18d2c ".printf\"traceAndLog_4\\n\""
+bu synawudfbiousb111!FxDriverEntryUm-0x18bc8 ".printf\"completePendingRequestTrace\\n\""
+bu synawudfbiousb111!FxDriverEntryUm-0x18a34 ".printf\"startCaptureThreadTrace\\n\""
+bu synawudfbiousb111!FxDriverEntryUm-0x17a98 ".printf\"captureImageTrace\\n\""
+bu synawudfbiousb111!FxDriverEntryUm-0x144dc ".printf\"trace_1\\n\""
+bu synawudfbiousb111!FxDriverEntryUm-0xbe1c ".printf\"validateDatabaseTrace\\n\""
+bu synawudfbiousb111!FxDriverEntryUm-0x9870 ".printf\"traceAndLog_10\\n\""
+bu synawudfbiousb111!FxDriverEntryUm-0x96b0 ".printf\"startTrace\\n\""
+bu synawudfbiousb111!FxDriverEntryUm-0x718c ".printf\"traceAndLog_11\\n\""
+bu synawudfbiousb111!FxDriverEntryUm-0x6fb0 ".printf\"createDeviceInterfaceTrace\\n\""

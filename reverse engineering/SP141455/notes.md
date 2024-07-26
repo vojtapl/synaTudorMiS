@@ -1,0 +1,822 @@
+### General notes
+- all integers are little endian
+
+### IDs:
+- sub ID seems to be 0xff decremented after each enrollment
+- user ID matches Windows user account security identifier (SID) ((where to find it)[https://www.lifewire.com/how-to-find-a-users-security-identifier-sid-in-windows-2625149])
+- template id aka tuid is a set of numbers received from successful adding of enrollment images
+- stiTudorOpen - sets tuid to b'\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff'
+    - TODO: why?
+
+
+### endpoints:
+0: commands [host2device]
+1: responses [device2host]
+2: event polling [device2host, interrupt]
+    0-4: ????
+    5: frame index (& 0x7)
+    6: event sequence number (& 0x1f)
+
+
+### vendor control transfers:
+0x14 (device2host): TLS session status
+    -> 0: TLS session established
+0x15 (host2device): Write DFT (?)
+    -> 0-5: ????
+    -> 6: bootloader mode
+    -> 7: ????
+
+
+### requests (cmd_ids):
+- some are unused in decompiled code
+- base structure:
+    - request:
+        0: cmd_id
+
+- 0x01: get version (VCSFW_CMD_GET_VERSION)
+    - req: size: 1
+    - resp: size: 38
+        somewhere: prodcert
+        2-5: FW build time
+        6-9: FW build num
+        10: FW version major
+        11: FW version minor
+        12: FW version target
+        13: ProductId (A, B or C)
+        14: silicon revision
+        15: formal release
+        16: platform
+        17: patch
+        18-23: serial number
+        24: security
+        25-33: interface
+        34-36: device type
+        37: provision state (& 0xf)
+
+- 0x05: VCSFW_CMD_RESET
+  - in sendCmdReset
+    req: size: 3
+        1-2: some param of value >= 2
+    resp: size: 2
+
+- 0x07: VCSFW_CMD_PEEK
+    - req: size: 6
+        1:
+        2:
+    - resp: size: 6
+
+- 0x08: VCSFW_CMD_POKE
+    - in sendCmdPoke
+        - req: size: 10
+            5-8: param_3
+            9: param_4
+        - resp: size: 2
+
+- 0x0e: VCSFW_CMD_PROVISION
+    - in sendCmdProvision
+        req: size: 5
+            1-4: 7|0x10 = 23
+        resp: size: 2
+
+- 0x10: VCSFW_CMD_RESET_OWNERSHIP
+
+- 0x19: VCSFW_CMD_GET_STARTINFO
+  - in get_start_info:
+     - req: size: 1
+     - resp: size: 68
+        2: start type
+        3: reset type
+        4-7: start status
+        8-11: sanity panic
+        12-15: sanity code
+        16-67: reset nvinfo (array of 13 ulongs)
+
+- 0x39: VCSFW_CMD_LED_EX2
+
+- 0x3e: VCSFW_CMD_STORAGE_INFO_GET
+  - in tudorCmdGetStorageInfo
+    - req: size: 1
+    - resp: size: 208
+        2-3: ????
+        4-5: ????
+        6-7: ????
+        8-9: ????
+        10-11: ????
+        12-13: ????
+        14-15: num of partitions
+        16-207: partitions array
+           -> elements are of size 12 (maybe evety 36 is possibly smt.)
+           i: id
+           i+1: some size
+           i+2-i+3: if == 2 then is hostPartitionEntry
+           i+4-i+7:
+           i+8-i+11:
+
+- 0x3f: VCSFW_CMD_STORAGE_PART_FORMAT
+    - req: size: 2
+        1: 2=VCSFW_STORAGE_TUDOR_PART_ID_HOST, 1=VCSFW_STORAGE_TUDOR_PART_ID_SSFS
+    - resp: size: 2
+
+- 0x40: VCSFW_CMD_STORAGE_PART_READ
+  - in _rudorHostPartitionRead
+    - req: size: 13
+        1: 2
+        2: 0
+        3-4: 0xffff
+        5-8: 0
+        9-12: size of readblob
+    - resp: size: 8 + sizeof(ReadBlob)
+        2-5: size of readblob
+        6-7: unused
+        8-: readblob
+
+- 0x41: VCSFW_CMD_STORAGE_PART_WRITE
+    - req: size: 0xd + sizeof(WriteBlob)
+        1: (2)
+        2 (0):
+        3-4: (0xffff)
+        5-8: (0)
+        9-blob_len (size)
+    - resp: size: 6
+
+- 0x44: tls data
+    - only when commands aren't encrypted
+    - req:
+        4-*: tls data
+    - resp: NO STATUS
+        0-*: tls data
+
+- 0x47: VCSFW_CMD_DB_OBJECT_CREATE
+
+- 0x4f: VCSFW_CMD_TAKE_OWNERSHIP_EX2
+
+- 0x50: VCSFW_CMD_GET_CERTIFICATE_EX
+
+- 0x57: VCSFW_CMD_TIDLE_SET = set idle timeout
+    - req: size: 3
+        1-2: timeout (ms*1000/80)
+    - resp: size: 2
+
+- 0x69: exit/enter bootloader mode
+    - req: (maybe reversed)
+        00000000 - exit (SSI_IOCTL_CODE_BL_ENTER)
+        00000010 - enter (VCSDRV_IOCTL_WRITE_DFT)
+
+- 0x7d: bootloader patch (VCSFW_CMD_BOOTLDR_PATCH, SSI_IOCTL_CODE_BL_PATCH_LOAD)
+    - req:
+        1-*: patch data
+    - resp: size: 2
+
+- 0x7f: frame read (VCSFW_CMD_FRAME_READ)
+    - in sendFrameRead:
+        - req: size: 9
+            1-2: frame sequence number
+            3-4: 0
+            5-6: max size [?], 0xffff
+            7-8: 3
+        - resp: 10 + smt
+            2-3: frame flags
+                -> 1: last frame
+                -> 2: finger lifted
+            4-5: (my frame index)
+            6-7: (orig. frame index)
+            10-: frame
+
+- 0x80: frame acq (VCSFW_CMD_FRAME_ACQ)
+    - param_2 = 4 or 1
+    - param_2 |= 0x1010 or 0x8
+    - req: size: 9 + (8 or 16)
+        1-4: param_2
+        5-8: number of frames
+        9-11: (1)
+        12: (8)
+        14: param_4
+        16: (0)
+    - param_3 == 1
+        13: 0
+        15: 0
+    - param_3 == 2
+        13: 1
+        15: 1
+    - param_3 == 3
+        13: 1
+        15: 0
+        17-19: 1
+        20: 12
+        21-22: 20
+        23: 2
+        24: 0
+    - from debug output are captureFlags 7 or 15:
+        1_2_3 = 2
+        numFrames = 1
+        param_2 = 4116 for 7; 12 for 15
+        - req: size: 9+8=17
+           1-4: 4116 for 7; 12 for 15
+           5-8: 1
+           9-11: (1)
+           12: (8)
+           13: 1
+           14: param_4
+           15: 1
+           16: (0)
+    - resp: size: 2
+
+- 0x81: frame finish (VCSFW_CMD_FRAME_FINISH)
+    - in tudorCmdFrameFinish:
+        - req: size: 1
+        - resp: size: 2
+
+- 0x82: frame state get (VCSFW_CMD_FRAME_STATE_GET)
+  - in get_frame_state:
+     - req: size: 9
+        1-6: 0
+        7: 2
+        8: 2
+     - resp: size: 16142
+        14-: LNA baseline
+  - in get_device_frame_dims:
+     - req: size: 9
+        1-6: 0
+        7: 2
+        8: 7
+     - resp: 34
+        2-13:
+        14-31: dimensions
+            0-1: pixel bits
+            2-3: width
+            4-5: frame header size
+            6-7: x offset
+            8-9: x size
+            10-11: height
+            12-13: column header size
+            14-15: y offset
+            16-17: y size
+
+- 0x86: event config (VCSFW_CMD_EVENT_CONFIG)
+    - req: size: 0x25
+        repeat 8 times: (always the same)
+            0-3: event mask
+        33-36: 4 if no events, else 0
+    - resp: size: 66
+        2-33:
+        34-53:
+        54-57:
+        58-61:
+        62-63:
+
+        64-65: current event sequence number
+
+- 0x87: event read (VCSFW_CMD_EVENT_READ)
+    - req: size: 5 or 9
+        1-2: current host event sequence number
+        3-4: max number of events in response
+        [ 5-8: always 1 (left out when using legacy event reading) ]
+    - resp: size: 6 + 12*smt_with_events
+        2-5: num events
+        6-(-2): events
+            0: event type
+            1-3: ????
+            4-7: ????
+            8-0xb: ????
+        (-2)-(-1): dependent on reading mode
+            legacy: total number of events (requested + pending)
+            new: num pending events
+
+- 0x8b: frame stream (VCSFW_CMD_FRAME_STREAM)
+    - req: size: 3
+        1-2: buffer_len
+    - resp: size: 14 + buffer_len
+        2-9: data lost
+        10-11: flags
+           & 1 = EOS
+           & 2 = EOF
+        12-13: frame number
+        14-14+buffer_len: frame stream
+
+- 0x8e: read iota (VCSFW_CMD_IOTA_FIND, SSI_IOCTL_CODE_IOTA_READ)
+    - in tudorCmdIotaRead
+        - req: size: 17
+            1-2: IOTA id
+            3-4: ??? (flags, 2)
+            5: 0
+            6: 0
+            7: 0
+            8: 0
+            9-12: offset (0)
+            13-16: 0
+        - resp: size: 0x10006
+            2-5: IOTA size (0 if invalid id)
+            5-*: data
+
+- 0x93: pair
+    - req: size: 401
+        1-400: host certificate
+    - resp: size: 802
+        2-0x45: host certificate echo
+        0x46-0x89: device certificate
+
+- 0x96: enroll start/commit
+    - in misEnrollStartCmd (used in misEnrollStart)
+       - req: size: 13
+           1-4: 1=start
+           5-8: 1 if size is non-zero else 0
+           9-12: sizeof(nonceBuffer)=32
+       - resp: size: 6+sizeof(nonceBuffer)=6+32=38
+           2-5: nonceBuffer length
+           6-: nonceBuffer
+              -> (likely) contains array of uints (len 4) per every enrollment
+              -> misGetParameterBlob
+    - in misEnrollStartCmd (used in misEnrollAddImage)
+        - req: size: 5
+           1-4: 2=add_image
+        - resp: size: 82
+           2-17: tuid data (used on progress == 100)
+           18-21: length, in this case should match 60, else qm struct size mismatch
+           22-81: Enroll stat buffer
+              0-_tudorCmdMisEnrollCommit
+              2-3: progress
+              4-:
+              20-23: quality
+              24-27: redundant
+              28-31: rejected
+              32-:
+              36-39: template count
+              40-41: enrollQuality
+              42-
+              48-51: status - 0=success
+              52-
+              56-59: smt. like has fixed pattern or fixed pattern error
+    - in _tudorCmdMisEnrollCommit
+       - req: size: 12+sizeof(smt)
+           1-4: 3=commit
+           5-8: 0
+           9-12: sizeof(enroll_commit_data)
+           13-: enroll_commit_data
+                - tag 0: tuid from enroll add image (the one just above this one)
+                    - number: 00 00
+                    - len: 10 00 00 00
+                    - example data: bd 2e 50 c4 67 63 0a c1 3f 37 29 83 7f 03 27 da
+                - tag 1: userid is winbio_identity sid
+                    - number: 01 00
+                    - len: 4c 00 00 00
+                    - example data:
+                        - ?: 03 00 00 00
+                        - matches len of Sid: 1c 00 00 00
+                        - user account Sid per registry: 01 05 00 00 00 00 00 05 15 00 00 00 0c bb 01 4e 6d dd 74 eb 5b 41 eb 98 e9 03 00 00
+                        - padding: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 0 00 00 00 00 00 00 00 00 00 00 00
+                - tag 2: subid seems like a simple increment
+                    - number: 02 00
+                    - len: 01 00 00 00
+                    - example data: f5
+
+       - resp: size: 2
+    - in misEnrollFinishCmd
+        - req: size: 5
+           1-4: 4=finish
+        - resp: size: 2
+
+- 0x99: identify match
+  - in misIdentifyMatchCmd
+     - req: size: 0xd + 0x10*sizeof(smt) + sizeof(smt2)
+        1-4:  1
+        5-8:  numTuidsToMatch
+        9-12: sizeof(someDataX)
+        13-:  someDataX or tuidsToMatch (only one used)
+     - resp: size: 1602
+        - note: somewhere should be matchStrength and matchIndex, though it seems not to be used
+        2-17: tuid
+        18-21: qm_struct_size; should match 36
+        22-25: recvData_y size
+        26-29: recvData_z size
+        30-65: match_stats
+           0-3: match score
+           4-
+           20-23: ?
+           24-
+           28-31: ?
+        65-: data_y
+          -: data_z
+            - tags:
+                - tag 0: tuid
+                - tag 1: user ID
+                - tag 2: sub ID
+                - tag 3: ? (seems unused)
+
+        matchStats:
+          size: constant 36
+          at:   offset 30
+        blob_x:
+          size: constant 16
+          at:   offset 2
+        blob_y:
+          size: at offset 22
+          at:   at offset 30 + *(offset 4)
+        blob_z:
+          size: at offset 5
+          at:   at offset 30 + *(offset 4) + sizeof(blob_y)
+
+- 0x9d: get image metrics
+  - in getAuthImageMetrics:
+     - image_metrics = 0x10000 (or 0x1 unused) others are considered bad parameter
+        - req: size: 5
+           1-4: image metrics
+        - resp: size: 14 - 0x1; 70 - 0x10000; 10 - unused in decompiled code
+           - if size < 3, metrics method unsuported by sensor
+           2-5: image metrics
+           6-9: length of data
+                0 = unable to query now
+                4 = in data is finger coverage of IPL
+                8 = in data is image quality and smt ? (sizes 4 and 4)
+           10-: data
+
+- 0x9e: db2 get db info (VCSFW_CMD_DB2_GET_DB_INFO)
+     - req: size: 2
+        1: (1)
+     - resp: size: 40
+        2-3: dummy
+        4-5: version major
+        6-7: version minor
+        8-11: pversion
+        12-13: UOP length
+        14-15: TOP length
+        16-17: POP length
+        18-19: templateObjSize
+        20-21: payloadObjSlotSize
+        22-23: numCurrentUsers
+        24-25: numDeletedUsers
+        26-27: numAvailableUserSlots
+        28-29: numCurrentTemplates
+        30-31: numDeltedTemplates
+        32-33: numAvailableTemplateSlots
+        34-35: numCurrentPayloads
+        36-37: numDeltedPayloads
+        38-39: numAvailableSlots
+
+- 0x9f: VCSFW_CMD_DB2_GET_OBJECT_LIST
+     - req: size: 20
+        1-4: type: 1=users, 2=templates, 3=payloads
+        5-20: id
+     - resp: size: 4 + 16 * no_of_current(users/templates/payloads)
+        2: object list length
+        i-(i+7): i-th object data
+
+- 0xa0: VCSFW_CMD_DB2_GET_OBJECT_INFO
+     - in tudorCmdGetObjectInfo
+          - req: size: 21
+               1-4:  type: 1=users, 2=templates, 3=payloads
+               5-20: propertyObjId
+     - resp: size: 12 for req = 1; 52 for req = 2 or 3
+           2-: size
+           for type 1:
+                2-: something; if == 1: then the id sent is common
+           for type 2:
+                18-33: user ID of owner?
+           for type 2 and 3:
+                4-19: some part of host certifiacte
+                20-33: tuidt
+                34-37:
+                38-41:
+                42-45:
+                46-49: size of object
+
+- 0xa1: VCSFW_CMD_DB2_GET_OBJECT_DATA
+     - req: size: 20
+        1-4: type: 1=users, 2=templates, 3=payloads
+        5-: obj_id
+     - resp: size: 8 for type 1; 8+(request at offset 46)
+        2-:
+        4-7: object data size
+        8-: object data -> tag-value data from enroll commit
+           tags:
+              --- for enrollment
+              0: tuid
+              1: userid is winbio_identity sid
+              2: subid seems like a simple increment
+              3: additional data - unused
+              --- for property
+              4: propterty_data
+              5: property_id
+
+
+- 0xa2: VCSFW_CMD_DB2_WRITE_OBJECT
+  - in tudorCmdWriteObject
+     - req: size: 37+sizeof(toSend)
+        1: type: 1=users, 2=templates, 3=payloads
+        2: 1
+        3-:
+        type==1:
+           5-8: send data
+        type==2 or 3:
+           5-20: to_write_id
+           29-32: to_write_size
+           33-: to_write
+
+     - resp: size: 20
+        1-:
+        4-19:
+
+- 0xa3: VCSFW_CMD_DB2_DELETE_OBJECT
+     - req: size: 21
+        1-4: type:  1=users, 2=templates, 3=payloads
+        5-: property object id
+     - resp: size: 4
+        2-3: no of deleted objects
+
+- 0xa4: cleanup
+     - req: size: 2
+        1: (1)
+     - resp: size: 8
+        2-3: no of erased slots
+        4-7: new partition count
+
+- 0xa5: VCSFW_CMD_DB2_FORMAT
+  - in tudorCmdFormat
+     - req: size: 13
+        1-12: 1
+     - resp: size: 8
+        2-3:
+        4-7: new partition version
+
+- 0xa6: ????
+    - req: size: 177
+        1-32:
+        33-36: size of data
+        37-176: data
+    - resp: size: 2234
+
+- 0xaa: *reset SBL mode*
+    - req: size: 0x15
+        1-4: (0xffffffff)
+        5-8: (0xff7fffff or 0xffbfffff)
+        9-12: (0)
+        13-16: (0x400000 or 0x800000)
+        17-20: (0)
+    - resp: size: 2
+
+- 0xac: *SSO* (VCSFW_CMD_SSO)
+
+- 0xae: OPINFO_GET (VCSFW_CMD_OPINFO_GET)
+    - req: size: 1 + sizeof(paramBlob)
+    - resp: size: ?
+
+- 0xaf: VCSFW_CMD_HW_INFO_GET
+  - in query_HW_SBL_info
+    - req: size: 5
+        1-4: 1
+    - resp: size: 10
+        "Query the HW SBL info as following:"
+        "HASH: 0x%x, status: %d"
+        2-5: hash
+        6: status
+        7-: unused
+  - in get_FwHwModuleInfo:
+    - req: size: 5
+        1-4: 0
+    - resp: size: 18
+        "Due to no CONFIG_VERSION iota, read the HW module info from IOTA chain 0 and FIB as following:"
+        "FM%d-%d, HwVer1:%d, HwVer2:%d, PkgInfoMainId:%d, PkgInfoSubId1:%d, PkgInfoSubId2:%d"
+        2-5: FM
+        6-9: HwVer1
+        10-11: HwVer2
+        12-13: PkgInfoMainId
+        14-15: PkgInfoSubId1
+        16: PkgInfoSubId2
+        17:
+
+
+### responses:
+- base structure:
+    0-1: status
+- specific error code:
+    0x000 -> 0
+    0x401 -> 0x0d1 = VCS_RESULT_SENSOR_BAD_CMD
+    0x403 -> 0x076 = VCS_RESULT_GEN_OBJECT_DOESNT_EXIST
+    0x404 -> 0x068 = VCS_RESULT_GEN_OPERATION_DENIED
+    0x405 -> 0x06f = VCS_RESULT_GEN_BAD_PARAM
+    0x406 -> 0x06f = VCS_RESULT_GEN_BAD_PARAM
+    0x407 -> 0x06f = VCS_RESULT_GEN_BAD_PARAM
+    0x412 -> 0
+    0x48c -> not converted (return val is unchanged)
+    0x509 -> 0x12e = VCS_RESULT_MATCHER_MATCH_FAILED
+    0x5b6 -> 0x0da = VCS_RESULT_SENSOR_FRAME_NOT_READY
+    0x5cb -> 0x0dd =
+    0x5cc -> 0
+    0x680 -> 0x1f5 = VCS_RESULT_DB_FULL
+    0x683 -> 0x076 = VCS_RESULT_GEN_OBJECT_DOESNT_EXIST
+    0x6e0 -> 0x0dc =
+    0x6ea -> 0x0df - used in CMD_FRAME_ACQ - likely smt. like processing
+
+    other -> 0x0ca = VCS_RESULT_SENSOR_MALFUNCTIONED
+    others received:
+        0x315 - smt reseting sensor and then connecting again
+        0x47a
+        0x4b6
+        0x687 - smt like access error
+        0x6db
+        0x6e1 - smt in host partition read
+        0x6e7 - smt in host partition read
+
+
+### provision states:
+- 0,1: not provisioned
+- 3: provisioned
+- ????
+
+TLS 1.2 layer: sess "tls data" command
+-> client advertises:
+- TLS_ECDH_ECDSA_WITH_AES_256_CBC_SHA
+- TLS_ECDH_ECDSA_WITH_AES_256_GCM_SHA384
+- TLS_RSA_WITH_AES_256_CBC_SHA256 (unusable!)
+- TLS_PSK_WITH_AES_256_CBC_SHA (unusable!)
+- TLS_PSK_WITH_AES_128_GCM_SHA256 (unusable!)
+- extensions: ??? (TODO)
+
+certificate:
+0-1: magic (3f5f)
+2-3: curve name (23=SECP256R1)
+4-0x47: public key x
+0x48-0x8b: public key y
+0x8c-0x8d: ????
+0x8e-0x8f: signature size
+0x90-0x18f: signature
+
+### IOTA:
+- req:
+   0-1: size
+   2-3: type
+- types:
+   - IOTA 9 (config version):
+      0-1: length
+      2-3: type
+      4-7: major
+      8-0xb: minor
+      0xc-0xd: revision
+      0xe-0x14:
+
+   - IOTA 0x1a (IPL iota): PACKED
+
+   - IOTA 0x2e (WBF parameter): PACKED
+      0-2: ????
+      3: version
+      4-7: data
+
+   - IOTA 0x2f: PACKED
+
+- iota patch tags:
+   3 - metadata
+
+
+
+### event types: also event mask bit indices
+- at most 32 events can be pending
+1: FINGER_DOWN
+2: FINGER_UP
+3: ????
+4: ????
+5: ????
+6: ????
+7: ????
+8: ????
+9: ????
+24: FRAME_READY (most likely)
+
+
+### capture flags:
+   - 5 (does not seem to be used)
+   - 7
+   - may be ORed with 8 (also not used)
+
+### Interesting functions:
+   - getPalDriverStatusString
+      - contains a pletny of error code strings
+   - palUsbDriverOpen
+      - contains all the function offsets which are used with USB
+   - tudorSecureBioConnect
+      - sends commands
+
+### tudorIoctlcodes:
+   1 - not implemented
+   2 - not implemented
+   3 - calls tudorSendAnyCommand
+   4 - SSI_IOCTL_CODE_BL_ENTER
+      - calls _tudorBootLoaderModeEnter
+   5 - SSI_IOCTL_CODE_BL_EXIT
+      - calls tudorBootloaderModeExit
+   6 - SSI_IOCTL_CODE_BL_PATCH_LOAD
+      - downloads BL mode patch
+      - calls tudorCmdDownloadBootLoaderPatch
+   7 - SSI_IOCTL_CODE_IOTA_READ
+   8 - N/A
+   9
+      - calls tudorSecurityDoPair
+   10
+      - calls tudorSecurityDoUnPair
+   0x14 - SSI_IOCTL_CODE_GET_PIPE_TIMEOUT
+   0x15 - SSI_IOCTL_CODE_SET_PIPE_TIMEOUT
+   0x16 - sets inBootloaderMode in outData
+   0x1d -
+   0x22 - SSI_IOCTL_CODE_SET_GET_PIPETIME_OUT
+   0x23 -
+      - calls tudorSecurityUpdatePairedData
+   0x24 - SSI_IOCTL_CODE_FW_OPINFO_GET
+   0x2b - SSI_IOCTL_CODE_FRAME_FINISH
+   >100: calls __tudorIoctlExt:
+       0x65 - something with capture
+       others invalid
+       0x69 - VCSDRV_IOCTL_WRITE_DFT
+            - invalid
+       others - not implemented
+
+### palUsbDriverIoControl:
+   0x01 - HARDWARE_RESET
+   0x0b - SET_HBM_READY
+   0x10 - SET_TS(P)IN
+   0x13 - SET_HBM_READY
+   0x14 - resume device
+
+### tudorUsbProtoIoControl
+   (1, 4, 5, 6, 0x12 -> palUsbDriverIoControl)
+   0x01 - get pipe timeout / reset?
+   0x02 = VCSDRV_IOCTL_GET_VID_PID
+   0x03 = VCSDRV_IOCTL_INTERRUPT_DATA_GET
+   0x04 initialize
+   0x05 = VCSDRV_IOCTL_GET_PIPE_TIMEOUT
+   0x06 = VCSDRV_IOCTL_SET_PIPE_TIMEOUT
+   0x07 = VCSDRV_IOCTL_DEVICE_EVENT_LISTEN
+   0x12 - set power policy
+
+   0x65 - VCSDRV_IOCTL_DEVICE_INFO
+   0x66 - VCSDRV_IOCTL_GET_TLS_STATE
+   0x67 - VCSDRV_IOCTL_SEND_CMD_DATA
+   0x68 - device reset
+   0x69 - VCSDRV_IOCTL_WRITE_DFT
+   0x6a - VCSDRV_IOCTL_GET_DEVICE_STATE
+   0x6b = VCSDRV_IOCTL_READ_DFT
+   0x6c = VCSDRV_IOCTL_GET_INTERRUPT_TIMEOUT
+   0x6d = VCSDRV_IOCTL_SET_INTERRUPT_TIMEOUT
+
+### Event -> ioctl (_eventToIoctl)
+   1 -> 7 (enable), 8 (disable)
+   2,3 -> 9 (enable), 10 (disable)
+   others -> error bad parameter
+
+### Set/Get params
+- tudorGetSetParameterBlob params:
+   01 - get dimensions_t, size=0x12
+   08 - cpy someDataX
+   09 - get hSensor->sensor_update_state of size 0x28
+   10 - get pairing data
+   others not implemented / invalid
+- misSetParameter has only implemented param 0x15 - set nonceSize
+- misGetParameterBlob
+   3 - smt enrollment session
+   4 - smt auth session
+   6 - smt enrollment session
+   7 - smt auth session
+   others not implemented / invalid
+
+### Tags:
+- on partition data
+   1 - version tag; size=4
+   2 - paired data; size=?
+      0: version1; should match 1
+      1: version2; should match 0
+      2-
+      4-7: some_size_1
+      8-11: length of encrypted data
+      12-15: length of encrypted hash
+      16-:
+         -> encrypted data
+         -> encrypted hash; after decryption should have length of 0x32
+- paired data
+   0 - pairing data version; len=0x2
+   1 - host certificate; len=0x190
+   2 - private key; len=0x20
+   3 - sensor certificate; len=0x190 - set in _tudorSecurityVerifyCertificate
+   4 - some pubKeySec data, len=0x1a4
+   5 - SSI_STORAGE_PSK_ID
+- enrollment data
+   0 -
+   1 - tlp data
+   2 - some hash
+- CFG aka inbuild IOTA patch
+   3 - metadata
+   4 - payload
+- MFW (most likely something firmware)
+   1 - metadata
+   2 - payload
+
+
+
+### Registry values used / read
+- ??? path: Computer\HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\WinBio\SensorInfo\4cd81755-1411-4bb1-a230-d6ed329e025c
+- seems to be missing, path: Software\\Synaptics\\PairingData, name: 0
+   -> has value 31 5b a2 f0 37 72 00 00
+   ->       ... 31 5b a2 f0 37 72 0f a1 00 00 00 00 01 00 00 00 00 00 00 03
+   -> partial match with getVerison
+- in ValidateDatavase: path: Computer\HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Cryptography, name: MachineGuid 047efdb4-395e-48b0-8546-7b5a40695571
+- is used, not inspected; path: SOFTWARE\\Syna, name: wbfMode, values: 0/1
+
+### SBL recovery patches
+- are stored in synaWudfBioUsb111.dll - three lists of size, hash and data
+- hash list: 0xB63DEB5F, 0x8ABDEFD6, 0x15595CEA, 0x9ACC5A48, 0x59A1E20D

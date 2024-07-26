@@ -8,7 +8,6 @@ You'll need:
 * python3
 * cryptography
 * pyusb
-* matplotlib
 
 ## Installation
 ```bash

@@ -1,0 +1,1373 @@
+--- Fingerprint setup start
+
+
+
+
+[1] 00669531: 4928: synaLib: vfm: STATUS: vfmStgGetTuidList >>>>>>>>
+    [1] 00669531: 4928: synaLib: vfm: STATUS: _vfmStgGetSubIdList >>>>>>>>
+        [1] 00669531: 4928: synaLib: vfm: STATUS: _vfmStgOnChipOpen >>>>>>>>
+            [1] 00669531: 4928: synaLib: tudor: STATUS: stiTudorOpen >>>>>>>>
+            [1] 00669531: 4928: synaLib: tudor: STATUS: stiTudorOpen <<<<<<<<
+
+        [1] 00669531: 4928: synaLib: vfm: STATUS: _vfmStgGetFirstEnrollmentAlloc >>>>>>>>
+            [1] 00669531: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment >>>>>>>>
+                [1] 00669531: 4928: synaLib: tudor: STATUS: stiTudorGetFirstEnrollment >>>>>>>>
+                    [1] 00669531: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment >>>>>>>>
+                    [1] 00669531: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment <<<<<<<<
+                    [1] 00669531: 4928: synaLib: tudor: WARNING: Call of stiTudorGetNextEnrollment() failed.
+                [1] 00669531: 4928: synaLib: tudor: STATUS: stiTudorGetFirstEnrollment <<<<<<<<
+            [1] 00669531: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment <<<<<<<<
+        [1] 00669531: 4928: synaLib: vfm: STATUS: _vfmStgGetFirstEnrollmentAlloc <<<<<<<<
+
+        [1] 00669531: 4928: synaLib: vfm: STATUS: _vfmStgClose >>>>>>>>
+            [1] 00669531: 4928: synaLib: tudor: STATUS: stiTudorClose >>>>>>>>
+            [1] 00669531: 4928: synaLib: tudor: STATUS: stiTudorClose <<<<<<<<
+        [1] 00669531: 4928: synaLib: vfm: STATUS: _vfmStgClose <<<<<<<<
+
+    [1] 00669531: 4928: synaLib: vfm: STATUS: _vfmStgGetSubIdList <<<<<<<<
+
+    [1] 00669531: 4928: synaLib: vfm: STATUS: Enrollment does not exist in database
+    [1] 00669531: 4928: synaLib: vfm: STATUS: _vfmStgClose >>>>>>>>
+        [1] 00669531: 4928: synaLib: vfm: WARNING: Storage handle is null.
+    [1] 00669531: 4928: synaLib: vfm: STATUS: _vfmStgClose <<<<<<<<
+    [1] 00669531: 4928: synaLib: vfm: WARNING: _vfmStgClose failed (112)
+[1] 00669531: 4928: synaLib: vfm: STATUS: vfmStgGetTuidList <<<<<<<<
+
+
+
+[1] 00669531: 4928: vfmUtil: vfmUtil: STATUS: vfmUtilSessionGetDeviceHandle >>>>>>>>
+[1] 00669531: 4928: vfmUtil: vfmUtil: STATUS: vfmUtilSessionGetDeviceHandle <<<<<<<<
+
+[1] 00669531: 4928: synaLib: vfm: STATUS: _vfmStgOnChipOpen >>>>>>>>
+[1] 00669531: 4928: synaLib: tudor: STATUS: stiTudorOpen >>>>>>>>
+[1] 00669531: 4928: synaLib: tudor: STATUS: stiTudorOpen <<<<<<<<
+
+
+[1] 00669531: 4928: synaLib: vfm: STATUS: vfmGetEnrolledUserList >>>>>>>>
+    [1] 00669531: 4928: synaLib: vfm: STATUS: _vfmStgOnChipOpen >>>>>>>>
+        [1] 00669531: 4928: synaLib: tudor: STATUS: stiTudorOpen >>>>>>>>
+        [1] 00669531: 4928: synaLib: tudor: STATUS: stiTudorOpen <<<<<<<<
+
+    [1] 00669531: 4928: synaLib: vfm: STATUS: _vfmStgGetFirstEnrollmentAlloc >>>>>>>>
+        [1] 00669531: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment >>>>>>>>
+            [1] 00669531: 4928: synaLib: tudor: STATUS: stiTudorGetFirstEnrollment >>>>>>>>
+                [1] 00669531: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment >>>>>>>>
+                [1] 00669531: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment <<<<<<<<
+                [1] 00669531: 4928: synaLib: tudor: WARNING: Call of stiTudorGetNextEnrollment() failed.
+            [1] 00669531: 4928: synaLib: tudor: STATUS: stiTudorGetFirstEnrollment <<<<<<<<
+        [1] 00669531: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment <<<<<<<<
+    [1] 00669531: 4928: synaLib: vfm: STATUS: _vfmStgGetFirstEnrollmentAlloc <<<<<<<<
+
+    [1] 00669531: 4928: synaLib: vfm: STATUS: _vfmStgClose >>>>>>>>
+        [1] 00669531: 4928: synaLib: tudor: STATUS: stiTudorClose >>>>>>>>
+        [1] 00669531: 4928: synaLib: tudor: STATUS: stiTudorClose <<<<<<<<
+    [1] 00669531: 4928: synaLib: vfm: STATUS: _vfmStgClose <<<<<<<<
+[1] 00669531: 4928: synaLib: vfm: STATUS: vfmGetEnrolledUserList <<<<<<<<
+
+
+[1] 00669531: 4928: vfmUtil: vfmUtil: STATUS: vfmUtilSessionGetDeviceHandle >>>>>>>>
+[1] 00669531: 4928: vfmUtil: vfmUtil: STATUS: vfmUtilSessionGetDeviceHandle <<<<<<<<
+
+[1] 00669531: 4928: synaLib: vfm: STATUS: _vfmStgOnChipOpen >>>>>>>>
+
+[1] 00669531: 4928: synaLib: tudor: STATUS: stiTudorOpen >>>>>>>>
+[1] 00669531: 4928: synaLib: tudor: STATUS: stiTudorOpen <<<<<<<<
+
+[1] 00669531: 4928: synaLib: vfm: STATUS: vfmStgGetParamBlob >>>>>>>>
+    [1] 00669531: 4928: synaLib: tudor: STATUS: stiTudorGetParameterBlob >>>>>>>>
+    [1] 00669531: 4928: synaLib: tudor: STATUS: stiTudorGetParameterBlob <<<<<<<<
+[1] 00669531: 4928: synaLib: vfm: STATUS: vfmStgGetParamBlob <<<<<<<<
+
+[1] 00669531: 4928: synaLib: vfm: STATUS: vfmStgGetParamBlob >>>>>>>>
+    [1] 00669531: 4928: synaLib: tudor: STATUS: stiTudorGetParameterBlob >>>>>>>>
+    [1] 00669531: 4928: synaLib: tudor: STATUS: stiTudorGetParameterBlob <<<<<<<<
+[1] 00669531: 4928: synaLib: vfm: STATUS: vfmStgGetParamBlob <<<<<<<<
+
+[1] 00669531: 4928: synaLib: vfm: STATUS: _vfmStgClose >>>>>>>>
+    [1] 00669531: 4928: synaLib: tudor: STATUS: stiTudorClose >>>>>>>>
+    [1] 00669531: 4928: synaLib: tudor: STATUS: stiTudorClose <<<<<<<<
+[1] 00669531: 4928: synaLib: vfm: STATUS: _vfmStgClose <<<<<<<<
+
+[1] 00669531: 4928: synaLib: vfm: STATUS: _vfmStgClose >>>>>>>>
+    [1] 00669531: 4928: synaLib: vfm: WARNING: Storage handle is null.
+[1] 00669531: 4928: synaLib: vfm: STATUS: _vfmStgClose <<<<<<<<
+
+
+
+
+--- After signing in
+
+
+
+
+[1] 00748718: 2352: vfmUtil: vfmUtil: STATUS: vfmUtilSessionGetDeviceHandle >>>>>>>>
+[1] 00748718: 2352: vfmUtil: vfmUtil: STATUS: vfmUtilSessionGetDeviceHandle <<<<<<<<
+
+[1] 00748718: 2352: vfmUtil: vfmUtil: STATUS: vfmUtilSetCaptureCancel >>>>>>>>
+    [1] 00748718: 2352: vfmUtil: vfmUtil: STATUS: current bCaptureCanceled is 0
+    [1] 00748718: 2352: vfmUtil: vfmUtil: STATUS: set bCaptureCanceled with 0
+[1] 00748718: 2352: vfmUtil: vfmUtil: STATUS: vfmUtilSetCaptureCancel <<<<<<<<
+
+[1] 00748718: 2352: vfmUtil: vfmUtil: STATUS: vfmUtilSessionGetDeviceHandle >>>>>>>>
+[1] 00748718: 2352: vfmUtil: vfmUtil: STATUS: vfmUtilSessionGetDeviceHandle <<<<<<<<
+
+[1] 00748718: 2352: synaLib: vfm: STATUS: vfmDeviceEventConfigure >>>>>>>>
+    [1] 00748718: 2352: synaLib: tudor: STATUS: tudorEventConfig >>>>>>>>
+
+        [1] 00748718: 2352: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_EVENT_CONFIG
+        [1] 00748734: 2352: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_EVENT_CONFIG
+
+    [1] 00748734: 2352: synaLib: tudor: STATUS: tudorEventConfig <<<<<<<<
+[1] 00748734: 2352: synaLib: vfm: STATUS: vfmDeviceEventConfigure <<<<<<<<
+
+[1] 00748734: 2352: synaLib: vfm: STATUS: vfmDeviceEventReadData >>>>>>>>
+    [1] 00748734: 2352: synaLib: tudor: STATUS: tudorEventGet >>>>>>>>
+    [1] 00748734: 2352: synaLib: tudor: STATUS: tudorEventGet <<<<<<<<
+[1] 00748734: 2352: synaLib: vfm: STATUS: vfmDeviceEventReadData <<<<<<<<
+
+[1] 00748734: 2352: vfmUtil: vfmUtil: STATUS: vfmUtilWaitForCbStatus >>>>>>>>
+    [1] 00748734: 2352: synaLib: vfm: STATUS: vfmDeviceEnableCallback >>>>>>>>
+    [1] 00748734: 2352: synaLib: vfm: STATUS: Enable Event listen for eventType = 1, ioctlCode = 7
+        [1] 00748734: 2352: synaLib: palSensor: STATUS: palUsbDriverIoControl >>>>>>>>
+            [1] 00748734: 3400: synaLib: palSensor: WARNING: hidCtx.handle=0x0
+
+            [1] 00748734: 3400: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+            [1] 00748734: 3400: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+        [1] 00748765: 2352: synaLib: palSensor: STATUS: palUsbDriverIoControl <<<<<<<<
+    [1] 00748765: 2352: synaLib: vfm: STATUS: vfmDeviceEnableCallback <<<<<<<<
+
+    [1] 00748765: 2352: synaLib: vfm: STATUS: vfmDeviceDisableCallback >>>>>>>>
+        [1] 00748765: 2352: synaLib: vfm: STATUS: Disbale Event listen for eventType = 1, ioctlCode = 8
+        [1] 00748765: 2352: synaLib: palSensor: STATUS: palUsbDriverIoControl >>>>>>>>
+        [1] 00748765: 2352: synaLib: palSensor: STATUS: palUsbDriverIoControl <<<<<<<<
+    [1] 00748765: 2352: synaLib: vfm: STATUS: vfmDeviceDisableCallback <<<<<<<<
+[1] 00748765: 2352: vfmUtil: vfmUtil: STATUS: vfmUtilWaitForCbStatus <<<<<<<<
+[1] 00748765: 2352: synaLib: vfm: STATUS: vfmDeviceEventReadData >>>>>>>>
+[1] 00748765: 2352: synaLib: tudor: STATUS: tudorEventGet >>>>>>>>
+[1] 00748765: 2352: synaLib: tudor: STATUS: Getting event status
+    [1] 00748765: 2352: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+        [1] 00748765: 2352: synaLib: palSensor: STATUS: palUsbDriverIoControl >>>>>>>>
+        [1] 00748765: 2352: synaLib: palSensor: STATUS: palUsbDriverIoControl <<<<<<<<
+    [1] 00748765: 2352: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+
+[1] 00748765: 2352: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_EVENT_READ
+[1] 00748765: 2352: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_EVENT_READ
+[1] 00748765: 2352: synaLib: tudor: STATUS: event[0] type:(FINGER_UP)
+
+[1] 00748765: 2352: synaLib: tudor: STATUS: _tudorEventCheckForPending >>>>>>>>
+[1] 00748765: 2352: synaLib: tudor: STATUS: _tudorEventCheckForPending <<<<<<<<
+[1] 00748765: 2352: synaLib: tudor: STATUS: tudorEventGet <<<<<<<<
+[1] 00748765: 2352: synaLib: vfm: STATUS: vfmDeviceEventReadData <<<<<<<<
+[1] 00748765: 2352: synaLib: vfm: STATUS: vfmDeviceEventConfigure >>>>>>>>
+[1] 00748765: 2352: synaLib: tudor: STATUS: tudorEventConfig >>>>>>>>
+[1] 00748765: 2352: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_EVENT_CONFIG
+[1] 00748765: 2352: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_EVENT_CONFIG
+[1] 00748765: 2352: synaLib: tudor: STATUS: tudorEventConfig <<<<<<<<
+[1] 00748765: 2352: synaLib: vfm: STATUS: vfmDeviceEventConfigure <<<<<<<<
+[1] 00748812: 2352: vfmUtil: vfmUtil: STATUS: vfmUtilCaptureImage >>>>>>>>
+[1] 00748812: 2352: vfmUtil: vfmUtil: STATUS: captureFlags 7
+[1] 00748812: 2352: synaLib: vfm: STATUS: vfmCaptureStart >>>>>>>>
+[1] 00748812: 2352: synaLib: tudor: STATUS: tudorCaptureStart >>>>>>>>
+[1] 00748812: 2352: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_EVENT_CONFIG
+[1] 00748828: 2352: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_EVENT_CONFIG
+[1] 00748828: 2352: synaLib: tudor: STATUS: Capture started
+[1] 00748828: 2352: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_FRAME_ACQ
+[1] 00748828: 2352: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_FRAME_ACQ
+[1] 00748828: 2352: synaLib: tudor: STATUS: tudorCaptureStart <<<<<<<<
+[1] 00748828: 2352: synaLib: vfm: STATUS: vfmCaptureStart <<<<<<<<
+[1] 00748828: 2352: vfmUtil: vfmUtil: STATUS: _vfmUtilEventCreate >>>>>>>>
+[1] 00748828: 2352: vfmUtil: vfmUtil: STATUS: _vfmUtilEventCreate <<<<<<<<
+[1] 00748828: 2352: vfmUtil: vfmUtil: STATUS: vcsEventDestroy >>>>>>>>
+[1] 00748828: 2352: vfmUtil: vfmUtil: STATUS: vcsEventDestroy <<<<<<<<
+[1] 00748828: 2352: synaLib: vfm: STATUS: vfmCaptureProcess >>>>>>>>
+[1] 00748828: 2352: synaLib: tudor: STATUS: tudorCaptureProcess >>>>>>>>
+[1] 00748828: 2352: synaLib: tudor: STATUS: tudorCaptureProcess <<<<<<<<
+[1] 00748828: 2352: synaLib: vfm: STATUS: vfmCaptureProcess <<<<<<<<
+[1] 00748828: 2352: synaLib: vfm: STATUS: vfmDeviceEnableCallback >>>>>>>>
+[1] 00748828: 2352: synaLib: vfm: STATUS: Enable Event listen for eventType = 1, ioctlCode = 7
+[1] 00748828: 2352: synaLib: palSensor: STATUS: palUsbDriverIoControl >>>>>>>>
+[1] 00748828: 3400: synaLib: palSensor: WARNING: hidCtx.handle=0x0
+
+[1] 00748828: 3400: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 00748859: 2352: synaLib: palSensor: STATUS: palUsbDriverIoControl <<<<<<<<
+[1] 00748859: 2352: synaLib: vfm: STATUS: vfmDeviceEnableCallback <<<<<<<<
+[1] 00748859: 2352: vfmUtil: vfmUtil: STATUS: capture timeout set to -1
+
+
+
+
+--- Finger touch on sensor
+
+
+
+
+[1] 00803171: 3400: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+
+[1] 00803171: 2352: synaLib: vfm: STATUS: vfmDeviceDisableCallback >>>>>>>>
+    [1] 00803171: 2352: synaLib: vfm: STATUS: Disbale Event listen for eventType = 1, ioctlCode = 8
+
+    [1] 00803171: 2352: synaLib: palSensor: STATUS: palUsbDriverIoControl >>>>>>>>
+    [1] 00803171: 2352: synaLib: palSensor: STATUS: palUsbDriverIoControl <<<<<<<<
+[1] 00803171: 2352: synaLib: vfm: STATUS: vfmDeviceDisableCallback <<<<<<<<
+
+
+[1] 00803171: 2352: synaLib: vfm: STATUS: vfmCaptureProcess >>>>>>>>
+[1] 00803171: 2352: synaLib: tudor: STATUS: tudorCaptureProcess >>>>>>>>
+[1] 00803171: 2352: synaLib: tudor: STATUS: Getting event status
+[1] 00803171: 2352: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_EVENT_READ
+[1] 00803171: 2352: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_EVENT_READ
+
+[1] 00803171: 2352: synaLib: tudor: STATUS: event[0] type:(OtherType)
+
+[1] 00803171: 2352: synaLib: tudor: STATUS: tudorCaptureFrameReadyStatusGet
+
+[1] 00803171: 2352: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+    [1] 00803171: 2352: synaLib: palSensor: STATUS: palUsbDriverIoControl >>>>>>>>
+    [1] 00803171: 2352: synaLib: palSensor: STATUS: palUsbDriverIoControl <<<<<<<<
+[1] 00803171: 2352: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+
+[1] 00803171: 2352: synaLib: tudor: STATUS: tudorCaptureProcess <<<<<<<<
+[1] 00803171: 2352: synaLib: vfm: STATUS: vfmCaptureProcess <<<<<<<<
+
+[1] 00803171: 2352: vfmUtil: vfmUtil: STATUS: SSI_CAPTURE_STATUS_FD_DETECTED by 2 status
+
+[1] 00803171: 2352: vfmUtil: vfmUtil: STATUS: _vfmUtilEventCreate >>>>>>>>
+[1] 00803171: 2352: vfmUtil: vfmUtil: STATUS: _vfmUtilEventCreate <<<<<<<<
+
+[1] 00803171: 2352: vfmUtil: vfmUtil: STATUS: vcsEventDestroy >>>>>>>>
+[1] 00803171: 2352: vfmUtil: vfmUtil: STATUS: vcsEventDestroy <<<<<<<<
+
+[1] 00803171: 2352: synaLib: vfm: STATUS: vfmCaptureProcess >>>>>>>>
+    [1] 00803171: 2352: synaLib: tudor: STATUS: tudorCaptureProcess >>>>>>>>
+        [1] 00803171: 2352: synaLib: tudor: STATUS: tudorCaptureImageHeaderFill         <---------------------------------------------------------
+
+        [1] 00803171: 2352: synaLib: tudor: STATUS: _tudorCaptureImageHeaderFill >>>>>>>>
+        [1] 00803187: 2352: synaLib: tudor: STATUS: _tudorCaptureImageHeaderFill <<<<<<<<
+
+        [1] 00803187: 2352: synaLib: tudor: STATUS: tudorCaptureComplete
+    [1] 00803187: 2352: synaLib: tudor: STATUS: tudorCaptureProcess <<<<<<<<
+
+    [1] 00803187: 2352: synaLib: tudor: STATUS: tudorCaptureGetImage >>>>>>>>
+    [1] 00803187: 2352: synaLib: tudor: STATUS: tudorCaptureGetImage <<<<<<<<
+[1] 00803187: 2352: synaLib: vfm: STATUS: vfmCaptureProcess <<<<<<<<
+
+[1] 00803187: 2352: vfmUtil: vfmUtil: STATUS: _vfmUtilEventCreate >>>>>>>>
+[1] 00803187: 2352: vfmUtil: vfmUtil: STATUS: _vfmUtilEventCreate <<<<<<<<
+
+[1] 00803187: 2352: vfmUtil: vfmUtil: STATUS: vcsEventDestroy >>>>>>>>
+[1] 00803187: 2352: vfmUtil: vfmUtil: STATUS: vcsEventDestroy <<<<<<<<
+
+[1] 00803187: 2352: synaLib: vfm: STATUS: vfmCaptureGetImageMetrics >>>>>>>>
+[1] 00803187: 2352: synaLib: vfm: STATUS: vfmCaptureGetImageMetrics <<<<<<<<
+
+[1] 00803187: 2352: vfmUtil: vfmUtil: STATUS: _vfmUtilEventCreate >>>>>>>>
+[1] 00803187: 2352: vfmUtil: vfmUtil: STATUS: _vfmUtilEventCreate <<<<<<<<
+
+[1] 00803187: 2352: vfmUtil: vfmUtil: STATUS: vcsEventDestroy >>>>>>>>
+[1] 00803187: 2352: vfmUtil: vfmUtil: STATUS: vcsEventDestroy <<<<<<<<
+
+[1] 00803187: 2352: synaLib: vfm: STATUS: vfmCaptureFinish >>>>>>>>
+    [1] 00803187: 2352: synaLib: tudor: STATUS: tudorCaptureFinish >>>>>>>>
+        [1] 00803187: 2352: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_EVENT_CONFIG
+        [1] 00803187: 2352: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_EVENT_CONFIG
+        [1] 00803187: 2352: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_FRAME_FINISH
+        [1] 00803203: 2352: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_FRAME_FINISH
+
+        [1] 00803203: 2352: synaLib: tudor: STATUS: tudorCaptureFinish <<<<<<<<
+    [1] 00803203: 2352: synaLib: vfm: STATUS: vfmCaptureFinish <<<<<<<<
+[1] 00803203: 2352: vfmUtil: vfmUtil: STATUS: vfmUtilCaptureImage <<<<<<<<
+
+[1] 00803203: 1960: vfmUtil: vfmUtil: STATUS: vfmUtilSessionGetDeviceHandle >>>>>>>>
+[1] 00803203: 1960: vfmUtil: vfmUtil: STATUS: vfmUtilSessionGetDeviceHandle <<<<<<<<
+
+[1] 00803203: 1960: vfmUtil: vfmUtil: STATUS: vfmUtilSetCaptureCancel >>>>>>>>
+    [1] 00803203: 1960: vfmUtil: vfmUtil: STATUS: current bCaptureCanceled is 0
+    [1] 00803203: 1960: vfmUtil: vfmUtil: STATUS: set bCaptureCanceled with 0
+[1] 00803203: 1960: vfmUtil: vfmUtil: STATUS: vfmUtilSetCaptureCancel <<<<<<<<
+
+[1] 00803203: 1960: vfmUtil: vfmUtil: STATUS: vfmUtilSessionGetDeviceHandle >>>>>>>>
+[1] 00803203: 1960: vfmUtil: vfmUtil: STATUS: vfmUtilSessionGetDeviceHandle <<<<<<<<
+
+[1] 00803203: 1960: synaLib: vfm: STATUS: vfmDeviceEventConfigure >>>>>>>>
+    [1] 00803203: 1960: synaLib: tudor: STATUS: tudorEventConfig >>>>>>>>
+        [1] 00803203: 1960: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_EVENT_CONFIG
+        [1] 00803218: 1960: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_EVENT_CONFIG
+    [1] 00803218: 1960: synaLib: tudor: STATUS: tudorEventConfig <<<<<<<<
+[1] 00803218: 1960: synaLib: vfm: STATUS: vfmDeviceEventConfigure <<<<<<<<
+
+[1] 00803218: 1960: synaLib: vfm: STATUS: vfmDeviceEventReadData >>>>>>>>
+    [1] 00803218: 1960: synaLib: tudor: STATUS: tudorEventGet >>>>>>>>
+    [1] 00803218: 1960: synaLib: tudor: STATUS: tudorEventGet <<<<<<<<
+[1] 00803218: 1960: synaLib: vfm: STATUS: vfmDeviceEventReadData <<<<<<<<
+
+[1] 00803218: 1960: vfmUtil: vfmUtil: STATUS: vfmUtilWaitForCbStatus >>>>>>>>
+    [1] 00803218: 1960: synaLib: vfm: STATUS: vfmDeviceEnableCallback >>>>>>>>
+        [1] 00803218: 1960: synaLib: vfm: STATUS: Enable Event listen for eventType = FINGER_DOWN, ioctlCode = 7
+        [1] 00803218: 1960: synaLib: palSensor: STATUS: palUsbDriverIoControl >>>>>>>>
+            [1] 00803218: 3400: synaLib: palSensor: WARNING: hidCtx.handle=0x0
+            [1] 00803218: 3400: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+            [1] 00803218: 3400: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+        [1] 00803234: 1960: synaLib: palSensor: STATUS: palUsbDriverIoControl <<<<<<<<
+    [1] 00803234: 1960: synaLib: vfm: STATUS: vfmDeviceEnableCallback <<<<<<<<
+
+    [1] 00803234: 1960: synaLib: vfm: STATUS: vfmDeviceDisableCallback >>>>>>>>
+        [1] 00803234: 1960: synaLib: vfm: STATUS: Disbale Event listen for eventType = FINGER_DOWN, ioctlCode = 8
+        [1] 00803234: 1960: synaLib: palSensor: STATUS: palUsbDriverIoControl >>>>>>>>
+        [1] 00803234: 1960: synaLib: palSensor: STATUS: palUsbDriverIoControl <<<<<<<<
+    [1] 00803234: 1960: synaLib: vfm: STATUS: vfmDeviceDisableCallback <<<<<<<<
+[1] 00803234: 1960: vfmUtil: vfmUtil: STATUS: vfmUtilWaitForCbStatus <<<<<<<<
+
+[1] 00803234: 1960: synaLib: vfm: STATUS: vfmDeviceEventReadData >>>>>>>>
+    [1] 00803234: 1960: synaLib: tudor: STATUS: tudorEventGet >>>>>>>>
+        [1] 00803234: 1960: synaLib: tudor: STATUS: Getting event status
+        [1] 00803234: 1960: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+            [1] 00803234: 1960: synaLib: palSensor: STATUS: palUsbDriverIoControl >>>>>>>>
+            [1] 00803234: 1960: synaLib: palSensor: STATUS: palUsbDriverIoControl <<<<<<<<
+        [1] 00803234: 1960: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+
+        [1] 00803234: 1960: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_EVENT_READ
+        [1] 00803234: 1960: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_EVENT_READ
+        [1] 00803234: 1960: synaLib: tudor: STATUS: event[0] type:(FINGER_DOWN)
+
+        [1] 00803234: 1960: synaLib: tudor: STATUS: _tudorEventCheckForPending >>>>>>>>
+        [1] 00803234: 1960: synaLib: tudor: STATUS: _tudorEventCheckForPending <<<<<<<<
+
+    [1] 00803234: 1960: synaLib: tudor: STATUS: tudorEventGet <<<<<<<<
+[1] 00803234: 1960: synaLib: vfm: STATUS: vfmDeviceEventReadData <<<<<<<<
+
+[1] 00803234: 1960: synaLib: vfm: STATUS: vfmDeviceEventConfigure >>>>>>>>
+    [1] 00803234: 1960: synaLib: tudor: STATUS: tudorEventConfig >>>>>>>>
+
+    [1] 00803234: 1960: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_EVENT_CONFIG
+    [1] 00803250: 1960: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_EVENT_CONFIG
+
+    [1] 00803250: 1960: synaLib: tudor: STATUS: tudorEventConfig <<<<<<<<
+[1] 00803250: 1960: synaLib: vfm: STATUS: vfmDeviceEventConfigure <<<<<<<<
+
+
+[1] 00803250: 1960: synaLib: vfm: STATUS: vfmDeviceEventConfigure >>>>>>>>
+    [1] 00803250: 1960: synaLib: tudor: STATUS: tudorEventConfig >>>>>>>>
+
+    [1] 00803250: 1960: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_EVENT_CONFIG
+    [1] 00803250: 1960: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_EVENT_CONFIG
+
+    [1] 00803250: 1960: synaLib: tudor: STATUS: tudorEventConfig <<<<<<<<
+[1] 00803250: 1960: synaLib: vfm: STATUS: vfmDeviceEventConfigure <<<<<<<<
+
+
+[1] 00803250: 1960: synaLib: vfm: STATUS: vfmDeviceEventReadData >>>>>>>>
+    [1] 00803250: 1960: synaLib: tudor: STATUS: tudorEventGet >>>>>>>>
+    [1] 00803250: 1960: synaLib: tudor: STATUS: tudorEventGet <<<<<<<<
+[1] 00803250: 1960: synaLib: vfm: STATUS: vfmDeviceEventReadData <<<<<<<<
+
+
+[1] 00803250: 1960: vfmUtil: vfmUtil: STATUS: vfmUtilWaitForCbStatus >>>>>>>>
+    [1] 00803250: 1960: synaLib: vfm: STATUS: vfmDeviceEnableCallback >>>>>>>>
+    [1] 00803250: 1960: synaLib: vfm: STATUS: Enable Event listen for eventType = 1, ioctlCode = 7
+    [1] 00803250: 1960: synaLib: palSensor: STATUS: palUsbDriverIoControl >>>>>>>>
+        [1] 00803250: 3400: synaLib: palSensor: WARNING: hidCtx.handle=0x0
+        [1] 00803250: 3400: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+    [1] 00803281: 1960: synaLib: palSensor: STATUS: palUsbDriverIoControl <<<<<<<<
+    [1] 00803281: 1960: synaLib: vfm: STATUS: vfmDeviceEnableCallback <<<<<<<<
+
+
+
+
+--- Finger removal from sensor
+
+
+
+
+        [1] 00824343: 3400: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+        [1] 00824343: 1960: synaLib: vfm: STATUS: vfmDeviceDisableCallback >>>>>>>>
+        [1] 00824343: 1960: synaLib: vfm: STATUS: Disbale Event listen for eventType = 1, ioctlCode = 8
+        [1] 00824343: 1960: synaLib: palSensor: STATUS: palUsbDriverIoControl >>>>>>>>
+        [1] 00824343: 1960: synaLib: palSensor: STATUS: palUsbDriverIoControl <<<<<<<<
+    [1] 00824343: 1960: synaLib: vfm: STATUS: vfmDeviceDisableCallback <<<<<<<<
+[1] 00824343: 1960: vfmUtil: vfmUtil: STATUS: vfmUtilWaitForCbStatus <<<<<<<<
+
+
+[1] 00824343: 1960: synaLib: vfm: STATUS: vfmDeviceEventReadData >>>>>>>>
+[1] 00824343: 1960: synaLib: tudor: STATUS: tudorEventGet >>>>>>>>
+[1] 00824343: 1960: synaLib: tudor: STATUS: Getting event status
+[1] 00824343: 1960: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 00824343: 1960: synaLib: palSensor: STATUS: palUsbDriverIoControl >>>>>>>>
+[1] 00824343: 1960: synaLib: palSensor: STATUS: palUsbDriverIoControl <<<<<<<<
+[1] 00824343: 1960: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+
+[1] 00824343: 1960: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_EVENT_READ
+[1] 00824359: 1960: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_EVENT_READ
+
+[1] 00824359: 1960: synaLib: tudor: STATUS: event[0] type:(FINGER_UP)
+[1] 00824359: 1960: synaLib: tudor: STATUS: _tudorEventCheckForPending >>>>>>>>
+[1] 00824359: 1960: synaLib: tudor: STATUS: _tudorEventCheckForPending <<<<<<<<
+[1] 00824359: 1960: synaLib: tudor: STATUS: tudorEventGet <<<<<<<<
+[1] 00824359: 1960: synaLib: vfm: STATUS: vfmDeviceEventReadData <<<<<<<<
+[1] 00824359: 1960: synaLib: vfm: STATUS: vfmDeviceEventConfigure >>>>>>>>
+[1] 00824359: 1960: synaLib: tudor: STATUS: tudorEventConfig >>>>>>>>
+
+[1] 00824359: 1960: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_EVENT_CONFIG
+[1] 00824359: 1960: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_EVENT_CONFIG
+
+[1] 00824359: 1960: synaLib: tudor: STATUS: tudorEventConfig <<<<<<<<
+[1] 00824359: 1960: synaLib: vfm: STATUS: vfmDeviceEventConfigure <<<<<<<<
+[1] 00824390: 1960: vfmUtil: vfmUtil: STATUS: vfmUtilCaptureImage >>>>>>>>
+[1] 00824390: 1960: vfmUtil: vfmUtil: STATUS: captureFlags 7
+[1] 00824390: 1960: synaLib: vfm: STATUS: vfmCaptureStart >>>>>>>>
+[1] 00824390: 1960: synaLib: tudor: STATUS: tudorCaptureStart >>>>>>>>
+
+[1] 00824390: 1960: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_EVENT_CONFIG
+[1] 00824390: 1960: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_EVENT_CONFIG
+
+[1] 00824390: 1960: synaLib: tudor: STATUS: Capture started
+
+[1] 00824390: 1960: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_FRAME_ACQ
+[1] 00824390: 1960: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_FRAME_ACQ
+
+[1] 00824390: 1960: synaLib: tudor: STATUS: tudorCaptureStart <<<<<<<<
+[1] 00824390: 1960: synaLib: vfm: STATUS: vfmCaptureStart <<<<<<<<
+
+[1] 00824390: 1960: vfmUtil: vfmUtil: STATUS: _vfmUtilEventCreate >>>>>>>>
+[1] 00824390: 1960: vfmUtil: vfmUtil: STATUS: _vfmUtilEventCreate <<<<<<<<
+[1] 00824390: 1960: vfmUtil: vfmUtil: STATUS: vcsEventDestroy >>>>>>>>
+[1] 00824390: 1960: vfmUtil: vfmUtil: STATUS: vcsEventDestroy <<<<<<<<
+
+[1] 00824390: 1960: synaLib: vfm: STATUS: vfmCaptureProcess >>>>>>>>
+[1] 00824390: 1960: synaLib: tudor: STATUS: tudorCaptureProcess >>>>>>>>
+[1] 00824390: 1960: synaLib: tudor: STATUS: tudorCaptureProcess <<<<<<<<
+[1] 00824390: 1960: synaLib: vfm: STATUS: vfmCaptureProcess <<<<<<<<
+
+[1] 00824390: 1960: synaLib: vfm: STATUS: vfmDeviceEnableCallback >>>>>>>>
+[1] 00824390: 1960: synaLib: vfm: STATUS: Enable Event listen for eventType = 1, ioctlCode = 7
+[1] 00824390: 1960: synaLib: palSensor: STATUS: palUsbDriverIoControl >>>>>>>>
+[1] 00824390: 3400: synaLib: palSensor: WARNING: hidCtx.handle=0x0
+[1] 00824390: 3400: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 00824421: 1960: synaLib: palSensor: STATUS: palUsbDriverIoControl <<<<<<<<
+[1] 00824421: 1960: synaLib: vfm: STATUS: vfmDeviceEnableCallback <<<<<<<<
+[1] 00824421: 1960: vfmUtil: vfmUtil: STATUS: capture timeout set to -1
+
+
+
+
+--- Another finger touch, removal and completion of adding process
+
+
+
+
+[1] 00927515: 4928: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 00927515: 4928: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 00927515: 4928: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap >>>>>>>>
+[1] 00927515: 4928: synaLib: palCrypto: STATUS: palCryptoDecryptAuth >>>>>>>>
+[1] 00927515: 4928: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 00927515: 4928: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 00927515: 4928: synaLib: palCrypto: STATUS: palCryptoDecryptAuth <<<<<<<<
+[1] 00927515: 4928: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap <<<<<<<<
+[1] 00927515: 4928: synaLib: tudor: WARNING: Unknown cmd ID: 150
+[1] 00927515: 4928: synaLib: mis: WARNING: Mismatch of qm struct size on host and MFW.
+[1] 00927515: 4928: synaLib: mis: STATUS: Enroll stats: progress-100, templateCount-10, redundant-0 quality-80 rejected-0
+[1] 00927515: 4928: synaLib: mis: STATUS: Enrollment completed successfully
+[1] 00927515: 4928: synaLib: mis: STATUS: Enrollment is successfull with quality (76)
+[1] 00927531: 4928: synaLib: mis: STATUS: misEnrollAddImage <<<<<<<<
+[1] 00927531: 4928: synaLib: mis: STATUS: misGetParameterBlob >>>>>>>>
+[1] 00927531: 4928: synaLib: mis: STATUS: misGetParameterBlob <<<<<<<<
+[1] 00927531: 4928: synaLib: vfm: STATUS: vfmEnrollAddImage <<<<<<<<
+[1] 00927531: 4928: vfmUtil: vfmUtil: STATUS: vfmUtilEnrollAddImage <<<<<<<<
+[1] 00927531: 4928: synaLib: vfm: STATUS: vfmStgGetParamBlob >>>>>>>>
+[1] 00927531: 4928: synaLib: tudor: STATUS: stiTudorGetParameterBlob >>>>>>>>
+[1] 00927531: 4928: synaLib: tudor: STATUS: stiTudorGetAllRecordsCount >>>>>>>>
+[1] 00927531: 4928: synaLib: tudor: STATUS: all templates count = 0.
+[1] 00927531: 4928: synaLib: tudor: STATUS: stiTudorGetAllRecordsCount <<<<<<<<
+[1] 00927531: 4928: synaLib: tudor: STATUS: stiTudorGetParameterBlob <<<<<<<<
+[1] 00927531: 4928: synaLib: vfm: STATUS: vfmStgGetParamBlob <<<<<<<<
+[1] 00927531: 4928: synaLib: vfm: STATUS: vfmStgGetParamBlob >>>>>>>>
+[1] 00927531: 4928: synaLib: tudor: STATUS: stiTudorGetParameterBlob >>>>>>>>
+[1] 00927531: 4928: synaLib: tudor: STATUS: stiTudorGetAllRecordsCount >>>>>>>>
+[1] 00927531: 4928: synaLib: tudor: STATUS: all templates count = 0.
+[1] 00927531: 4928: synaLib: tudor: STATUS: stiTudorGetAllRecordsCount <<<<<<<<
+[1] 00927531: 4928: synaLib: tudor: STATUS: stiTudorGetParameterBlob <<<<<<<<
+[1] 00927531: 4928: synaLib: vfm: STATUS: vfmStgGetParamBlob <<<<<<<<
+[1] 00927531: 4928: synaLib: vfm: STATUS: vfmGetEnrolledUserList >>>>>>>>
+[1] 00927531: 4928: synaLib: vfm: STATUS: _vfmStgOnChipOpen >>>>>>>>
+[1] 00927531: 4928: synaLib: tudor: STATUS: stiTudorOpen >>>>>>>>
+[1] 00927531: 4928: synaLib: tudor: STATUS: stiTudorOpen <<<<<<<<
+[1] 00927531: 4928: synaLib: vfm: STATUS: _vfmStgGetFirstEnrollmentAlloc >>>>>>>>
+[1] 00927531: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment >>>>>>>>
+[1] 00927531: 4928: synaLib: tudor: STATUS: stiTudorGetFirstEnrollment >>>>>>>>
+[1] 00927531: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment >>>>>>>>
+[1] 00927531: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment <<<<<<<<
+[1] 00927531: 4928: synaLib: tudor: WARNING: Call of stiTudorGetNextEnrollment() failed.
+[1] 00927531: 4928: synaLib: tudor: STATUS: stiTudorGetFirstEnrollment <<<<<<<<
+[1] 00927531: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment <<<<<<<<
+[1] 00927531: 4928: synaLib: vfm: STATUS: _vfmStgGetFirstEnrollmentAlloc <<<<<<<<
+[1] 00927531: 4928: synaLib: vfm: STATUS: _vfmStgClose >>>>>>>>
+[1] 00927531: 4928: synaLib: tudor: STATUS: stiTudorClose >>>>>>>>
+[1] 00927531: 4928: synaLib: tudor: STATUS: stiTudorClose <<<<<<<<
+[1] 00927531: 4928: synaLib: vfm: STATUS: _vfmStgClose <<<<<<<<
+[1] 00927531: 4928: synaLib: vfm: STATUS: vfmGetEnrolledUserList <<<<<<<<
+[1] 00927531: 4928: vfmUtil: vfmUtil: STATUS: vfmUtilSessionGetDeviceHandle >>>>>>>>
+[1] 00927531: 4928: vfmUtil: vfmUtil: STATUS: vfmUtilSessionGetDeviceHandle <<<<<<<<
+[1] 00927531: 4928: vfmUtil: vfmUtil: STATUS: vfmUtilEnrollSaveTemplate >>>>>>>>
+[1] 00927531: 4928: vfmUtil: vfmUtil: STATUS: vfmUtilEnrollGetTemplate >>>>>>>>
+[1] 00927531: 4928: synaLib: vfm: STATUS: vfmGetTemplate >>>>>>>>
+[1] 00927531: 4928: synaLib: vfm: ERROR: Serialized template data empty
+[1] 00927531: 4928: synaLib: vfm: STATUS: vfmGetTemplate <<<<<<<<
+[1] 00927531: 4928: vfmUtil: vfmUtil: STATUS: vfmUtilEnrollGetTemplate <<<<<<<<
+[1] 00927531: 4928: synaLib: vfm: STATUS: _vfmStgOnChipOpen >>>>>>>>
+[1] 00927531: 4928: synaLib: tudor: STATUS: stiTudorOpen >>>>>>>>
+[1] 00927531: 4928: synaLib: tudor: STATUS: stiTudorOpen <<<<<<<<
+[1] 00927531: 4928: synaLib: vfm: STATUS: vfmStgAddEnrollment >>>>>>>>
+[1] 00927531: 4928: synaLib: tudor: STATUS: stiTudorAddEnrollment >>>>>>>>
+[1] 00927531: 4928: synaLib: tudor: STATUS: tudorIoctl opCode: (3)
+[1] 00927531: 4928: synaLib: tudor: WARNING: Unknown cmd ID: 150
+[1] 00927531: 4928: niseTlsLib: ssiTls: STATUS: ssiTlsWrap >>>>>>>>
+[1] 00927531: 4928: synaLib: palCrypto: STATUS: palCryptoRng >>>>>>>>
+[1] 00927531: 4928: synaLib: palCrypto: STATUS: palCryptoRng <<<<<<<<
+[1] 00927531: 4928: synaLib: palCrypto: STATUS: palCryptoEncryptAuth >>>>>>>>
+[1] 00927531: 4928: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 00927531: 4928: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 00927531: 4928: synaLib: palCrypto: STATUS: palCryptoEncryptAuth <<<<<<<<
+[1] 00927531: 4928: niseTlsLib: ssiTls: STATUS: ssiTlsWrap <<<<<<<<
+[1] 00927531: 4928: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 00927531: 4928: synaLib: palSensor: STATUS: palWinUsbBulkWrite >>>>>>>>
+[1] 00927531: 4928: synaLib: palSensor: STATUS: palWinUsbBulkWrite <<<<<<<<
+[1] 00927531: 4928: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 00927546: 4928: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 00927546: 4928: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 00927546: 4928: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap >>>>>>>>
+[1] 00927546: 4928: synaLib: palCrypto: STATUS: palCryptoDecryptAuth >>>>>>>>
+[1] 00927546: 4928: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 00927546: 4928: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 00927546: 4928: synaLib: palCrypto: STATUS: palCryptoDecryptAuth <<<<<<<<
+[1] 00927546: 4928: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap <<<<<<<<
+[1] 00927546: 4928: synaLib: tudor: WARNING: Unknown cmd ID: 150
+[1] 00927546: 4928: synaLib: tudor: STATUS: tudorIoctl opCode: (3)
+[1] 00927546: 4928: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_DB2_GET_DB_INFO
+[1] 00927546: 4928: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_DB2_GET_DB_INFO
+[1] 00927546: 4928: synaLib: tudor: VERBOSE: |> dummy = 0
+[1] 00927546: 4928: synaLib: tudor: VERBOSE: |> version_major = 1
+[1] 00927546: 4928: synaLib: tudor: VERBOSE: |> version_minor = 0
+[1] 00927546: 4928: synaLib: tudor: VERBOSE: |> pversion = 237
+[1] 00927546: 4928: synaLib: tudor: VERBOSE: |> UOP_len = 4
+[1] 00927546: 4928: synaLib: tudor: VERBOSE: |> TOP_len = 528
+[1] 00927546: 4928: synaLib: tudor: VERBOSE: |> POP_len = 100
+[1] 00927562: 4928: synaLib: tudor: VERBOSE: |> Template_obj_slot_size = 48
+[1] 00927562: 4928: synaLib: tudor: VERBOSE: |> Payload_obj_slot_size = 4
+[1] 00927562: 4928: synaLib: tudor: VERBOSE: |> NumCurrentUsers = 3
+[1] 00927562: 4928: synaLib: tudor: VERBOSE: |> NumDeletedUsers = 8
+[1] 00927562: 4928: synaLib: tudor: VERBOSE: |> NumAvailableUserSlots = 116
+[1] 00927562: 4928: synaLib: tudor: VERBOSE: |> NumCurrentTemplates = 1
+[1] 00927562: 4928: synaLib: tudor: VERBOSE: |> NumDeletedTemplates = 0
+[1] 00927562: 4928: synaLib: tudor: VERBOSE: |> NumAvailableTemplateSlots = 10
+[1] 00927562: 4928: synaLib: tudor: VERBOSE: |> NumCurrentPayloads = 3
+[1] 00927562: 4928: synaLib: tudor: VERBOSE: |> NumDeletedPayloads = 0
+[1] 00927562: 4928: synaLib: tudor: VERBOSE: |> NumAvailablePayloadSlots = 22
+[1] 00927562: 4928: synaLib: tudor: STATUS: tudorIoctl opCode: (3)
+[1] 00927562: 4928: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_DB2_GET_OBJECT_LIST
+[1] 00927562: 4928: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_DB2_GET_OBJECT_LIST
+[1] 00927562: 4928: synaLib: tudor: STATUS: tudorIoctl opCode: (3)
+[1] 00927562: 4928: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_DB2_GET_OBJECT_LIST
+[1] 00927562: 4928: niseTlsLib: ssiTls: STATUS: ssiTlsWrap >>>>>>>>
+[1] 00927562: 4928: synaLib: palCrypto: STATUS: palCryptoRng >>>>>>>>
+[1] 00927562: 4928: synaLib: palCrypto: STATUS: palCryptoRng <<<<<<<<
+[1] 00927562: 4928: synaLib: palCrypto: STATUS: palCryptoEncryptAuth >>>>>>>>
+[1] 00927562: 4928: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 00927562: 4928: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 00927562: 4928: synaLib: palCrypto: STATUS: palCryptoEncryptAuth <<<<<<<<
+[1] 00927562: 4928: niseTlsLib: ssiTls: STATUS: ssiTlsWrap <<<<<<<<
+[1] 00927562: 4928: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 00927562: 4928: synaLib: palSensor: STATUS: palWinUsbBulkWrite >>>>>>>>
+[1] 00927562: 4928: synaLib: palSensor: STATUS: palWinUsbBulkWrite <<<<<<<<
+[1] 00927562: 4928: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 00927562: 4928: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 00927562: 4928: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 00927562: 4928: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap >>>>>>>>
+[1] 00927562: 4928: synaLib: palCrypto: STATUS: palCryptoDecryptAuth >>>>>>>>
+[1] 00927562: 4928: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 00927562: 4928: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 00927562: 4928: synaLib: palCrypto: STATUS: palCryptoDecryptAuth <<<<<<<<
+[1] 00927562: 4928: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap <<<<<<<<
+[1] 00927562: 4928: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_DB2_GET_OBJECT_LIST
+[1] 00927562: 4928: synaLib: tudor: STATUS: tudorIoctl opCode: (3)
+[1] 00927562: 4928: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_DB2_GET_OBJECT_INFO
+[1] 00927578: 4928: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_DB2_GET_OBJECT_INFO
+[1] 00927578: 4928: synaLib: tudor: STATUS: tudorIoctl opCode: (3)
+[1] 00927578: 4928: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_DB2_GET_OBJECT_DATA
+[1] 00927578: 4928: niseTlsLib: ssiTls: STATUS: ssiTlsWrap >>>>>>>>
+[1] 00927578: 4928: synaLib: palCrypto: STATUS: palCryptoRng >>>>>>>>
+[1] 00927578: 4928: synaLib: palCrypto: STATUS: palCryptoRng <<<<<<<<
+[1] 00927578: 4928: synaLib: palCrypto: STATUS: palCryptoEncryptAuth >>>>>>>>
+[1] 00927578: 4928: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 00927578: 4928: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 00927578: 4928: synaLib: palCrypto: STATUS: palCryptoEncryptAuth <<<<<<<<
+[1] 00927578: 4928: niseTlsLib: ssiTls: STATUS: ssiTlsWrap <<<<<<<<
+[1] 00927578: 4928: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 00927578: 4928: synaLib: palSensor: STATUS: palWinUsbBulkWrite >>>>>>>>
+[1] 00927578: 4928: synaLib: palSensor: STATUS: palWinUsbBulkWrite <<<<<<<<
+[1] 00927578: 4928: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 00927578: 4928: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 00927578: 4928: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 00927578: 4928: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap >>>>>>>>
+[1] 00927578: 4928: synaLib: palCrypto: STATUS: palCryptoDecryptAuth >>>>>>>>
+[1] 00927578: 4928: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 00927578: 4928: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 00927578: 4928: synaLib: palCrypto: STATUS: palCryptoDecryptAuth <<<<<<<<
+[1] 00927578: 4928: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap <<<<<<<<
+[1] 00927578: 4928: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_DB2_GET_OBJECT_DATA
+[1] 00927578: 4928: synaLib: tudor: STATUS: stiTudorAddEnrollment <<<<<<<<
+[1] 00927578: 4928: synaLib: vfm: STATUS: vfmStgAddEnrollment <<<<<<<<
+[1] 00927578: 4928: synaLib: vfm: STATUS: _vfmStgClose >>>>>>>>
+[1] 00927578: 4928: synaLib: tudor: STATUS: stiTudorClose >>>>>>>>
+[1] 00927578: 4928: synaLib: tudor: STATUS: stiTudorClose <<<<<<<<
+[1] 00927578: 4928: synaLib: vfm: STATUS: _vfmStgClose <<<<<<<<
+[1] 00927578: 4928: vfmUtil: vfmUtil: STATUS: vfmUtilEnrollSaveTemplate <<<<<<<<
+[1] 00927578: 4928: vfmUtil: vfmUtil: STATUS: vfmUtilEnrollUnprep >>>>>>>>
+[1] 00927578: 4928: synaLib: vfm: STATUS: vfmEnrollFinish >>>>>>>>
+[1] 00927578: 4928: synaLib: mis: STATUS: misEnrollFinish >>>>>>>>
+[1] 00927578: 4928: synaLib: tudor: STATUS: tudorIoctl opCode: (3)
+[1] 00927578: 4928: synaLib: tudor: WARNING: Unknown cmd ID: 150
+[1] 00927578: 4928: niseTlsLib: ssiTls: STATUS: ssiTlsWrap >>>>>>>>
+[1] 00927578: 4928: synaLib: palCrypto: STATUS: palCryptoRng >>>>>>>>
+[1] 00927578: 4928: synaLib: palCrypto: STATUS: palCryptoRng <<<<<<<<
+[1] 00927578: 4928: synaLib: palCrypto: STATUS: palCryptoEncryptAuth >>>>>>>>
+[1] 00927578: 4928: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 00927578: 4928: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 00927578: 4928: synaLib: palCrypto: STATUS: palCryptoEncryptAuth <<<<<<<<
+[1] 00927578: 4928: niseTlsLib: ssiTls: STATUS: ssiTlsWrap <<<<<<<<
+[1] 00927578: 4928: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 00927578: 4928: synaLib: palSensor: STATUS: palWinUsbBulkWrite >>>>>>>>
+[1] 00927593: 4928: synaLib: palSensor: STATUS: palWinUsbBulkWrite <<<<<<<<
+[1] 00927593: 4928: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 00927593: 4928: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 00927593: 4928: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 00927593: 4928: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap >>>>>>>>
+[1] 00927593: 4928: synaLib: palCrypto: STATUS: palCryptoDecryptAuth >>>>>>>>
+[1] 00927593: 4928: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 00927593: 4928: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 00927593: 4928: synaLib: palCrypto: STATUS: palCryptoDecryptAuth <<<<<<<<
+[1] 00927593: 4928: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap <<<<<<<<
+[1] 00927593: 4928: synaLib: tudor: WARNING: Unknown cmd ID: 150
+[1] 00927593: 4928: synaLib: mis: STATUS: misEnrollFinish <<<<<<<<
+[1] 00927593: 4928: synaLib: mis: STATUS: misUninitModule >>>>>>>>
+[1] 00927593: 4928: synaLib: mis: STATUS: misUninitModule <<<<<<<<
+[1] 00927593: 4928: synaLib: vfm: STATUS: vfmEnrollFinish <<<<<<<<
+[1] 00927593: 4928: synaLib: vfm: STATUS: vfmAuthDataInvalidate >>>>>>>>
+[1] 00927593: 4928: synaLib: vfm: STATUS: vfmAuthDataInvalidate <<<<<<<<
+[1] 00927593: 4928: vfmUtil: vfmUtil: STATUS: vfmUtilEnrollUnprep <<<<<<<<
+[1] 00927593: 4928: synaLib: vfm: STATUS: vfmGetEnrolledUserList >>>>>>>>
+[1] 00927593: 4928: synaLib: vfm: STATUS: _vfmStgOnChipOpen >>>>>>>>
+[1] 00927593: 4928: synaLib: tudor: STATUS: stiTudorOpen >>>>>>>>
+[1] 00927593: 4928: synaLib: tudor: STATUS: stiTudorOpen <<<<<<<<
+[1] 00927593: 4928: synaLib: vfm: STATUS: _vfmStgGetFirstEnrollmentAlloc >>>>>>>>
+[1] 00927593: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment >>>>>>>>
+[1] 00927593: 4928: synaLib: tudor: STATUS: stiTudorGetFirstEnrollment >>>>>>>>
+[1] 00927593: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment >>>>>>>>
+[1] 00927593: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment <<<<<<<<
+[1] 00927593: 4928: synaLib: tudor: STATUS: stiTudorGetFirstEnrollment <<<<<<<<
+[1] 00927593: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment <<<<<<<<
+[1] 00927593: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment >>>>>>>>
+[1] 00927593: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment <<<<<<<<
+[1] 00927593: 4928: synaLib: vfm: STATUS: _vfmStgGetFirstEnrollmentAlloc <<<<<<<<
+[1] 00927593: 4928: synaLib: vfm: STATUS: _vfmStgGetNextEnrollmentAlloc >>>>>>>>
+[1] 00927593: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment >>>>>>>>
+[1] 00927593: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment >>>>>>>>
+[1] 00927593: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment <<<<<<<<
+[1] 00927593: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment <<<<<<<<
+[1] 00927593: 4928: synaLib: vfm: STATUS: _vfmStgClose >>>>>>>>
+[1] 00927593: 4928: synaLib: tudor: STATUS: stiTudorClose >>>>>>>>
+[1] 00927593: 4928: synaLib: tudor: STATUS: stiTudorClose <<<<<<<<
+[1] 00927593: 4928: synaLib: vfm: STATUS: _vfmStgClose <<<<<<<<
+[1] 00927593: 4928: synaLib: vfm: STATUS: vfmGetEnrolledUserList <<<<<<<<
+[1] 00927593: 4928: synaLib: vfm: STATUS: _vfmStgGetSubIdList >>>>>>>>
+[1] 00927593: 4928: synaLib: vfm: STATUS: _vfmStgOnChipOpen >>>>>>>>
+[1] 00927593: 4928: synaLib: tudor: STATUS: stiTudorOpen >>>>>>>>
+[1] 00927593: 4928: synaLib: tudor: STATUS: stiTudorOpen <<<<<<<<
+[1] 00927593: 4928: synaLib: vfm: STATUS: _vfmStgGetFirstEnrollmentAlloc >>>>>>>>
+[1] 00927593: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment >>>>>>>>
+[1] 00927593: 4928: synaLib: tudor: STATUS: stiTudorGetFirstEnrollment >>>>>>>>
+[1] 00927593: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment >>>>>>>>
+[1] 00927593: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment <<<<<<<<
+[1] 00927593: 4928: synaLib: tudor: STATUS: stiTudorGetFirstEnrollment <<<<<<<<
+[1] 00927593: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment <<<<<<<<
+[1] 00927593: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment >>>>>>>>
+[1] 00927593: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment <<<<<<<<
+[1] 00927593: 4928: synaLib: vfm: STATUS: _vfmStgGetFirstEnrollmentAlloc <<<<<<<<
+[1] 00927593: 4928: synaLib: vfm: STATUS: _vfmStgGetNextEnrollmentAlloc >>>>>>>>
+[1] 00927593: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment >>>>>>>>
+[1] 00927593: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment >>>>>>>>
+[1] 00927593: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment <<<<<<<<
+[1] 00927593: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment <<<<<<<<
+[1] 00927593: 4928: synaLib: vfm: STATUS: _vfmStgClose >>>>>>>>
+[1] 00927593: 4928: synaLib: tudor: STATUS: stiTudorClose >>>>>>>>
+[1] 00927593: 4928: synaLib: tudor: STATUS: stiTudorClose <<<<<<<<
+[1] 00927593: 4928: synaLib: vfm: STATUS: _vfmStgClose <<<<<<<<
+[1] 00927593: 4928: synaLib: vfm: STATUS: _vfmStgGetSubIdList <<<<<<<<
+[1] 00927593: 4928: vfmUtil: vfmUtil: STATUS: vfmUtilSessionGetDeviceHandle >>>>>>>>
+[1] 00927593: 4928: vfmUtil: vfmUtil: STATUS: vfmUtilSessionGetDeviceHandle <<<<<<<<
+[1] 00927593: 4928: synaLib: vfm: STATUS: _vfmStgOnChipOpen >>>>>>>>
+[1] 00927593: 4928: synaLib: tudor: STATUS: stiTudorOpen >>>>>>>>
+[1] 00927593: 4928: synaLib: tudor: STATUS: stiTudorOpen <<<<<<<<
+[1] 00927593: 4928: synaLib: vfm: STATUS: vfmStgGetParamBlob >>>>>>>>
+[1] 00927593: 4928: synaLib: tudor: STATUS: stiTudorGetParameterBlob >>>>>>>>
+[1] 00927593: 4928: synaLib: tudor: STATUS: stiTudorGetParameterBlob <<<<<<<<
+[1] 00927593: 4928: synaLib: vfm: STATUS: vfmStgGetParamBlob <<<<<<<<
+[1] 00927593: 4928: synaLib: vfm: STATUS: vfmStgGetParamBlob >>>>>>>>
+[1] 00927593: 4928: synaLib: tudor: STATUS: stiTudorGetParameterBlob >>>>>>>>
+[1] 00927593: 4928: synaLib: tudor: STATUS: stiTudorGetParameterBlob <<<<<<<<
+[1] 00927593: 4928: synaLib: vfm: STATUS: vfmStgGetParamBlob <<<<<<<<
+[1] 00927593: 4928: synaLib: vfm: STATUS: _vfmStgClose >>>>>>>>
+[1] 00927593: 4928: synaLib: tudor: STATUS: stiTudorClose >>>>>>>>
+[1] 00927593: 4928: synaLib: tudor: STATUS: stiTudorClose <<<<<<<<
+[1] 00927593: 4928: synaLib: vfm: STATUS: _vfmStgClose <<<<<<<<
+
+
+
+
+--- Auth on lock screen
+
+
+
+
+[1] 01031875: 4928: synaLib: vfm: STATUS: vfmGetEnrolledUserList >>>>>>>>
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgOnChipOpen >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorOpen >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorOpen <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetFirstEnrollmentAlloc >>>>>>>>
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorGetFirstEnrollment >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment <<<<<<<<
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorGetFirstEnrollment <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment >>>>>>>>
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetFirstEnrollmentAlloc <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetNextEnrollmentAlloc >>>>>>>>
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgClose >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorClose >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorClose <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgClose <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: vfmGetEnrolledUserList <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetSubIdList >>>>>>>>
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgOnChipOpen >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorOpen >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorOpen <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetFirstEnrollmentAlloc >>>>>>>>
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorGetFirstEnrollment >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment <<<<<<<<
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorGetFirstEnrollment <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment >>>>>>>>
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetFirstEnrollmentAlloc <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetNextEnrollmentAlloc >>>>>>>>
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgClose >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorClose >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorClose <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgClose <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetSubIdList <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: vfmGetEnrolledUserList >>>>>>>>
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgOnChipOpen >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorOpen >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorOpen <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetFirstEnrollmentAlloc >>>>>>>>
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorGetFirstEnrollment >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment <<<<<<<<
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorGetFirstEnrollment <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment >>>>>>>>
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetFirstEnrollmentAlloc <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetNextEnrollmentAlloc >>>>>>>>
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgClose >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorClose >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorClose <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgClose <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: vfmGetEnrolledUserList <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetSubIdList >>>>>>>>
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgOnChipOpen >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorOpen >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorOpen <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetFirstEnrollmentAlloc >>>>>>>>
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorGetFirstEnrollment >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment <<<<<<<<
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorGetFirstEnrollment <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment >>>>>>>>
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetFirstEnrollmentAlloc <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetNextEnrollmentAlloc >>>>>>>>
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgClose >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorClose >>>>>>>>
+[1] 01031875: 4928: synaLib: tudor: STATUS: stiTudorClose <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgClose <<<<<<<<
+[1] 01031875: 4928: synaLib: vfm: STATUS: _vfmStgGetSubIdList <<<<<<<<
+[1] 01031890: 5940: vfmUtil: vfmUtil: STATUS: vfmUtilSessionGetDeviceHandle >>>>>>>>
+[1] 01031890: 5940: vfmUtil: vfmUtil: STATUS: vfmUtilSessionGetDeviceHandle <<<<<<<<
+[1] 01031890: 5940: vfmUtil: vfmUtil: STATUS: vfmUtilSetCaptureCancel >>>>>>>>
+[1] 01031890: 5940: vfmUtil: vfmUtil: STATUS: current bCaptureCanceled is 0
+[1] 01031890: 5940: vfmUtil: vfmUtil: STATUS: set bCaptureCanceled with 0
+[1] 01031890: 5940: vfmUtil: vfmUtil: STATUS: vfmUtilSetCaptureCancel <<<<<<<<
+[1] 01031890: 5940: vfmUtil: vfmUtil: STATUS: vfmUtilSessionGetDeviceHandle >>>>>>>>
+[1] 01031890: 5940: vfmUtil: vfmUtil: STATUS: vfmUtilSessionGetDeviceHandle <<<<<<<<
+[1] 01031890: 5940: synaLib: vfm: STATUS: vfmDeviceEventConfigure >>>>>>>>
+[1] 01031890: 5940: synaLib: tudor: STATUS: tudorEventConfig >>>>>>>>
+[1] 01031890: 5940: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_EVENT_CONFIG
+[1] 01031890: 5940: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_EVENT_CONFIG
+[1] 01031890: 5940: synaLib: tudor: STATUS: tudorEventConfig <<<<<<<<
+[1] 01031890: 5940: synaLib: vfm: STATUS: vfmDeviceEventConfigure <<<<<<<<
+[1] 01031890: 5940: synaLib: vfm: STATUS: vfmDeviceEventReadData >>>>>>>>
+[1] 01031890: 5940: synaLib: tudor: STATUS: tudorEventGet >>>>>>>>
+[1] 01031890: 5940: synaLib: tudor: STATUS: tudorEventGet <<<<<<<<
+[1] 01031890: 5940: synaLib: vfm: STATUS: vfmDeviceEventReadData <<<<<<<<
+[1] 01031890: 5940: vfmUtil: vfmUtil: STATUS: vfmUtilWaitForCbStatus >>>>>>>>
+[1] 01031890: 5940: synaLib: vfm: STATUS: vfmDeviceEnableCallback >>>>>>>>
+[1] 01031890: 5940: synaLib: vfm: STATUS: Enable Event listen for eventType = 1, ioctlCode = 7
+[1] 01031890: 5940: synaLib: palSensor: STATUS: palUsbDriverIoControl >>>>>>>>
+[1] 01031890: 3400: synaLib: palSensor: WARNING: hidCtx.handle=0x0
+
+[1] 01031890: 3400: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 01031890: 3400: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 01031921: 5940: synaLib: palSensor: STATUS: palUsbDriverIoControl <<<<<<<<
+[1] 01031921: 5940: synaLib: vfm: STATUS: vfmDeviceEnableCallback <<<<<<<<
+[1] 01031984: 5940: synaLib: vfm: STATUS: vfmDeviceDisableCallback >>>>>>>>
+[1] 01031984: 5940: synaLib: vfm: STATUS: Disbale Event listen for eventType = 1, ioctlCode = 8
+[1] 01032000: 5940: synaLib: palSensor: STATUS: palUsbDriverIoControl >>>>>>>>
+[1] 01032000: 5940: synaLib: palSensor: STATUS: palUsbDriverIoControl <<<<<<<<
+[1] 01032000: 5940: synaLib: vfm: STATUS: vfmDeviceDisableCallback <<<<<<<<
+[1] 01032000: 5940: vfmUtil: vfmUtil: STATUS: vfmUtilWaitForCbStatus <<<<<<<<
+[1] 01032000: 5940: synaLib: vfm: STATUS: vfmDeviceEventReadData >>>>>>>>
+[1] 01032015: 5940: synaLib: tudor: STATUS: tudorEventGet >>>>>>>>
+[1] 01032015: 5940: synaLib: tudor: STATUS: Getting event status
+[1] 01032015: 5940: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 01032015: 5940: synaLib: palSensor: STATUS: palUsbDriverIoControl >>>>>>>>
+[1] 01032015: 5940: synaLib: palSensor: STATUS: palUsbDriverIoControl <<<<<<<<
+[1] 01032015: 5940: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 01032015: 5940: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_EVENT_READ
+[1] 01032046: 5940: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_EVENT_READ
+[1] 01032046: 5940: synaLib: tudor: STATUS: event[0] type:(FINGER_UP)
+
+[1] 01032046: 5940: synaLib: tudor: STATUS: _tudorEventCheckForPending >>>>>>>>
+[1] 01032046: 5940: synaLib: tudor: STATUS: _tudorEventCheckForPending <<<<<<<<
+[1] 01032046: 5940: synaLib: tudor: STATUS: tudorEventGet <<<<<<<<
+[1] 01032046: 5940: synaLib: vfm: STATUS: vfmDeviceEventReadData <<<<<<<<
+[1] 01032046: 5940: synaLib: vfm: STATUS: vfmDeviceEventConfigure >>>>>>>>
+[1] 01032046: 5940: synaLib: tudor: STATUS: tudorEventConfig >>>>>>>>
+[1] 01032046: 5940: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_EVENT_CONFIG
+[1] 01032062: 5940: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_EVENT_CONFIG
+[1] 01032062: 5940: synaLib: tudor: STATUS: tudorEventConfig <<<<<<<<
+[1] 01032062: 5940: synaLib: vfm: STATUS: vfmDeviceEventConfigure <<<<<<<<
+[1] 01032093: 5940: vfmUtil: vfmUtil: STATUS: vfmUtilCaptureImage >>>>>>>>
+[1] 01032093: 5940: vfmUtil: vfmUtil: STATUS: captureFlags 7
+[1] 01032093: 5940: synaLib: vfm: STATUS: vfmCaptureStart >>>>>>>>
+[1] 01032093: 5940: synaLib: tudor: STATUS: tudorCaptureStart >>>>>>>>
+
+[1] 01032093: 5940: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_EVENT_CONFIG
+[1] 01032156: 5940: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_EVENT_CONFIG
+
+[1] 01032156: 5940: synaLib: tudor: STATUS: Capture started
+[1] 01032156: 5940: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_FRAME_ACQ
+[1] 01032187: 5940: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_FRAME_ACQ
+[1] 01032187: 5940: synaLib: tudor: STATUS: tudorCaptureStart <<<<<<<<
+[1] 01032187: 5940: synaLib: vfm: STATUS: vfmCaptureStart <<<<<<<<
+[1] 01032187: 5940: vfmUtil: vfmUtil: STATUS: _vfmUtilEventCreate >>>>>>>>
+[1] 01032187: 5940: vfmUtil: vfmUtil: STATUS: _vfmUtilEventCreate <<<<<<<<
+[1] 01032187: 5940: vfmUtil: vfmUtil: STATUS: vcsEventDestroy >>>>>>>>
+[1] 01032187: 5940: vfmUtil: vfmUtil: STATUS: vcsEventDestroy <<<<<<<<
+[1] 01032187: 5940: synaLib: vfm: STATUS: vfmCaptureProcess >>>>>>>>
+[1] 01032187: 5940: synaLib: tudor: STATUS: tudorCaptureProcess >>>>>>>>
+[1] 01032187: 5940: synaLib: tudor: STATUS: tudorCaptureProcess <<<<<<<<
+[1] 01032187: 5940: synaLib: vfm: STATUS: vfmCaptureProcess <<<<<<<<
+[1] 01032187: 5940: synaLib: vfm: STATUS: vfmDeviceEnableCallback >>>>>>>>
+[1] 01032187: 5940: synaLib: vfm: STATUS: Enable Event listen for eventType = 1, ioctlCode = 7
+[1] 01032187: 5940: synaLib: palSensor: STATUS: palUsbDriverIoControl >>>>>>>>
+[1] 01032187: 3400: synaLib: palSensor: WARNING: hidCtx.handle=0x0
+
+[1] 01032187: 3400: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 01032218: 5940: synaLib: palSensor: STATUS: palUsbDriverIoControl <<<<<<<<
+[1] 01032218: 5940: synaLib: vfm: STATUS: vfmDeviceEnableCallback <<<<<<<<
+[1] 01032218: 5940: vfmUtil: vfmUtil: STATUS: capture timeout set to -1
+
+
+[1] 01033468: 3400: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 01033468: 5940: synaLib: vfm: STATUS: vfmDeviceDisableCallback >>>>>>>>
+[1] 01033468: 5940: synaLib: vfm: STATUS: Disbale Event listen for eventType = 1, ioctlCode = 8
+[1] 01033468: 5940: synaLib: palSensor: STATUS: palUsbDriverIoControl >>>>>>>>
+[1] 01033468: 5940: synaLib: palSensor: STATUS: palUsbDriverIoControl <<<<<<<<
+[1] 01033468: 5940: synaLib: vfm: STATUS: vfmDeviceDisableCallback <<<<<<<<
+[1] 01033468: 5940: synaLib: vfm: STATUS: vfmCaptureProcess >>>>>>>>
+[1] 01033468: 5940: synaLib: tudor: STATUS: tudorCaptureProcess >>>>>>>>
+[1] 01033468: 5940: synaLib: tudor: STATUS: Getting event status
+[1] 01033468: 5940: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_EVENT_READ
+[1] 01033468: 5940: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_EVENT_READ
+[1] 01033468: 5940: synaLib: tudor: STATUS: event[0] type:(OtherType)
+
+[1] 01033468: 5940: synaLib: tudor: STATUS: tudorCaptureFrameReadyStatusGet
+[1] 01033468: 5940: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 01033468: 5940: synaLib: palSensor: STATUS: palUsbDriverIoControl >>>>>>>>
+[1] 01033468: 5940: synaLib: palSensor: STATUS: palUsbDriverIoControl <<<<<<<<
+[1] 01033468: 5940: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 01033468: 5940: synaLib: tudor: STATUS: tudorCaptureProcess <<<<<<<<
+[1] 01033468: 5940: synaLib: vfm: STATUS: vfmCaptureProcess <<<<<<<<
+[1] 01033468: 5940: vfmUtil: vfmUtil: STATUS: SSI_CAPTURE_STATUS_FD_DETECTED by 2 status
+[1] 01033468: 5940: vfmUtil: vfmUtil: STATUS: _vfmUtilEventCreate >>>>>>>>
+[1] 01033468: 5940: vfmUtil: vfmUtil: STATUS: _vfmUtilEventCreate <<<<<<<<
+[1] 01033468: 5940: vfmUtil: vfmUtil: STATUS: vcsEventDestroy >>>>>>>>
+[1] 01033468: 5940: vfmUtil: vfmUtil: STATUS: vcsEventDestroy <<<<<<<<
+[1] 01033468: 5940: synaLib: vfm: STATUS: vfmCaptureProcess >>>>>>>>
+[1] 01033468: 5940: synaLib: tudor: STATUS: tudorCaptureProcess >>>>>>>>
+[1] 01033468: 5940: synaLib: tudor: STATUS: tudorCaptureImageHeaderFill
+[1] 01033468: 5940: synaLib: tudor: STATUS: _tudorCaptureImageHeaderFill >>>>>>>>
+[1] 01033468: 5940: synaLib: tudor: STATUS: _tudorCaptureImageHeaderFill <<<<<<<<
+[1] 01033468: 5940: synaLib: tudor: STATUS: tudorCaptureComplete
+[1] 01033468: 5940: synaLib: tudor: STATUS: tudorCaptureProcess <<<<<<<<
+[1] 01033468: 5940: synaLib: tudor: STATUS: tudorCaptureGetImage >>>>>>>>
+[1] 01033468: 5940: synaLib: tudor: STATUS: tudorCaptureGetImage <<<<<<<<
+[1] 01033468: 5940: synaLib: vfm: STATUS: vfmCaptureProcess <<<<<<<<
+[1] 01033468: 5940: vfmUtil: vfmUtil: STATUS: _vfmUtilEventCreate >>>>>>>>
+[1] 01033468: 5940: vfmUtil: vfmUtil: STATUS: _vfmUtilEventCreate <<<<<<<<
+[1] 01033468: 5940: vfmUtil: vfmUtil: STATUS: vcsEventDestroy >>>>>>>>
+[1] 01033468: 5940: vfmUtil: vfmUtil: STATUS: vcsEventDestroy <<<<<<<<
+[1] 01033468: 5940: synaLib: vfm: STATUS: vfmCaptureGetImageMetrics >>>>>>>>
+[1] 01033468: 5940: synaLib: vfm: STATUS: vfmCaptureGetImageMetrics <<<<<<<<
+[1] 01033468: 5940: vfmUtil: vfmUtil: STATUS: _vfmUtilEventCreate >>>>>>>>
+[1] 01033468: 5940: vfmUtil: vfmUtil: STATUS: _vfmUtilEventCreate <<<<<<<<
+[1] 01033468: 5940: vfmUtil: vfmUtil: STATUS: vcsEventDestroy >>>>>>>>
+[1] 01033468: 5940: vfmUtil: vfmUtil: STATUS: vcsEventDestroy <<<<<<<<
+[1] 01033468: 5940: synaLib: vfm: STATUS: vfmCaptureFinish >>>>>>>>
+[1] 01033468: 5940: synaLib: tudor: STATUS: tudorCaptureFinish >>>>>>>>
+[1] 01033468: 5940: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_EVENT_CONFIG
+[1] 01033484: 5940: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_EVENT_CONFIG
+[1] 01033484: 5940: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_FRAME_FINISH
+[1] 01033484: 5940: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_FRAME_FINISH
+[1] 01033484: 5940: synaLib: tudor: STATUS: tudorCaptureFinish <<<<<<<<
+[1] 01033484: 5940: synaLib: vfm: STATUS: vfmCaptureFinish <<<<<<<<
+[1] 01033484: 5940: vfmUtil: vfmUtil: STATUS: vfmUtilCaptureImage <<<<<<<<
+[1] 01033484: 4928: vfmUtil: vfmUtil: STATUS: vfmUtilAuthPrep >>>>>>>>
+[1] 01033484: 4928: vfmUtil: vfmUtil: STATUS: vfmUtilAuthPrep <<<<<<<<
+[1] 01033484: 4928: vfmUtil: vfmUtil: STATUS: vfmUtilSessionGetDeviceHandle >>>>>>>>
+[1] 01033484: 4928: vfmUtil: vfmUtil: STATUS: vfmUtilSessionGetDeviceHandle <<<<<<<<
+[1] 01033484: 4928: vfmUtil: vfmUtil: STATUS: vfmUtilAuthImage >>>>>>>>
+[1] 01033484: 4928: vfmUtil: vfmUtil: STATUS: vfmUtilAuthImageToTemplates >>>>>>>>
+[1] 01033484: 4928: vfmUtil: vfmUtil: STATUS: _vfmUtilMisMatchImageToTemplates >>>>>>>>
+[1] 01033484: 4928: synaLib: vfm: STATUS: _vfmMatchImageToTemplates >>>>>>>>
+[1] 01033484: 4928: synaLib: mis: STATUS: misInitModule >>>>>>>>
+[1] 01033484: 4928: synaLib: mis: STATUS: smiMis version: hisd/sw/prerelease/6_0_58_1111_20211215-1-gbbc346a
+[1] 01033484: 4928: synaLib: mis: STATUS: misInitModule <<<<<<<<
+[1] 01033484: 4928: synaLib: mis: STATUS: misSetParameterBlob >>>>>>>>
+[1] 01033484: 4928: synaLib: mis: STATUS: misSetParameterBlob <<<<<<<<
+[1] 01033484: 4928: synaLib: mis: STATUS: misSetParameterBlob >>>>>>>>
+[1] 01033484: 4928: synaLib: mis: STATUS: misSetParameterBlob <<<<<<<<
+[1] 01033484: 4928: synaLib: mis: STATUS: misSetParameter >>>>>>>>
+[1] 01033484: 4928: synaLib: mis: ERROR: Not implemented ID: 9
+[1] 01033484: 4928: synaLib: mis: STATUS: misSetParameter <<<<<<<<
+[1] 01033484: 4928: synaLib: mis: STATUS: misAuthStart >>>>>>>>
+[1] 01033484: 4928: synaLib: mis: STATUS: misAuthStart <<<<<<<<
+[1] 01033484: 4928: synaLib: vfm: STATUS: vfmDeviceGetImageQuality >>>>>>>>
+[1] 01033484: 4928: synaLib: mis: STATUS: misGetAuthImageMetrics >>>>>>>>
+[1] 01033484: 4928: synaLib: mis: WARNING:  This image metrics(0x10000).
+[1] 01033484: 4928: synaLib: tudor: STATUS: tudorIoctl opCode: (3)
+[1] 01033484: 4928: synaLib: tudor: WARNING: Unknown cmd ID: 157
+[1] 01033484: 4928: niseTlsLib: ssiTls: STATUS: ssiTlsWrap >>>>>>>>
+[1] 01033484: 4928: synaLib: palCrypto: STATUS: palCryptoRng >>>>>>>>
+[1] 01033484: 4928: synaLib: palCrypto: STATUS: palCryptoRng <<<<<<<<
+[1] 01033484: 4928: synaLib: palCrypto: STATUS: palCryptoEncryptAuth >>>>>>>>
+[1] 01033484: 4928: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 01033484: 4928: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 01033484: 4928: synaLib: palCrypto: STATUS: palCryptoEncryptAuth <<<<<<<<
+[1] 01033484: 4928: niseTlsLib: ssiTls: STATUS: ssiTlsWrap <<<<<<<<
+[1] 01033484: 4928: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 01033484: 4928: synaLib: palSensor: STATUS: palWinUsbBulkWrite >>>>>>>>
+[1] 01033484: 4928: synaLib: palSensor: STATUS: palWinUsbBulkWrite <<<<<<<<
+[1] 01033484: 4928: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 01033484: 4928: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 01033484: 4928: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 01033484: 4928: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap >>>>>>>>
+[1] 01033484: 4928: synaLib: palCrypto: STATUS: palCryptoDecryptAuth >>>>>>>>
+[1] 01033484: 4928: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 01033484: 4928: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 01033484: 4928: synaLib: palCrypto: STATUS: palCryptoDecryptAuth <<<<<<<<
+[1] 01033484: 4928: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap <<<<<<<<
+[1] 01033484: 4928: synaLib: tudor: WARNING: Unknown cmd ID: 157
+[1] 01033484: 4928: synaLib: mis: WARNING: Image_quality 83 of qmExtractStatistics_t.
+[1] 01033484: 4928: synaLib: mis: STATUS: misGetAuthImageMetrics <<<<<<<<
+[1] 01033484: 4928: synaLib: vfm: STATUS: vfmDeviceGetImageQuality <<<<<<<<
+[1] 01033484: 4928: synaLib: vfm: STATUS: vfmUtilAuthImageQuality >>>>>>>>
+[1] 01033484: 4928: synaLib: vfm: STATUS: vfmUtilAuthImageQuality <<<<<<<<
+[1] 01033484: 4928: synaLib: vfm: STATUS: Number of templates = 0 catch = 0
+[1] 01033484: 4928: synaLib: vfm: STATUS: _vfmGetEnrollments >>>>>>>>
+[1] 01033484: 4928: synaLib: vfm: STATUS: _vfmGetEnrollments <<<<<<<<
+[1] 01033484: 4928: synaLib: vfm: STATUS: Try Main match
+[1] 01033500: 4928: synaLib: mis: STATUS: misAuthImageToTemplates >>>>>>>>
+[1] 01033500: 4928: synaLib: tudor: STATUS: tudorGetParameterBlob >>>>>>>>
+[1] 01033500: 4928: synaLib: tudor: STATUS: tudorGetParameterBlob <<<<<<<<
+[1] 01033500: 4928: synaLib: tudor: STATUS: tudorIoctl opCode: (3)
+[1] 01033500: 4928: synaLib: tudor: WARNING: Unknown cmd ID: 153
+[1] 01033500: 4928: niseTlsLib: ssiTls: STATUS: ssiTlsWrap >>>>>>>>
+[1] 01033500: 4928: synaLib: palCrypto: STATUS: palCryptoRng >>>>>>>>
+[1] 01033500: 4928: synaLib: palCrypto: STATUS: palCryptoRng <<<<<<<<
+[1] 01033500: 4928: synaLib: palCrypto: STATUS: palCryptoEncryptAuth >>>>>>>>
+[1] 01033500: 4928: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 01033500: 4928: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 01033500: 4928: synaLib: palCrypto: STATUS: palCryptoEncryptAuth <<<<<<<<
+[1] 01033500: 4928: niseTlsLib: ssiTls: STATUS: ssiTlsWrap <<<<<<<<
+[1] 01033500: 4928: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 01033500: 4928: synaLib: palSensor: STATUS: palWinUsbBulkWrite >>>>>>>>
+[1] 01033500: 4928: synaLib: palSensor: STATUS: palWinUsbBulkWrite <<<<<<<<
+[1] 01033500: 4928: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 01034031: 4928: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 01034031: 4928: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 01034031: 4928: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap >>>>>>>>
+[1] 01034031: 4928: synaLib: palCrypto: STATUS: palCryptoDecryptAuth >>>>>>>>
+[1] 01034031: 4928: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 01034031: 4928: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 01034031: 4928: synaLib: palCrypto: STATUS: palCryptoDecryptAuth <<<<<<<<
+[1] 01034031: 4928: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap <<<<<<<<
+[1] 01034031: 4928: synaLib: tudor: WARNING: Unknown cmd ID: 153
+[1] 01034031: 4928: synaLib: mis: WARNING: Mismatch of qm struct size on host and MFW.
+[1] 01034031: 4928: synaLib: mis: STATUS:  #### Match Score 0x8C7  threshold 0x0### 
+[1] 01034031: 4928: synaLib: palUtil: WARNING: No item with specified tag.
+[1] 01034031: 4928: synaLib: mis: STATUS: misAuthImageToTemplates <<<<<<<<
+[1] 01034031: 4928: synaLib: vfm: STATUS: matchScore = 2247, matchIndex = 0, matchStrength = 0, templateUpdate = 1
+[1] 01034031: 4928: synaLib: mis: STATUS: misAuthGetResult >>>>>>>>
+[1] 01034031: 4928: synaLib: mis: STATUS: Returning needed buffer size 
+[1] 01034031: 4928: synaLib: mis: STATUS: misAuthGetResult <<<<<<<<
+[1] 01034031: 4928: synaLib: mis: STATUS: misAuthGetResult >>>>>>>>
+[1] 01034031: 4928: synaLib: mis: STATUS: misAuthGetResult <<<<<<<<
+[1] 01034031: 4928: synaLib: mis: STATUS: misAuthGetResult >>>>>>>>
+[1] 01034031: 4928: synaLib: mis: STATUS: Returning needed buffer size 
+[1] 01034031: 4928: synaLib: mis: STATUS: misAuthGetResult <<<<<<<<
+[1] 01034031: 4928: synaLib: mis: STATUS: misAuthGetResult >>>>>>>>
+[1] 01034031: 4928: synaLib: mis: STATUS: misAuthGetResult <<<<<<<<
+[1] 01034031: 4928: synaLib: mis: STATUS: misAuthGetResult >>>>>>>>
+[1] 01034031: 4928: synaLib: mis: STATUS: Returning needed buffer size 
+[1] 01034031: 4928: synaLib: mis: STATUS: misAuthGetResult <<<<<<<<
+[1] 01034031: 4928: synaLib: mis: STATUS: misAuthGetResult >>>>>>>>
+[1] 01034031: 4928: synaLib: mis: STATUS: misAuthGetResult <<<<<<<<
+[1] 01034031: 4928: synaLib: vfm: STATUS: _vfmMatchImageToTemplates <<<<<<<<
+[1] 01034031: 4928: synaLib: vfm: STATUS: vfmGetMatchResults >>>>>>>>
+[1] 01034031: 4928: synaLib: vfm: STATUS: vfmGetMatchResults <<<<<<<<
+[1] 01034031: 4928: synaLib: vfm: STATUS: vfmGetMatchResults >>>>>>>>
+[1] 01034031: 4928: synaLib: vfm: STATUS: vfmGetMatchResults <<<<<<<<
+[1] 01034031: 4928: vfmUtil: vfmUtil: STATUS: ++++++MATCHED matchIndex = 0, matchScore = 2247
+[1] 01034031: 4928: vfmUtil: vfmUtil: STATUS: _vfmUtilMisMatchImageToTemplates <<<<<<<<
+[1] 01034031: 4928: synaLib: vfm: STATUS: vfmPaymentRequest >>>>>>>>
+[1] 01034031: 4928: synaLib: vfm: STATUS: vfmPaymentRequest <<<<<<<<
+[1] 01034031: 4928: vfmUtil: vfmUtil: ERROR: vfmUtilAuthImageToTemplates Unsupported AlgID(0). (0)
+[1] 01034046: 4928: vfmUtil: vfmUtil: STATUS: Operation Succeeded. Matching score is 2247
+[1] 01034046: 4928: vfmUtil: vfmUtil: STATUS: vfmUtilAuthImageToTemplates <<<<<<<<
+[1] 01034046: 4928: synaLib: vfm: STATUS: _vfmStgClose >>>>>>>>
+[1] 01034046: 4928: synaLib: vfm: WARNING: Storage handle is null.
+[1] 01034046: 4928: synaLib: vfm: STATUS: _vfmStgClose <<<<<<<<
+[1] 01034046: 4928: vfmUtil: vfmUtil: STATUS: vfmUtilAuthImage <<<<<<<<
+[1] 01034046: 4928: synaLib: vfm: STATUS: vfmGetParamBlob >>>>>>>>
+[1] 01034046: 4928: synaLib: mis: STATUS: misGetParameterBlob >>>>>>>>
+[1] 01034046: 4928: synaLib: mis: STATUS: misGetParameterBlob <<<<<<<<
+[1] 01034046: 4928: synaLib: mis: STATUS: misReleaseBlob >>>>>>>>
+[1] 01034046: 4928: synaLib: mis: STATUS: misReleaseBlob <<<<<<<<
+[1] 01034046: 4928: synaLib: vfm: STATUS: vfmGetParamBlob <<<<<<<<
+[1] 01034046: 4928: vfmUtil: vfmUtil: STATUS: vfmUtilAuthGetUpdatedTemplate >>>>>>>>
+[1] 01034046: 4928: synaLib: vfm: STATUS: _vfmMatchPostProcess >>>>>>>>
+[1] 01034046: 4928: synaLib: mis: STATUS: misGetParameterBlob >>>>>>>>
+[1] 01034046: 4928: synaLib: mis: ERROR: Not implemented ID: 5
+[1] 01034046: 4928: synaLib: mis: STATUS: misGetParameterBlob <<<<<<<<
+[1] 01034046: 4928: synaLib: vfm: WARNING: getParameterBlob failed with 113.
+[1] 01034046: 4928: synaLib: mis: STATUS: misReleaseTemplate >>>>>>>>
+[1] 01034046: 4928: synaLib: mis: STATUS: misReleaseTemplate <<<<<<<<
+[1] 01034046: 4928: synaLib: mis: STATUS: misAuthFinish >>>>>>>>
+[1] 01034046: 4928: synaLib: mis: STATUS: PROFILING: MATCH, totalMatchTime = 531
+[1] 01034046: 4928: synaLib: mis: STATUS: misAuthFinish <<<<<<<<
+[1] 01034046: 4928: synaLib: mis: STATUS: misUninitModule >>>>>>>>
+[1] 01034046: 4928: synaLib: mis: STATUS: misUninitModule <<<<<<<<
+[1] 01034046: 4928: synaLib: vfm: STATUS: _vfmMatchPostProcess <<<<<<<<
+[1] 01034046: 4928: vfmUtil: vfmUtil: ERROR: vfmMatchPostProcess() failed (110)
+[1] 01034046: 4928: vfmUtil: vfmUtil: STATUS: vfmUtilAuthGetUpdatedTemplate <<<<<<<<
+[1] 01034046: 4928: vfmUtil: vfmUtil: STATUS: vfmUtilAuthUnPrep >>>>>>>>
+[1] 01034046: 4928: synaLib: vfm: STATUS: vfmAuthDataInvalidate >>>>>>>>
+[1] 01034046: 4928: synaLib: vfm: STATUS: vfmAuthDataInvalidate <<<<<<<<
+[1] 01034046: 4928: vfmUtil: vfmUtil: STATUS: vfmUtilAuthUnPrep <<<<<<<<
+[1] 01034046: 3724: vfmUtil: vfmUtil: STATUS: vfmUtilSessionGetDeviceHandle >>>>>>>>
+[1] 01034046: 3724: vfmUtil: vfmUtil: STATUS: vfmUtilSessionGetDeviceHandle <<<<<<<<
+[1] 01034046: 3724: vfmUtil: vfmUtil: STATUS: vfmUtilSetCaptureCancel >>>>>>>>
+[1] 01034046: 3724: vfmUtil: vfmUtil: STATUS: current bCaptureCanceled is 0
+[1] 01034046: 3724: vfmUtil: vfmUtil: STATUS: set bCaptureCanceled with 0
+[1] 01034062: 3724: vfmUtil: vfmUtil: STATUS: vfmUtilSetCaptureCancel <<<<<<<<
+[1] 01034062: 3724: vfmUtil: vfmUtil: STATUS: vfmUtilSessionGetDeviceHandle >>>>>>>>
+[1] 01034062: 3724: vfmUtil: vfmUtil: STATUS: vfmUtilSessionGetDeviceHandle <<<<<<<<
+[1] 01034062: 3724: synaLib: vfm: STATUS: vfmDeviceEventConfigure >>>>>>>>
+[1] 01034062: 3724: synaLib: tudor: STATUS: tudorEventConfig >>>>>>>>
+[1] 01034062: 3724: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_EVENT_CONFIG
+[1] 01034078: 3724: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_EVENT_CONFIG
+[1] 01034078: 3724: synaLib: tudor: STATUS: tudorEventConfig <<<<<<<<
+[1] 01034078: 3724: synaLib: vfm: STATUS: vfmDeviceEventConfigure <<<<<<<<
+[1] 01034078: 3724: synaLib: vfm: STATUS: vfmDeviceEventReadData >>>>>>>>
+[1] 01034078: 3724: synaLib: tudor: STATUS: tudorEventGet >>>>>>>>
+[1] 01034078: 3724: synaLib: tudor: STATUS: tudorEventGet <<<<<<<<
+[1] 01034078: 3724: synaLib: vfm: STATUS: vfmDeviceEventReadData <<<<<<<<
+[1] 01034078: 3724: vfmUtil: vfmUtil: STATUS: vfmUtilWaitForCbStatus >>>>>>>>
+[1] 01034078: 3724: synaLib: vfm: STATUS: vfmDeviceEnableCallback >>>>>>>>
+[1] 01034078: 3724: synaLib: vfm: STATUS: Enable Event listen for eventType = 1, ioctlCode = 7
+[1] 01034078: 3724: synaLib: palSensor: STATUS: palUsbDriverIoControl >>>>>>>>
+[1] 01034078: 3400: synaLib: palSensor: WARNING: hidCtx.handle=0x0
+
+[1] 01034078: 3400: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 01034078: 3400: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 01034093: 3724: synaLib: palSensor: STATUS: palUsbDriverIoControl <<<<<<<<
+[1] 01034093: 3724: synaLib: vfm: STATUS: vfmDeviceEnableCallback <<<<<<<<
+[1] 01034093: 3724: synaLib: vfm: STATUS: vfmDeviceDisableCallback >>>>>>>>
+[1] 01034093: 3724: synaLib: vfm: STATUS: Disbale Event listen for eventType = 1, ioctlCode = 8
+[1] 01034093: 3724: synaLib: palSensor: STATUS: palUsbDriverIoControl >>>>>>>>
+[1] 01034093: 3724: synaLib: palSensor: STATUS: palUsbDriverIoControl <<<<<<<<
+[1] 01034093: 3724: synaLib: vfm: STATUS: vfmDeviceDisableCallback <<<<<<<<
+[1] 01034093: 3724: vfmUtil: vfmUtil: STATUS: vfmUtilWaitForCbStatus <<<<<<<<
+[1] 01034093: 3724: synaLib: vfm: STATUS: vfmDeviceEventReadData >>>>>>>>
+[1] 01034093: 3724: synaLib: tudor: STATUS: tudorEventGet >>>>>>>>
+[1] 01034093: 3724: synaLib: tudor: STATUS: Getting event status
+[1] 01034093: 3724: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 01034093: 3724: synaLib: palSensor: STATUS: palUsbDriverIoControl >>>>>>>>
+[1] 01034093: 3724: synaLib: palSensor: STATUS: palUsbDriverIoControl <<<<<<<<
+[1] 01034093: 3724: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 01034093: 3724: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_EVENT_READ
+[1] 01034093: 3724: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_EVENT_READ
+[1] 01034093: 3724: synaLib: tudor: STATUS: event[0] type:(FINGER_DOWN)
+
+[1] 01034093: 3724: synaLib: tudor: STATUS: _tudorEventCheckForPending >>>>>>>>
+[1] 01034093: 3724: synaLib: tudor: STATUS: _tudorEventCheckForPending <<<<<<<<
+[1] 01034093: 3724: synaLib: tudor: STATUS: tudorEventGet <<<<<<<<
+[1] 01034093: 3724: synaLib: vfm: STATUS: vfmDeviceEventReadData <<<<<<<<
+[1] 01034093: 3724: synaLib: vfm: STATUS: vfmDeviceEventConfigure >>>>>>>>
+[1] 01034093: 3724: synaLib: tudor: STATUS: tudorEventConfig >>>>>>>>
+[1] 01034093: 3724: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_EVENT_CONFIG
+[1] 01034109: 3724: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_EVENT_CONFIG
+[1] 01034109: 3724: synaLib: tudor: STATUS: tudorEventConfig <<<<<<<<
+[1] 01034109: 3724: synaLib: vfm: STATUS: vfmDeviceEventConfigure <<<<<<<<
+[1] 01034109: 3724: synaLib: vfm: STATUS: vfmDeviceEventConfigure >>>>>>>>
+[1] 01034109: 3724: synaLib: tudor: STATUS: tudorEventConfig >>>>>>>>
+[1] 01034109: 3724: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_EVENT_CONFIG
+[1] 01034109: 3724: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_EVENT_CONFIG
+[1] 01034109: 3724: synaLib: tudor: STATUS: tudorEventConfig <<<<<<<<
+[1] 01034109: 3724: synaLib: vfm: STATUS: vfmDeviceEventConfigure <<<<<<<<
+[1] 01034109: 3724: synaLib: vfm: STATUS: vfmDeviceEventReadData >>>>>>>>
+[1] 01034109: 3724: synaLib: tudor: STATUS: tudorEventGet >>>>>>>>
+[1] 01034109: 3724: synaLib: tudor: STATUS: tudorEventGet <<<<<<<<
+[1] 01034109: 3724: synaLib: vfm: STATUS: vfmDeviceEventReadData <<<<<<<<
+[1] 01034109: 3724: vfmUtil: vfmUtil: STATUS: vfmUtilWaitForCbStatus >>>>>>>>
+[1] 01034109: 3724: synaLib: vfm: STATUS: vfmDeviceEnableCallback >>>>>>>>
+[1] 01034109: 3724: synaLib: vfm: STATUS: Enable Event listen for eventType = 1, ioctlCode = 7
+[1] 01034109: 3724: synaLib: palSensor: STATUS: palUsbDriverIoControl >>>>>>>>
+[1] 01034109: 3400: synaLib: palSensor: WARNING: hidCtx.handle=0x0
+
+[1] 01034109: 3400: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 01034140: 3724: synaLib: palSensor: STATUS: palUsbDriverIoControl <<<<<<<<
+[1] 01034140: 3724: synaLib: vfm: STATUS: vfmDeviceEnableCallback <<<<<<<<
+[1] 01034375: 6544: vfmUtil: vfmUtil: STATUS: vfmUtilStopCapture >>>>>>>>
+[1] 01034390: 6544: vfmUtil: vfmUtil: STATUS: vfmUtilStopCapture <<<<<<<<
+[1] 01034390: 3724: synaLib: vfm: STATUS: vfmDeviceDisableCallback >>>>>>>>
+[1] 01034390: 3724: synaLib: vfm: STATUS: Disbale Event listen for eventType = 1, ioctlCode = 8
+[1] 01034390: 3724: synaLib: palSensor: STATUS: palUsbDriverIoControl >>>>>>>>
+[1] 01034390: 3724: synaLib: palSensor: STATUS: palWinUsbStopPendingTransfers >>>>>>>>
+[1] 01034390: 3724: synaLib: palSensor: STATUS: palWinUsbStopPendingTransfers <<<<<<<<
+[1] 01034390: 3724: synaLib: palSensor: STATUS: palUsbDriverIoControl <<<<<<<<
+[1] 01034390: 3724: synaLib: vfm: STATUS: vfmDeviceDisableCallback <<<<<<<<
+[1] 01034390: 3724: vfmUtil: vfmUtil: WARNING: _vfmUtilWaitForCbStatus() failed(103)
+[1] 01034390: 3724: vfmUtil: vfmUtil: STATUS: vfmUtilWaitForCbStatus <<<<<<<<
+[1] 01034390: 3724: synaLib: vfm: STATUS: vfmDeviceEventConfigure >>>>>>>>
+[1] 01034390: 3724: synaLib: tudor: STATUS: tudorEventConfig >>>>>>>>
+[1] 01034390: 3724: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_EVENT_CONFIG
+[1] 01034390: 3724: niseTlsLib: ssiTls: STATUS: ssiTlsWrap >>>>>>>>
+[1] 01034390: 3724: synaLib: palCrypto: STATUS: palCryptoRng >>>>>>>>
+[1] 01034390: 3724: synaLib: palCrypto: STATUS: palCryptoRng <<<<<<<<
+[1] 01034390: 3724: synaLib: palCrypto: STATUS: palCryptoEncryptAuth >>>>>>>>
+[1] 01034390: 3724: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 01034390: 3724: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 01034390: 3724: synaLib: palCrypto: STATUS: palCryptoEncryptAuth <<<<<<<<
+[1] 01034390: 3724: niseTlsLib: ssiTls: STATUS: ssiTlsWrap <<<<<<<<
+[1] 01034406: 3724: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 01034406: 3724: synaLib: palSensor: STATUS: palWinUsbBulkWrite >>>>>>>>
+[1] 01034406: 3400: synaLib: palSensor: WARNING: WinUsb_ReadPipe failed - pipeId = 131 (0)
+[1] 01034421: 3400: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 01034421: 3400: synaLib: palSensor: ERROR: Failed to read data from interrupt EP.
+[1] 01034421: 3724: synaLib: palSensor: STATUS: palWinUsbBulkWrite <<<<<<<<
+[1] 01034421: 3724: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 01034421: 3724: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 01034421: 3724: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 01034421: 3724: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap >>>>>>>>
+[1] 01034421: 3724: synaLib: palCrypto: STATUS: palCryptoDecryptAuth >>>>>>>>
+[1] 01034421: 3724: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 01034421: 3724: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 01034421: 3724: synaLib: palCrypto: STATUS: palCryptoDecryptAuth <<<<<<<<
+[1] 01034421: 3724: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap <<<<<<<<
+[1] 01034421: 3724: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_EVENT_CONFIG
+[1] 01034421: 3724: synaLib: tudor: STATUS: tudorEventConfig <<<<<<<<
+[1] 01034421: 3724: synaLib: vfm: STATUS: vfmDeviceEventConfigure <<<<<<<<
+
+
+
+--- removal
+
+
+
+[1] 01075484: 4928: synaLib: vfm: STATUS: vfmStgGetTuidList >>>>>>>>
+    [1] 01075484: 4928: synaLib: vfm: STATUS: _vfmStgGetSubIdList >>>>>>>>
+        [1] 01075484: 4928: synaLib: vfm: STATUS: _vfmStgOnChipOpen >>>>>>>>
+        [1] 01075484: 4928: synaLib: tudor: STATUS: stiTudorOpen >>>>>>>>
+        [1] 01075484: 4928: synaLib: tudor: STATUS: stiTudorOpen <<<<<<<<
+    [1] 01075484: 4928: synaLib: vfm: STATUS: _vfmStgGetFirstEnrollmentAlloc >>>>>>>>
+[1] 01075484: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment >>>>>>>>
+[1] 01075484: 4928: synaLib: tudor: STATUS: stiTudorGetFirstEnrollment >>>>>>>>
+[1] 01075484: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment >>>>>>>>
+[1] 01075484: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment <<<<<<<<
+[1] 01075484: 4928: synaLib: tudor: STATUS: stiTudorGetFirstEnrollment <<<<<<<<
+[1] 01075484: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment <<<<<<<<
+[1] 01075484: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment >>>>>>>>
+[1] 01075484: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment <<<<<<<<
+[1] 01075484: 4928: synaLib: vfm: STATUS: _vfmStgGetFirstEnrollmentAlloc <<<<<<<<
+[1] 01075484: 4928: synaLib: vfm: STATUS: _vfmStgGetNextEnrollmentAlloc >>>>>>>>
+[1] 01075484: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment >>>>>>>>
+[1] 01075484: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment >>>>>>>>
+[1] 01075484: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment <<<<<<<<
+[1] 01075484: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment <<<<<<<<
+[1] 01075484: 4928: synaLib: vfm: STATUS: _vfmStgClose >>>>>>>>
+[1] 01075484: 4928: synaLib: tudor: STATUS: stiTudorClose >>>>>>>>
+[1] 01075484: 4928: synaLib: tudor: STATUS: stiTudorClose <<<<<<<<
+[1] 01075484: 4928: synaLib: vfm: STATUS: _vfmStgClose <<<<<<<<
+[1] 01075484: 4928: synaLib: vfm: STATUS: _vfmStgGetSubIdList <<<<<<<<
+[1] 01075484: 4928: synaLib: vfm: STATUS: _vfmStgOnChipOpen >>>>>>>>
+[1] 01075484: 4928: synaLib: tudor: STATUS: stiTudorOpen >>>>>>>>
+[1] 01075484: 4928: synaLib: tudor: STATUS: stiTudorOpen <<<<<<<<
+[1] 01075484: 4928: synaLib: vfm: STATUS: _vfmStgGetFirstEnrollmentAlloc >>>>>>>>
+[1] 01075484: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment >>>>>>>>
+[1] 01075484: 4928: synaLib: tudor: STATUS: stiTudorGetFirstEnrollment >>>>>>>>
+[1] 01075484: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment >>>>>>>>
+[1] 01075484: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment <<<<<<<<
+[1] 01075484: 4928: synaLib: tudor: STATUS: stiTudorGetFirstEnrollment <<<<<<<<
+[1] 01075484: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment <<<<<<<<
+[1] 01075500: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment >>>>>>>>
+[1] 01075500: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment <<<<<<<<
+[1] 01075500: 4928: synaLib: vfm: STATUS: _vfmStgGetFirstEnrollmentAlloc <<<<<<<<
+[1] 01075500: 4928: synaLib: vfm: STATUS: _vfmStgGetNextEnrollmentAlloc >>>>>>>>
+[1] 01075500: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment >>>>>>>>
+[1] 01075500: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment >>>>>>>>
+[1] 01075500: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment <<<<<<<<
+[1] 01075500: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment <<<<<<<<
+[1] 01075500: 4928: synaLib: vfm: STATUS: _vfmStgClose >>>>>>>>
+[1] 01075500: 4928: synaLib: tudor: STATUS: stiTudorClose >>>>>>>>
+[1] 01075500: 4928: synaLib: tudor: STATUS: stiTudorClose <<<<<<<<
+[1] 01075500: 4928: synaLib: vfm: STATUS: _vfmStgClose <<<<<<<<
+[1] 01075500: 4928: synaLib: vfm: STATUS: vfmStgGetTuidList <<<<<<<<
+[1] 01075500: 4928: vfmUtil: vfmUtil: STATUS: vfmUtilSessionGetDeviceHandle >>>>>>>>
+[1] 01075500: 4928: vfmUtil: vfmUtil: STATUS: vfmUtilSessionGetDeviceHandle <<<<<<<<
+[1] 01075500: 4928: synaLib: vfm: STATUS: _vfmStgOnChipOpen >>>>>>>>
+[1] 01075500: 4928: synaLib: tudor: STATUS: stiTudorOpen >>>>>>>>
+[1] 01075500: 4928: synaLib: tudor: STATUS: stiTudorOpen <<<<<<<<
+[1] 01075500: 4928: synaLib: vfm: STATUS: vfmStgDeleteEnrollment >>>>>>>>
+[1] 01075500: 4928: synaLib: tudor: STATUS: stiTudorDeleteEnrollment >>>>>>>>
+[1] 01075500: 4928: synaLib: tudor: STATUS: tudorIoctl opCode: (3)
+
+[1] 01075500: 4928: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_DB2_GET_OBJECT_INFO
+[1] 01075500: 4928: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_DB2_GET_OBJECT_INFO
+
+[1] 01075500: 4928: synaLib: tudor: STATUS: tudorIoctl opCode: (3)
+
+[1] 01075500: 4928: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_DB2_DELETE_OBJECT
+[1] 01075515: 4928: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_DB2_DELETE_OBJECT
+
+[1] 01075515: 4928: synaLib: tudor: STATUS: Number of deleted objects: 2
+[1] 01075515: 4928: synaLib: tudor: STATUS: tudorIoctl opCode: (3)
+
+[1] 01075515: 4928: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_DB2_DELETE_OBJECT
+[1] 01075531: 4928: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_DB2_DELETE_OBJECT
+
+[1] 01075531: 4928: synaLib: tudor: STATUS: Number of deleted objects: 1
+[1] 01075531: 4928: synaLib: tudor: STATUS: tudorIoctl opCode: (3)
+
+[1] 01075531: 4928: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_DB2_GET_DB_INFO
+[1] 01075531: 4928: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_DB2_GET_DB_INFO
+
+[1] 01075531: 4928: synaLib: tudor: VERBOSE: |> dummy = 0
+[1] 01075531: 4928: synaLib: tudor: VERBOSE: |> version_major = 1
+[1] 01075531: 4928: synaLib: tudor: VERBOSE: |> version_minor = 0
+[1] 01075531: 4928: synaLib: tudor: VERBOSE: |> pversion = 237
+[1] 01075531: 4928: synaLib: tudor: VERBOSE: |> UOP_len = 4
+[1] 01075531: 4928: synaLib: tudor: VERBOSE: |> TOP_len = 528
+[1] 01075531: 4928: synaLib: tudor: VERBOSE: |> POP_len = 100
+[1] 01075531: 4928: synaLib: tudor: VERBOSE: |> Template_obj_slot_size = 48
+[1] 01075531: 4928: synaLib: tudor: VERBOSE: |> Payload_obj_slot_size = 4
+[1] 01075531: 4928: synaLib: tudor: VERBOSE: |> NumCurrentUsers = 2
+[1] 01075531: 4928: synaLib: tudor: VERBOSE: |> NumDeletedUsers = 9
+[1] 01075531: 4928: synaLib: tudor: VERBOSE: |> NumAvailableUserSlots = 116
+[1] 01075531: 4928: synaLib: tudor: VERBOSE: |> NumCurrentTemplates = 0
+[1] 01075531: 4928: synaLib: tudor: VERBOSE: |> NumDeletedTemplates = 1
+[1] 01075531: 4928: synaLib: tudor: VERBOSE: |> NumAvailableTemplateSlots = 10
+[1] 01075531: 4928: synaLib: tudor: VERBOSE: |> NumCurrentPayloads = 2
+[1] 01075531: 4928: synaLib: tudor: VERBOSE: |> NumDeletedPayloads = 1
+[1] 01075531: 4928: synaLib: tudor: VERBOSE: |> NumAvailablePayloadSlots = 22
+[1] 01075531: 4928: synaLib: tudor: STATUS: tudorIoctl opCode: (3)
+
+[1] 01075531: 4928: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_DB2_GET_OBJECT_LIST
+[1] 01075546: 4928: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_DB2_GET_OBJECT_LIST
+
+[1] 01075546: 4928: synaLib: tudor: STATUS: stiTudorDeleteEnrollment <<<<<<<<
+[1] 01075546: 4928: synaLib: vfm: STATUS: vfmStgDeleteEnrollment <<<<<<<<
+[1] 01075546: 4928: synaLib: vfm: STATUS: vfmGetEnrolledUserList >>>>>>>>
+[1] 01075546: 4928: synaLib: vfm: STATUS: _vfmStgOnChipOpen >>>>>>>>
+[1] 01075546: 4928: synaLib: tudor: STATUS: stiTudorOpen >>>>>>>>
+[1] 01075546: 4928: synaLib: tudor: STATUS: stiTudorOpen <<<<<<<<
+[1] 01075546: 4928: synaLib: vfm: STATUS: _vfmStgGetFirstEnrollmentAlloc >>>>>>>>
+[1] 01075546: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment >>>>>>>>
+[1] 01075546: 4928: synaLib: tudor: STATUS: stiTudorGetFirstEnrollment >>>>>>>>
+[1] 01075546: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment >>>>>>>>
+[1] 01075546: 4928: synaLib: tudor: STATUS: stiTudorGetNextEnrollment <<<<<<<<
+[1] 01075546: 4928: synaLib: tudor: WARNING: Call of stiTudorGetNextEnrollment() failed.
+[1] 01075546: 4928: synaLib: tudor: STATUS: stiTudorGetFirstEnrollment <<<<<<<<
+[1] 01075546: 4928: synaLib: vfm: STATUS: _vfmStgGetEnrollment <<<<<<<<
+[1] 01075546: 4928: synaLib: vfm: STATUS: _vfmStgGetFirstEnrollmentAlloc <<<<<<<<
+[1] 01075546: 4928: synaLib: vfm: STATUS: _vfmStgClose >>>>>>>>
+[1] 01075546: 4928: synaLib: tudor: STATUS: stiTudorClose >>>>>>>>
+[1] 01075546: 4928: synaLib: tudor: STATUS: stiTudorClose <<<<<<<<
+[1] 01075546: 4928: synaLib: vfm: STATUS: _vfmStgClose <<<<<<<<
+[1] 01075546: 4928: synaLib: vfm: STATUS: vfmGetEnrolledUserList <<<<<<<<
+[1] 01075546: 4928: vfmUtil: vfmUtil: STATUS: vfmUtilSessionGetDeviceHandle >>>>>>>>
+[1] 01075546: 4928: vfmUtil: vfmUtil: STATUS: vfmUtilSessionGetDeviceHandle <<<<<<<<
+[1] 01075546: 4928: synaLib: vfm: STATUS: _vfmStgOnChipOpen >>>>>>>>
+[1] 01075546: 4928: synaLib: tudor: STATUS: stiTudorOpen >>>>>>>>
+[1] 01075546: 4928: synaLib: tudor: STATUS: stiTudorOpen <<<<<<<<
+
+[1] 01075546: 4928: synaLib: vfm: STATUS: vfmStgGetParamBlob >>>>>>>>
+[1] 01075546: 4928: synaLib: tudor: STATUS: stiTudorGetParameterBlob >>>>>>>>
+[1] 01075546: 4928: synaLib: tudor: STATUS: stiTudorGetParameterBlob <<<<<<<<
+[1] 01075546: 4928: synaLib: vfm: STATUS: vfmStgGetParamBlob <<<<<<<<
+
+[1] 01075546: 4928: synaLib: vfm: STATUS: vfmStgGetParamBlob >>>>>>>>
+[1] 01075546: 4928: synaLib: tudor: STATUS: stiTudorGetParameterBlob >>>>>>>>
+[1] 01075546: 4928: synaLib: tudor: STATUS: stiTudorGetParameterBlob <<<<<<<<
+[1] 01075546: 4928: synaLib: vfm: STATUS: vfmStgGetParamBlob <<<<<<<<
+
+[1] 01075546: 4928: synaLib: vfm: STATUS: _vfmStgClose >>>>>>>>
+[1] 01075546: 4928: synaLib: tudor: STATUS: stiTudorClose >>>>>>>>
+[1] 01075546: 4928: synaLib: tudor: STATUS: stiTudorClose <<<<<<<<
+[1] 01075546: 4928: synaLib: vfm: STATUS: _vfmStgClose <<<<<<<<
+[1] 01075546: 4928: synaLib: vfm: STATUS: _vfmStgClose >>>>>>>>
+[1] 01075546: 4928: synaLib: vfm: WARNING: Storage handle is null.
+[1] 01075546: 4928: synaLib: vfm: STATUS: _vfmStgClose <<<<<<<<

@@ -1,0 +1,1385 @@
+
+************* Preparing the environment for Debugger Extensions Gallery repositories **************
+   ExtensionRepository : Implicit
+   UseExperimentalFeatureForNugetShare : true
+   AllowNugetExeUpdate : true
+   NonInteractiveNuget : true
+   AllowNugetMSCredentialProviderInstall : true
+   AllowParallelInitializationOfLocalRepositories : true
+
+   EnableRedirectToV8JsProvider : false
+
+   -- Configuring repositories
+      ----> Repository : LocalInstalled, Enabled: true
+      ----> Repository : UserExtensions, Enabled: true
+
+>>>>>>>>>>>>> Preparing the environment for Debugger Extensions Gallery repositories completed, duration 0.000 seconds
+
+************* Waiting for Debugger Extensions Gallery to Initialize **************
+
+>>>>>>>>>>>>> Waiting for Debugger Extensions Gallery to Initialize completed, duration 0.032 seconds
+   ----> Repository : UserExtensions, Enabled: true, Packages count: 0
+   ----> Repository : LocalInstalled, Enabled: true, Packages count: 41
+
+Microsoft (R) Windows Debugger Version 10.0.27553.1004 AMD64
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+*** wait with pending attach
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+Deferred                                       srv*
+Symbol search path is: srv*
+Executable search path is:
+ModLoad: 00007ff6`28220000 00007ff6`2826b000   C:\Windows\System32\WUDFHost.exe
+ModLoad: 00007ffb`2de10000 00007ffb`2e027000   C:\Windows\SYSTEM32\ntdll.dll
+ModLoad: 00007ffb`2bcc0000 00007ffb`2bd84000   C:\Windows\System32\KERNEL32.DLL
+ModLoad: 00007ffb`2b1e0000 00007ffb`2b58c000   C:\Windows\System32\KERNELBASE.dll
+ModLoad: 00007ffb`2d7a0000 00007ffb`2db28000   C:\Windows\System32\combase.dll
+ModLoad: 00007ffb`2ba30000 00007ffb`2bb41000   C:\Windows\System32\ucrtbase.dll
+ModLoad: 00007ffb`2d3e0000 00007ffb`2d4f5000   C:\Windows\System32\RPCRT4.dll
+ModLoad: 00007ffb`29d20000 00007ffb`29d55000   C:\Windows\SYSTEM32\WUDFPlatform.dll
+(1154.1074): Break instruction exception - code 80000003 (first chance)
+ntdll!DbgBreakPoint:
+00007ffb`2deb3c90 cc              int     3
+0:003> bl
+     0 e Disable Clear u                      0001 (0001) (synawudfbiousb111!FxDriverEntryUm+622B0) ".printf\"\\ntudorSecureBioConnect SEND\\n\";.echo cmdId:;r edx;.echo sendBlobLen:;dd @r8  L1;.echo sendBlobData:;db poi(@r8 + 8) Lwo(@r8);g"
+     1 e Disable Clear u                      0001 (0001) (synawudfbiousb111!FxDriverEntryUm+6260b) ".printf\"\\ntudorSecureBioConnect RECV\\n\";.echo recvBlobLen:;dd @rax L1;.echo recvBlobData:;db poi(@rax + 8) Lwo(@rax);g"
+0:003> g
+UMDF: User-mode debugger found - breaking in.
+(1154.1920): Break instruction exception - code 80000003 (first chance)
+KERNELBASE!wil::details::DebugBreak+0x2:
+00007ffb`2b2f8072 cc              int     3
+0:000> g
+ModLoad: 00007ffb`2a170000 00007ffb`2a188000   C:\Windows\SYSTEM32\kernel.appcore.dll
+ModLoad: 00007ffb`2dca0000 00007ffb`2dd47000   C:\Windows\System32\msvcrt.dll
+ModLoad: 00007ffb`2b850000 00007ffb`2b8cb000   C:\Windows\System32\bcryptPrimitives.dll
+ModLoad: 00007ffb`2cfc0000 00007ffb`2d06a000   C:\Windows\System32\sechost.dll
+ModLoad: 00007ffb`2b590000 00007ffb`2b5b8000   C:\Windows\System32\bcrypt.dll
+ModLoad: 00007ffb`2ad00000 00007ffb`2ad2c000   C:\Windows\System32\DEVOBJ.dll
+ModLoad: 00007ffb`2ad30000 00007ffb`2ad7e000   C:\Windows\SYSTEM32\cfgmgr32.dll
+ModLoad: 00007ffb`25f70000 00007ffb`25f7c000   C:\Windows\System32\WINUSB.DLL
+ModLoad: 00007ffa`ec060000 00007ffa`ec21b000   c:\windows\system32\drivers\umdf\synawudfbiousb111.dll
+ModLoad: 00007ffb`2cc40000 00007ffb`2ccf2000   C:\Windows\System32\ADVAPI32.dll
+ModLoad: 00007ffb`2d5f0000 00007ffb`2d795000   C:\Windows\System32\ole32.dll
+ModLoad: 00007ffb`2b140000 00007ffb`2b1da000   C:\Windows\System32\msvcp_win.dll
+ModLoad: 00007ffb`2d1d0000 00007ffb`2d1f9000   C:\Windows\System32\GDI32.dll
+ModLoad: 00007ffb`2b990000 00007ffb`2b9b6000   C:\Windows\System32\win32u.dll
+ModLoad: 00007ffb`2b730000 00007ffb`2b849000   C:\Windows\System32\gdi32full.dll
+ModLoad: 00007ffb`2d210000 00007ffb`2d3be000   C:\Windows\System32\USER32.dll
+ModLoad: 00007ffb`2c6e0000 00007ffb`2cb54000   C:\Windows\System32\SETUPAPI.dll
+ModLoad: 00007ffb`2b5c0000 00007ffb`2b727000   C:\Windows\System32\CRYPT32.dll
+ModLoad: 00007ffb`20da0000 00007ffb`20db0000   C:\Windows\System32\WppRecorderUM.dll
+ModLoad: 00007ffb`2b000000 00007ffb`2b04d000   C:\Windows\SYSTEM32\powrprof.dll
+ModLoad: 00007ffb`2af10000 00007ffb`2af1a000   C:\Windows\System32\DPAPI.DLL
+ModLoad: 00007ffb`2afe0000 00007ffb`2aff3000   C:\Windows\System32\UMPDC.dll
+ModLoad: 00007ffb`18930000 00007ffb`18b62000   C:\Windows\System32\dbghelp.dll
+ModLoad: 00007ffb`2cb60000 00007ffb`2cc37000   C:\Windows\System32\OLEAUT32.dll
+ModLoad: 00007ffb`18df0000 00007ffb`18e9a000   C:\Windows\System32\WUDFx02000.dll
+[1] 45623000: 8820: vfmUtil: vfmUtil: STATUS: vfmUtilSessionInit >>>>>>>>
+[1] 45623000: 8820: vfmUtil: vfmUtil: STATUS: vfmUtilSessionInit <<<<<<<<
+[1] 45623000: 8820: vfmUtil: vfmUtil: STATUS: vfmUtilDeviceOpenWithParam >>>>>>>>
+[1] 45623000: 8820: vfmUtil: vfmUtil: STATUS: _vfmUtilDeviceOpenWithParam >>>>>>>>
+[1] 45623000: 8820: synaLib: vfm: STATUS: vfmInitialize >>>>>>>>
+[1] 45623000: 8820: synaLib: palCrypto: STATUS: palCryptoInitialize >>>>>>>>
+ModLoad: 00007ffb`2a850000 00007ffb`2a86b000   C:\Windows\System32\CRYPTSP.dll
+ModLoad: 00007ffb`2a0d0000 00007ffb`2a105000   C:\Windows\system32\rsaenh.dll
+ModLoad: 00007ffb`2a6e0000 00007ffb`2a708000   C:\Windows\System32\USERENV.dll
+ModLoad: 00007ffb`2b070000 00007ffb`2b091000   C:\Windows\System32\profapi.dll
+ModLoad: 00007ffb`2a840000 00007ffb`2a84c000   C:\Windows\System32\CRYPTBASE.dll
+[1] 45623000: 8820: synaLib: palCrypto: STATUS: palCryptoInitialize <<<<<<<<
+[1] 45623000: 8820: synaLib: palSensor: STATUS: palUsbDriverInit >>>>>>>>
+[1] 45623000: 8820: synaLib: palSensor: STATUS: palUsbDriverInit <<<<<<<<
+[1] 45623000: 8820: synaLib: tudor: STATUS: tudorInitModule >>>>>>>>
+[1] 45623000: 8820: synaLib: tudor: STATUS: ssiTudor version: hisd/sw/prerelease/6_0_58_1111_20211215-1-g8a3ccc3
+[1] 45623000: 8820: synaLib: tudor: STATUS: tudorInitModule <<<<<<<<
+[1] 45623000: 8820: synaLib: vfm: STATUS: vfmInitialize <<<<<<<<
+[1] 45623000: 8820: synaLib: vfm: STATUS: vfmDeviceOpen >>>>>>>>
+[1] 45623000: 8820: synaLib: palSensor: STATUS: palUsbDriverOpen >>>>>>>>
+[1] 45623000: 8820: synaLib: palRuntime: STATUS: Error opening Syna key registry: SOFTWARE\Syna\useWbf
+[1] 45623000: 8820: synaLib: palRuntime: STATUS: Default value (0) will be returned.
+[1] 45623000: 8820: synaLib: palSensor: STATUS: palWinUsbDeviceHandleOpen >>>>>>>>
+[1] 45623015: 8820: synaLib: palSensor: STATUS: Setting interruptEndpoint to 2.
+[1] 45623015: 8820: synaLib: palSensor: STATUS: palWinUsbDeviceHandleOpen <<<<<<<<
+[1] 45623015: 8820: synaLib: palRuntime: STATUS: palThreadBegin >>>>>>>>
+[1] 45623015: 8820: synaLib: palRuntime: STATUS: palThreadBegin <<<<<<<<
+[1] 45623031: 8820: synaLib: palSensor: STATUS: palUsbDriverOpen <<<<<<<<
+[1] 45623031: 8820: synaLib: palSensor: STATUS: palUsbDriverIoControl >>>>>>>>
+[1] 45623031: 8820: synaLib: palSensor: WARNING: Unknown Request=0x0000000C
+[1] 45623031: 8820: synaLib: palSensor: STATUS: palUsbDriverIoControl <<<<<<<<
+[1] 45623046: 8820: synaLib: tudor: STATUS: tudorOpen >>>>>>>>
+[1] 45623046: 8820: synaLib: tudor: STATUS: tudorUsbProtoOpen >>>>>>>>
+[1] 45623046: 8820: synaLib: tudor: STATUS: tudorUsbProtoOpen <<<<<<<<
+[1] 45623046: 8820: synaLib: tudor: STATUS: tudorOpen <<<<<<<<
+[1] 45623062: 8820: synaLib: vfm: STATUS: vfmDeviceOpen <<<<<<<<
+[1] 45623062: 8820: vfmUtil: vfmUtil: STATUS: _vfmUtilDeviceOpenWithParam <<<<<<<<
+[1] 45623062: 8820: vfmUtil: vfmUtil: STATUS: vfmUtilDeviceOpenWithParam <<<<<<<<
+[1] 45623062: 8820: vfmUtil: vfmUtil: STATUS: vfmUtilSessionGetDeviceHandle >>>>>>>>
+[1] 45623062: 8820: vfmUtil: vfmUtil: STATUS: vfmUtilSessionGetDeviceHandle <<<<<<<<
+[1] 45623062: 8820: synaLib: vfm: STATUS: vfmStgModuleInit >>>>>>>>
+[1] 45623062: 8820: synaLib: tudor: STATUS: stiTudorInitModule >>>>>>>>
+[1] 45623062: 8820: synaLib: tudor: STATUS: stiTudorInitModule <<<<<<<<
+[1] 45623062: 8820: synaLib: vfm: STATUS: vfmStgModuleInit <<<<<<<<
+[1] 45623062: 8820: vfmUtil: vfmUtil: STATUS: vfmUtilSessionGetDeviceHandle >>>>>>>>
+[1] 45623062: 8820: vfmUtil: vfmUtil: STATUS: vfmUtilSessionGetDeviceHandle <<<<<<<<
+[1] 45623171: 8912: synaLib: vfm: STATUS: vfmDeviceInitialize >>>>>>>>
+[1] 45623171: 8912: synaLib: tudor: STATUS: tudorInitDevice >>>>>>>>
+[1] 45623171: 8912: synaLib: tudor: STATUS: _tudorInitDevice >>>>>>>>
+[1] 45623171: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 45623171: 8912: synaLib: palSensor: STATUS: palUsbDriverIoControl >>>>>>>>
+[1] 45623171: 8912: synaLib: palSensor: STATUS: palWinUsbGetPipeTimeout >>>>>>>>
+[1] 45623171: 8912: synaLib: palSensor: STATUS: palWinHidClose >>>>>>>>
+[1] 45623171: 8912: synaLib: palSensor: STATUS: palWinHidClose <<<<<<<<
+[1] 45623171: 8912: synaLib: palSensor: STATUS: palWinUsbGetPipeTimeout <<<<<<<<
+[1] 45623171: 8912: synaLib: palSensor: STATUS: palUsbDriverIoControl <<<<<<<<
+[1] 45623171: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 45623171: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 45623171: 8912: synaLib: palSensor: STATUS: palUsbDriverIoControl >>>>>>>>
+[1] 45623171: 8912: synaLib: palSensor: STATUS: palUsbDriverIoControl <<<<<<<<
+[1] 45623203: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+
+tudorSecureBioConnect SEND
+cmdId:
+edx=1
+sendBlobLen:
+000000b1`0ebff660  00000001
+sendBlobData:
+00000259`ed6c4c90  01                                               .
+[1] 45623234: 8912: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_GET_VERSION
+[1] 45623234: 8912: synaLib: tudor: WARNING: TLS context is not initialized.
+[1] 45623234: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 45623234: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite >>>>>>>>
+[1] 45623265: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite <<<<<<<<
+[1] 45623265: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 45623265: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 45623265: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 45623281: 8912: synaLib: tudor: WARNING: TLS context is not initialized.
+
+tudorSecureBioConnect RECV
+recvBlobLen:
+000000b1`0ebff670  00000026
+recvBlobData:
+00000259`ed6df3e0  00 00 5f 41 27 61 2f 14-35 00 0a 01 01 41 01 c1  .._A'a/.5....A..
+00000259`ed6df3f0  00 00 31 5b a2 f0 37 72-0f a1 00 00 00 00 01 00  ..1[..7r........
+00000259`ed6df400  00 00 00 00 00 03                                ......
+[1] 45623296: 8912: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_GET_VERSION
+[1] 45623296: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 45623296: 8912: synaLib: palSensor: STATUS: palUsbDriverIoControl >>>>>>>>
+[1] 45623296: 8912: synaLib: palSensor: STATUS: palWinUsbGetDeviceDescriptor >>>>>>>>
+[1] 45623296: 8912: synaLib: palSensor: STATUS: palWinUsbGetDeviceDescriptor <<<<<<<<
+[1] 45623296: 8912: synaLib: palSensor: STATUS: palUsbDriverIoControl <<<<<<<<
+[1] 45623296: 8912: synaLib: tudor: STATUS: VCSDRV_IOCTL_DEVICE_INFO ioctl
+[1] 45623296: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+
+tudorSecureBioConnect SEND
+cmdId:
+edx=8e
+sendBlobLen:
+000000b1`0ebff5f0  00000011
+sendBlobData:
+00000259`ed6e2090  8e 09 00 02 00 00 00 00-00 00 00 00 00 00 00 00  ................
+00000259`ed6e20a0  00                                               .
+[1] 45623312: 8912: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_IOTA_FIND
+[1] 45623312: 8912: synaLib: tudor: WARNING: TLS context is not initialized.
+[1] 45623312: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 45623312: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite >>>>>>>>
+[1] 45623312: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite <<<<<<<<
+[1] 45623312: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 45623312: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 45623312: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 45623312: 8912: synaLib: tudor: WARNING: TLS context is not initialized.
+
+tudorSecureBioConnect RECV
+recvBlobLen:
+000000b1`0ebff5e0  0000001a
+recvBlobData:
+00000259`ed6f2340  00 00 14 00 00 00 10 00-09 00 10 0e 00 00 67 00  ..............g.
+00000259`ed6f2350  00 00 05 00 00 00 00 00-00 00                    ..........
+[1] 45623312: 8912: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_IOTA_FIND
+
+tudorSecureBioConnect SEND
+cmdId:
+edx=8e
+sendBlobLen:
+000000b1`0ebff5f0  00000011
+sendBlobData:
+00000259`ed6e2090  8e 1a 00 02 00 00 00 00-00 00 00 00 00 00 00 00  ................
+00000259`ed6e20a0  00                                               .
+[1] 45623312: 8912: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_IOTA_FIND
+[1] 45623312: 8912: synaLib: tudor: WARNING: TLS context is not initialized.
+[1] 45623312: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 45623312: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite >>>>>>>>
+[1] 45623312: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite <<<<<<<<
+[1] 45623328: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 45623343: 5104: synaLib: vfm: STATUS: vfmDeviceInfoGet >>>>>>>>
+[1] 45623343: 5104: synaLib: tudor: STATUS: tudorGetDeviceInfo >>>>>>>>
+[1] 45623343: 5104: synaLib: tudor: STATUS: tudorGetDeviceInfo <<<<<<<<
+[1] 45623343: 5104: synaLib: tudor: STATUS: tudorIoctl opCode: (22)
+[1] 45623343: 5104: synaLib: vfm: STATUS: vfmDeviceInfoGet <<<<<<<<
+[1] 45623359: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 45623375: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 45623375: 8912: synaLib: tudor: WARNING: TLS context is not initialized.
+
+tudorSecureBioConnect RECV
+recvBlobLen:
+000000b1`0ebff5e0  00000052
+recvBlobData:
+00000259`ed6f2340  00 00 4c 00 00 00 48 00-1a 00 ab c2 02 00 be c0  ..L...H.........
+00000259`ed6f2350  02 00 bc 1b 00 00 1a 08-68 42 48 00 42 00 50 00  ........hBH.B.P.
+00000259`ed6f2360  03 00 6b 01 20 03 00 00-00 00 10 27 b4 00 68 42  ..k. ......'..hB
+00000259`ed6f2370  70 17 00 00 00 00 50 00-64 00 4c 01 f4 01 8b 02  p.....P.d.L.....
+00000259`ed6f2380  00 02 19 00 19 00 00 00-00 00 00 00 00 00 f4 01  ................
+00000259`ed6f2390  00 00                                            ..
+[1] 45623390: 8912: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_IOTA_FIND
+
+tudorSecureBioConnect SEND
+cmdId:
+edx=8e
+sendBlobLen:
+000000b1`0ebff5f0  00000011
+sendBlobData:
+00000259`ed6e2330  8e 2f 00 02 00 00 00 00-00 00 00 00 00 00 00 00  ./..............
+00000259`ed6e2340  00                                               .
+[1] 45623390: 8912: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_IOTA_FIND
+[1] 45623390: 8912: synaLib: tudor: WARNING: TLS context is not initialized.
+[1] 45623390: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 45623390: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite >>>>>>>>
+[1] 45623390: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite <<<<<<<<
+[1] 45623390: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 45623406: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 45623406: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 45623406: 8912: synaLib: tudor: WARNING: TLS context is not initialized.
+
+tudorSecureBioConnect RECV
+recvBlobLen:
+000000b1`0ebff5e0  0000001a
+recvBlobData:
+00000259`ed6f1e30  00 00 14 00 00 00 10 00-2f 00 01 00 00 01 0a 00  ......../.......
+00000259`ed6f1e40  00 00 01 00 00 04 32 00-00 00                    ......2...
+[1] 45623406: 8912: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_IOTA_FIND
+
+tudorSecureBioConnect SEND
+cmdId:
+edx=af
+sendBlobLen:
+000000b1`0ebff658  00000005
+sendBlobData:
+00000259`ed6c4ba0  af 01 00 00 00                                   .....
+[1] 45623406: 8912: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_HW_INFO_GET
+[1] 45623406: 8912: synaLib: tudor: WARNING: TLS context is not initialized.
+[1] 45623421: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 45623437: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite >>>>>>>>
+[1] 45623437: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite <<<<<<<<
+[1] 45623437: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 45623437: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 45623437: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 45623437: 8912: synaLib: tudor: WARNING: TLS context is not initialized.
+
+tudorSecureBioConnect RECV
+recvBlobLen:
+000000b1`0ebff668  0000000a
+recvBlobData:
+00000259`ed6e2090  00 00 ea 5c 59 15 01 ff-ff ff                    ...\Y.....
+
+tudorSecureBioConnect RECV
+recvBlobLen:
+000000b1`0ebff668  0000000a
+recvBlobData:
+00000259`ed6e2090  00 00 ea 5c 59 15 01 ff-ff ff                    ...\Y.....
+[1] 45623453: 8912: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_HW_INFO_GET
+[1] 45623453: 8912: synaLib: tudor: STATUS: Query the HW SBL info as following:
+[1] 45623453: 8912: synaLib: tudor: STATUS: HASH: 0x15595cea, status: 1
+
+tudorSecureBioConnect SEND
+cmdId:
+edx=19
+sendBlobLen:
+000000b1`0ebff840  00000001
+sendBlobData:
+00000259`ed6c4cc0  19                                               .
+[1] 45623453: 8912: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_GET_STARTINFO
+[1] 45623453: 8912: synaLib: tudor: WARNING: TLS context is not initialized.
+[1] 45623453: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 45623453: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite >>>>>>>>
+[1] 45623453: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite <<<<<<<<
+[1] 45623453: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 45623453: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 45623453: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 45623453: 8912: synaLib: tudor: WARNING: TLS context is not initialized.
+
+tudorSecureBioConnect RECV
+recvBlobLen:
+000000b1`0ebff850  00000044
+recvBlobData:
+00000259`ed6d4e60  00 00 00 03 01 02 00 00-f5 e8 fc a3 2f 66 8e 24  ............/f.$
+00000259`ed6d4e70  07 fa be 9c 00 00 00 00-6b 72 24 50 f1 51 cf ac  ........kr$P.Q..
+00000259`ed6d4e80  05 7c b9 a7 fc e1 b9 38-5b d2 ca ea bf e3 95 76  .|.....8[......v
+00000259`ed6d4e90  67 08 e5 e7 31 6f b5 21-0b 09 a1 7c c4 87 bf 32  g...1o.!...|...2
+00000259`ed6d4ea0  1d 4e d9 10                                      .N..
+[1] 45623468: 8912: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_GET_STARTINFO
+[1] 45623468: 8912: synaLib: tudor: STATUS:  ** STARTINFO **
+start_type = 0
+reset_type = 3
+start_status = 0x00000201
+sanityPanic = 0xa3fce8f5
+sanityCode = 0x248e662f
+[1] 45623468: 8912: synaLib: tudor: STATUS:  reset_nvinfo[0] = 0x9cbefa07
+[1] 45623468: 8912: synaLib: tudor: STATUS:  reset_nvinfo[1] = 0x00000000
+[1] 45623468: 8912: synaLib: tudor: STATUS:  reset_nvinfo[2] = 0x5024726b
+[1] 45623468: 8912: synaLib: tudor: STATUS:  reset_nvinfo[3] = 0xaccf51f1
+[1] 45623468: 8912: synaLib: tudor: STATUS:  reset_nvinfo[4] = 0xa7b97c05
+[1] 45623468: 8912: synaLib: tudor: STATUS:  reset_nvinfo[5] = 0x38b9e1fc
+[1] 45623468: 8912: synaLib: tudor: STATUS:  reset_nvinfo[6] = 0xeacad25b
+[1] 45623468: 8912: synaLib: tudor: STATUS:  reset_nvinfo[7] = 0x7695e3bf
+[1] 45623468: 8912: synaLib: tudor: STATUS:  reset_nvinfo[8] = 0xe7e50867
+[1] 45623468: 8912: synaLib: tudor: STATUS:  reset_nvinfo[9] = 0x21b56f31
+[1] 45623468: 8912: synaLib: tudor: STATUS:  reset_nvinfo[10] = 0x7ca1090b
+[1] 45623468: 8912: synaLib: tudor: STATUS:  reset_nvinfo[11] = 0x32bf87c4
+[1] 45623468: 8912: synaLib: tudor: STATUS:  reset_nvinfo[12] = 0x10d94e1d
+[1] 45623468: 8912: synaLib: tudor: STATUS: tudorTlsEstablishSession >>>>>>>>
+[1] 45623468: 8912: synaLib: tudor: STATUS: tudorSecurityIsPairingDataPresent >>>>>>>>
+    [1] 45623468: 8912: synaLib: tudor: WARNING: Pairing data is not present. Need to perform pairing
+[1] 45623468: 8912: synaLib: tudor: STATUS: tudorSecurityIsPairingDataPresent <<<<<<<<
+
+tudorSecureBioConnect SEND
+cmdId:
+edx=3e
+sendBlobLen:
+000000b1`0ebff5c8  00000001
+sendBlobData:
+00000259`ed6c4cc0  3e                                               >
+[1] 45623500: 8912: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_STORAGE_INFO_GET
+[1] 45623500: 8912: synaLib: tudor: WARNING: TLS context is not initialized.
+[1] 45623500: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 45623500: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite >>>>>>>>
+[1] 45623500: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite <<<<<<<<
+[1] 45623515: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 45623515: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 45623515: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 45623515: 8912: synaLib: tudor: WARNING: TLS context is not initialized.
+
+tudorSecureBioConnect RECV
+recvBlobLen:
+000000b1`0ebff5d8  00000034
+recvBlobData:
+00000259`ed6a13f0  00 00 ff ff ff ff ff ff-ff ff ff ff ff ff 03 00  ................
+00000259`ed6a1400  01 02 04 00 00 00 00 51-00 e0 09 00 02 02 07 00  .......Q........
+00000259`ed6a1410  00 f0 09 51 00 10 00 00-03 02 00 00 00 e0 09 51  ...Q...........Q
+00000259`ed6a1420  00 10 00 00                                      ....
+[1] 45623531: 8912: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_STORAGE_INFO_GET
+
+tudorSecureBioConnect SEND
+cmdId:
+edx=40
+sendBlobLen:
+000000b1`0ebff6b8  0000000d
+sendBlobData:
+00000259`ed6e2090  40 02 00 ff ff 00 00 00-00 00 10 00 00           @............
+[1] 45623562: 8912: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_STORAGE_PART_READ
+[1] 45623562: 8912: synaLib: tudor: WARNING: TLS context is not initialized.
+[1] 45623562: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 45623562: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite >>>>>>>>
+[1] 45623562: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite <<<<<<<<
+[1] 45623562: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 45623578: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 45623578: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 45623578: 8912: synaLib: tudor: WARNING: TLS context is not initialized.
+
+tudorSecureBioConnect RECV
+recvBlobLen:
+000000b1`0ebff6c8  00001008
+recvBlobData:
+00000259`ed6f1b10  00 00 00 10 00 00 00 00-01 00 04 00 67 ab dd 72  ............g..r
+00000259`ed6f1b20  10 24 f0 ff 4e 0b 3f 4c-2f c1 3b c5 ba d4 2d 0b  .$..N.?L/.;...-.
+00000259`ed6f1b30  78 51 d4 56 d8 8d 20 3d-15 aa a4 50 01 00 00 00  xQ.V.. =...P....
+00000259`ed6f1b40  02 00 fc 06 2f 05 ff d3-11 6d 6e 4e 78 8b 49 54  ..../....mnNx.IT
+00000259`ed6f1b50  cb bd 6b 36 37 f7 0a 54-5d 29 52 ef 7a ca a7 ee  ..k67..T])R.z...
+00000259`ed6f1b60  09 30 9d 1f 01 00 00 00-00 00 00 00 e6 05 00 00  .0..............
+00000259`ed6f1b70  06 01 00 00 01 00 00 00-d0 8c 9d df 01 15 d1 11  ................
+00000259`ed6f1b80  8c 7a 00 c0 4f c2 97 eb-01 00 00 00 2c 0b d9 cb  .z..O.......,...
+00000259`ed6f1b90  41 c9 0a 42 b8 92 9b c0-9f e2 54 b0 00 00 00 00  A..B......T.....
+00000259`ed6f1ba0  02 00 00 00 00 00 10 66-00 00 00 01 00 00 20 00  .......f...... .
+00000259`ed6f1bb0  00 00 22 b8 84 a0 59 56-47 d1 4e 83 0c fd 8c c9  .."...YVG.N.....
+00000259`ed6f1bc0  62 8d ba 2b af 8b 1a b1-c1 61 67 fb b8 a8 b1 c1  b..+.....ag.....
+00000259`ed6f1bd0  f3 44 00 00 00 00 0e 80-00 00 00 02 00 00 20 00  .D............ .
+00000259`ed6f1be0  00 00 cc e4 70 15 a4 62-17 9f ff 47 2d 76 c4 34  ....p..b...G-v.4
+00000259`ed6f1bf0  5f 78 75 b9 ae 82 1c 01-76 86 ac f4 76 9a 97 f2  _xu.....v...v...
+00000259`ed6f1c00  6d 77 10 05 00 00 e6 25-15 b3 3b e4 51 16 2d c0  mw.....%..;.Q.-.
+00000259`ed6f1c10  ce f8 b3 29 d0 ba 44 c1-92 f3 a2 ac 54 06 9c c3  ...)..D.....T...
+00000259`ed6f1c20  f8 50 7d c8 45 35 5d 21-c1 e2 20 62 9c a7 1c a2  .P}.E5]!.. b....
+00000259`ed6f1c30  1d 28 d2 80 19 48 b5 5f-d1 df 51 6b bd f8 98 9e  .(...H._..Qk....
+00000259`ed6f1c40  57 3a b9 a5 ac 9b 98 ee-be 27 aa fb da 78 8d f2  W:.......'...x..
+00000259`ed6f1c50  20 3b 78 59 9b ba ac 03-d0 09 45 32 8b 19 91 c7   ;xY......E2....
+00000259`ed6f1c60  78 d0 03 71 c1 e7 99 f2-81 30 ac f6 0b a6 b6 2b  x..q.....0.....+
+00000259`ed6f1c70  47 02 29 8c 4a 59 95 a7-88 00 82 25 9f 3e 44 74  G.).JY.....%.>Dt
+00000259`ed6f1c80  6b 65 15 83 cd c3 97 2a-c4 70 9f 9a fd 59 cf cd  ke.....*.p...Y..
+00000259`ed6f1c90  56 9a ae ed 24 98 88 3c-25 ca c1 c6 d6 dc 36 6d  V...$..<%.....6m
+00000259`ed6f1ca0  47 ef b5 2d e6 1b 66 3a-4d f2 10 ca fa 01 ed 07  G..-..f:M.......
+00000259`ed6f1cb0  08 25 5a e5 ff 37 b0 aa-c1 66 c6 62 75 92 4e 68  .%Z..7...f.bu.Nh
+00000259`ed6f1cc0  e5 8d de c2 96 bd 0e e5-4a b7 20 02 1d c7 b4 e4  ........J. .....
+00000259`ed6f1cd0  09 b0 26 de 28 c7 35 fa-43 fb df 14 b0 32 0b 5d  ..&.(.5.C....2.]
+00000259`ed6f1ce0  2c 6b c9 8c fa 02 63 9f-bd 10 c8 5f 6b a1 5f 12  ,k....c...._k._.
+00000259`ed6f1cf0  de 7e b2 52 02 a0 21 9f-c2 1d 9b 85 99 2b 01 a1  .~.R..!......+..
+00000259`ed6f1d00  f6 16 24 24 66 df c8 2b-f3 80 37 38 a6 5e 3e 4c  ..$$f..+..78.^>L
+00000259`ed6f1d10  79 5b 66 1c 18 2c b8 2e-48 0e dc dc 8d 13 96 cf  y[f..,..H.......
+00000259`ed6f1d20  d7 a4 b0 ce 44 96 e0 f2-24 e3 1f ee 22 be 8e 80  ....D...$..."...
+00000259`ed6f1d30  36 65 6d 48 b9 cc d4 8c-7b 23 2b b3 14 46 3b e7  6emH....{#+..F;.
+00000259`ed6f1d40  7c db bd ae 5d c7 3f e2-df 29 36 fd 85 3b c7 ca  |...].?..)6..;..
+00000259`ed6f1d50  1a c7 c7 c9 5b 60 c8 07-74 1a b1 0d 6b 5a c9 ea  ....[`..t...kZ..
+00000259`ed6f1d60  1b 1d 53 87 18 df 4d 29-a5 63 a9 87 5d 7f d6 64  ..S...M).c..]..d
+00000259`ed6f1d70  f9 a0 00 3f d8 9a 84 dd-0e 6c 10 99 72 6d 6a 4c  ...?.....l..rmjL
+00000259`ed6f1d80  74 7c 87 03 33 fb 50 97-74 49 03 91 71 05 30 18  t|..3.P.tI..q.0.
+00000259`ed6f1d90  c7 93 3c f4 93 dc 33 ee-9e 21 dc a2 88 d4 78 37  ..<...3..!....x7
+00000259`ed6f1da0  e6 2a ee 4b eb 76 ca 4e-79 0b 8c 1d 19 7d 33 75  .*.K.v.Ny....}3u
+00000259`ed6f1db0  9a 7f e9 89 b9 3b 12 9d-ad 9f d4 b0 0a ac 32 cd  .....;........2.
+00000259`ed6f1dc0  76 f0 b6 ba 65 0c cf 07-cc ef 78 44 73 72 a7 93  v...e.....xDsr..
+00000259`ed6f1dd0  f1 6e 89 f2 95 96 dc cf-23 6f 14 25 55 8d bd 79  .n......#o.%U..y
+00000259`ed6f1de0  51 fe 12 87 02 9e 17 8f-5b 6d 86 c3 45 aa ae de  Q.......[m..E...
+00000259`ed6f1df0  64 91 de 01 bb 45 e5 ec-08 94 7d 1a 73 07 03 26  d....E....}.s..&
+00000259`ed6f1e00  be 05 84 3d 00 d9 4d 1d-6e 01 71 dd ea 07 d2 f6  ...=..M.n.q.....
+00000259`ed6f1e10  f4 e3 3b f7 40 a3 f6 2f-70 ea eb 58 8d 95 97 0c  ..;.@../p..X....
+00000259`ed6f1e20  06 ac 12 c9 fc 2a 00 94-e3 1d 83 8d e7 82 f9 34  .....*.........4
+00000259`ed6f1e30  a4 b1 b6 46 ae 5e f7 a5-6a 1b 9b be bf b8 f7 d9  ...F.^..j.......
+00000259`ed6f1e40  f1 bb bb 95 ea 2c b7 28-9a 36 ec 1f f3 97 33 8b  .....,.(.6....3.
+00000259`ed6f1e50  73 84 2c 0e 0b b1 76 fa-13 d6 fa e5 86 a5 f0 d1  s.,...v.........
+00000259`ed6f1e60  5d 68 d2 5f 8d ea dc 8c-44 ee 53 21 eb 7a 87 87  ]h._....D.S!.z..
+00000259`ed6f1e70  06 4d d8 71 dd 69 64 27-05 6b 25 f8 f0 92 9b 08  .M.q.id'.k%.....
+00000259`ed6f1e80  3e 42 ec 3b 49 0b 8e 34-fd 82 02 6a d2 4a 14 6d  >B.;I..4...j.J.m
+00000259`ed6f1e90  9a 5d 6c c9 d6 ea 39 63-ca 89 3b b2 3c b9 8b 00  .]l...9c..;.<...
+00000259`ed6f1ea0  30 74 24 ff 5c 01 17 37-db 27 58 76 61 3b 30 b2  0t$.\..7.'Xva;0.
+00000259`ed6f1eb0  6e 64 9c 7f b6 0f 51 b2-b4 8c 21 b3 12 f6 c1 a4  nd....Q...!.....
+00000259`ed6f1ec0  8b 15 29 81 1f ee 54 25-42 66 8b 91 29 2c 71 38  ..)...T%Bf..),q8
+00000259`ed6f1ed0  fb 31 60 2f 6a 3e 01 66-7e 45 7b 6e 26 c9 f8 43  .1`/j>.f~E{n&..C
+00000259`ed6f1ee0  51 06 1a af 9c 53 07 6d-aa d8 fa 80 09 a3 4e 3d  Q....S.m......N=
+00000259`ed6f1ef0  ff 39 b6 fd 3f e3 8f f3-af 94 35 5c 34 61 d4 32  .9..?.....5\4a.2
+00000259`ed6f1f00  02 19 49 dc 10 e9 c6 1f-78 11 27 bf 3f 44 0e 5d  ..I.....x.'.?D.]
+00000259`ed6f1f10  11 84 a2 65 d4 0f 33 fa-72 04 ac 17 36 fa 65 28  ...e..3.r...6.e(
+00000259`ed6f1f20  c8 c7 c9 24 59 8b 9e b5-73 df ef 9e da bf 1e 1c  ...$Y...s.......
+00000259`ed6f1f30  d5 63 3c 69 c0 e6 11 1c-ab f0 21 b1 d8 cf 9f a5  .c<i......!.....
+00000259`ed6f1f40  13 08 8a 30 9b 7b 47 aa-f3 c1 d1 83 46 73 99 81  ...0.{G.....Fs..
+00000259`ed6f1f50  31 28 74 64 f6 1e 57 96-f5 c9 90 21 2b b4 a5 dd  1(td..W....!+...
+00000259`ed6f1f60  49 0d 53 54 28 c0 89 a9-28 e2 98 9e 08 12 e2 92  I.ST(...(.......
+00000259`ed6f1f70  56 b9 44 ce c1 25 91 55-08 4e 50 79 7a d4 62 a3  V.D..%.U.NPyz.b.
+00000259`ed6f1f80  e1 70 2a 18 31 30 1f e2-95 6f 5e e0 65 30 a8 b7  .p*.10...o^.e0..
+00000259`ed6f1f90  38 ca 89 9c 46 7d 10 49-83 bf 21 f8 c8 8e 5e 06  8...F}.I..!...^.
+00000259`ed6f1fa0  52 1e 89 0c 6c 22 43 be-ce 45 9c 71 2a 55 09 9d  R...l"C..E.q*U..
+00000259`ed6f1fb0  0c 08 57 ce 3d 0b e9 02-c9 f7 31 20 ad 1a a7 b8  ..W.=.....1 ....
+00000259`ed6f1fc0  ef e6 1e fb 10 37 8c f2-26 96 8f 2b 40 df 6f 7f  .....7..&..+@.o.
+00000259`ed6f1fd0  e1 e2 66 3f 99 5f 4e bc-b0 25 61 db ae 42 94 45  ..f?._N..%a..B.E
+00000259`ed6f1fe0  96 8e ce d1 6b 42 17 90-0a 25 6d cf 76 f4 4c 63  ....kB...%m.v.Lc
+00000259`ed6f1ff0  bc 5f 19 76 f6 61 af 7d-e4 e0 20 48 96 83 b3 5c  ._.v.a.}.. H...\
+00000259`ed6f2000  b7 71 af c1 30 36 a4 b2-98 37 51 97 e7 d0 68 2a  .q..06...7Q...h*
+00000259`ed6f2010  63 06 d1 4b f6 69 8d 87-b6 56 bf 59 4d f9 79 fa  c..K.i...V.YM.y.
+00000259`ed6f2020  6f 9d 3e 4b 49 ae 7e 64-bc 55 a2 6a 91 a3 fc 2e  o.>KI.~d.U.j....
+00000259`ed6f2030  b4 49 b4 40 3f f4 69 d8-c8 b0 84 cb 6a 31 76 9d  .I.@?.i.....j1v.
+00000259`ed6f2040  ec 40 69 0a 11 87 88 0b-82 e2 0d 1f 7b 8e 04 bb  .@i.........{...
+00000259`ed6f2050  b9 38 d3 f0 06 a7 09 87-1a 99 f7 f8 7c 4a 4c 8a  .8..........|JL.
+00000259`ed6f2060  73 6d f4 2f b0 90 05 12-65 b8 72 59 eb 5c 3c d7  sm./....e.rY.\<.
+00000259`ed6f2070  7e 3e c1 2d 11 a8 09 48-56 2f 02 2e 0e c4 31 e9  ~>.-...HV/....1.
+00000259`ed6f2080  aa 35 ed a9 fb b4 9b 28-25 6b 95 a6 a7 48 f4 bd  .5.....(%k...H..
+00000259`ed6f2090  5d c7 09 9d b6 f2 6a b5-8f 4f cb 0b 1c fb be 2e  ].....j..O......
+00000259`ed6f20a0  1c 05 f3 dc 2c 24 d7 d4-8a 5c 76 95 ca 3e d6 11  ....,$...\v..>..
+00000259`ed6f20b0  3e 41 12 26 f9 15 a9 14-fb a4 b7 77 3d d5 8d f6  >A.&.......w=...
+00000259`ed6f20c0  94 13 5d e2 61 7f 0c 2d-6d 42 96 1f 96 df b4 0c  ..].a..-mB......
+00000259`ed6f20d0  4d 2a c1 fd 1b c4 d5 4a-ff 39 e4 29 88 97 a5 24  M*.....J.9.)...$
+00000259`ed6f20e0  44 bb b5 cc 88 30 d9 d8-72 c1 f8 b9 7e f5 1c 26  D....0..r...~..&
+00000259`ed6f20f0  c4 40 f2 7a a3 d7 df 9f-e1 3e 08 9f c3 7a 36 ec  .@.z.....>...z6.
+00000259`ed6f2100  e7 0e fc 8d 5c 22 08 15-96 5b be d2 be b2 97 65  ....\"...[.....e
+00000259`ed6f2110  7b d0 d6 e8 20 41 40 00-00 00 91 f8 c2 60 82 ee  {... A@......`..
+00000259`ed6f2120  67 74 5c ea c6 44 2a 05-6f ae f8 27 ab be f7 96  gt\..D*.o..'....
+00000259`ed6f2130  c3 42 47 00 d2 61 ea 7c-2a 01 63 1a 4c 7e 04 c0  .BG..a.|*.c.L~..
+00000259`ed6f2140  95 11 4a b0 f3 ea 0a e9-ec fc 23 c1 bb db c5 19  ..J.......#.....
+00000259`ed6f2150  7c 0d f2 81 7c 86 e3 e3-be f6 01 00 00 00 d0 8c  |...|...........
+00000259`ed6f2160  9d df 01 15 d1 11 8c 7a-00 c0 4f c2 97 eb 01 00  .......z..O.....
+00000259`ed6f2170  00 00 2c 0b d9 cb 41 c9-0a 42 b8 92 9b c0 9f e2  ..,...A..B......
+00000259`ed6f2180  54 b0 00 00 00 00 02 00-00 00 00 00 10 66 00 00  T............f..
+00000259`ed6f2190  00 01 00 00 20 00 00 00-8a f2 76 b4 40 a4 0c a5  .... .....v.@...
+00000259`ed6f21a0  b9 b9 de 6e 03 a9 67 9e-63 56 84 18 94 29 56 96  ...n..g.cV...)V.
+00000259`ed6f21b0  35 ab 19 98 ec 4d 2f 64-00 00 00 00 0e 80 00 00  5....M/d........
+00000259`ed6f21c0  00 02 00 00 20 00 00 00-78 19 2c 14 7d e1 d3 c6  .... ...x.,.}...
+00000259`ed6f21d0  43 ce d5 0a ac 21 33 82-c3 a3 4f d1 0c d1 21 9e  C....!3...O...!.
+00000259`ed6f21e0  cf 81 bb f2 bf c0 e3 43-30 00 00 00 43 37 3d c1  .......C0...C7=.
+00000259`ed6f21f0  e0 17 e5 cc ee 8e 21 4a-da 1e e5 74 b0 44 de 85  ......!J...t.D..
+00000259`ed6f2200  1e b2 9f 89 d9 60 14 dd-d7 e4 b8 56 f2 e7 4f 33  .....`.....V..O3
+00000259`ed6f2210  f9 3e 52 90 00 01 ab 1f-c3 40 7d d7 40 00 00 00  .>R......@}.@...
+00000259`ed6f2220  c5 ee c5 ff d4 e4 98 dd-b1 90 62 de 79 12 fc a9  ..........b.y...
+00000259`ed6f2230  c2 5d 77 42 7b c4 28 92-4c 13 de 18 ba 81 dd 37  .]wB{.(.L......7
+00000259`ed6f2240  c6 5e 51 2a d1 ef 60 a9-76 03 82 37 91 5d dc fa  .^Q*..`.v..7.]..
+00000259`ed6f2250  1f a3 70 09 16 27 f2 17-38 32 41 15 9a ba fc 34  ..p..'..82A....4
+00000259`ed6f2260  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2270  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2280  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2290  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f22a0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f22b0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f22c0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f22d0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f22e0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f22f0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2300  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2310  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2320  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2330  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2340  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2350  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2360  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2370  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2380  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2390  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f23a0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f23b0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f23c0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f23d0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f23e0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f23f0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2400  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2410  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2420  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2430  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2440  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2450  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2460  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2470  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2480  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2490  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f24a0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f24b0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f24c0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f24d0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f24e0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f24f0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2500  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2510  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2520  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2530  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2540  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2550  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2560  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2570  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2580  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2590  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f25a0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f25b0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f25c0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f25d0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f25e0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f25f0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2600  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2610  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2620  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2630  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2640  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2650  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2660  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2670  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2680  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2690  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f26a0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f26b0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f26c0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f26d0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f26e0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f26f0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2700  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2710  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2720  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2730  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2740  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2750  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2760  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2770  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2780  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2790  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f27a0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f27b0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f27c0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f27d0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f27e0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f27f0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2800  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2810  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2820  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2830  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2840  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2850  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2860  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2870  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2880  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2890  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f28a0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f28b0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f28c0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f28d0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f28e0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f28f0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2900  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2910  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2920  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2930  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2940  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2950  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2960  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2970  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2980  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2990  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f29a0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f29b0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f29c0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f29d0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f29e0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f29f0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2a00  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2a10  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2a20  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2a30  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2a40  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2a50  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2a60  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2a70  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2a80  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2a90  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2aa0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2ab0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2ac0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2ad0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2ae0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2af0  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2b00  ff ff ff ff ff ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f2b10  ff ff ff ff ff ff ff ff                          ........
+[1] 45625375: 8912: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_STORAGE_PART_READ
+[1] 45625375: 8912: synaLib: palCrypto: STATUS: palCryptoDigest >>>>>>>>
+[1] 45625375: 8912: synaLib: palCrypto: STATUS: palCryptoDigest <<<<<<<<
+[1] 45625375: 8912: synaLib: palCrypto: STATUS: palCryptoDigest >>>>>>>>
+[1] 45625375: 8912: synaLib: palCrypto: STATUS: palCryptoDigest <<<<<<<<
+[1] 45625375: 8912: synaLib: tudor: STATUS: tudorSecurityIsPairingDataPresent >>>>>>>>
+[1] 45625375: 8912: synaLib: tudor: STATUS: tudorSecurityIsPairingDataPresent <<<<<<<<
+[1] 45625375: 8912: synaLib: tudor: STATUS: TLS context is not initialized.
+[1] 45625375: 8912: synaLib: tudor: STATUS: tudorTlsSensorSessionStatusGet >>>>>>>>
+[1] 45625375: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 45625375: 8912: synaLib: palSensor: STATUS: palUsbDriverCtrlRequest >>>>>>>>
+[1] 45625375: 8912: synaLib: palSensor: STATUS: palUsbDriverCtrlRequest <<<<<<<<
+[1] 45625375: 8912: synaLib: tudor: STATUS: VCSDRV_IOCTL_GET_TLS_STATE TLS session status: 0
+[1] 45625375: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 45625375: 8912: synaLib: tudor: STATUS: tudorTlsSensorSessionStatusGet <<<<<<<<
+[1] 45625375: 8912: synaLib: tudor: STATUS: tudorTlsInitCtx >>>>>>>>
+[1] 45625375: 8912: synaLib: tudor: STATUS: tudorSecurityGetSSPubKey >>>>>>>>
+[1] 45625390: 8912: synaLib: tudor: STATUS: tudorSecurityGetSSPubKey <<<<<<<<
+[1] 45625390: 8912: synaLib: tudor: STATUS: tudorSecurityGetPairingData >>>>>>>>
+[1] 45625390: 8912: synaLib: palCrypto: STATUS: palSecureUnwrap >>>>>>>>
+[1] 45625390: 8912: synaLib: palCrypto: WARNING: Return back needed memory allocation for out buffer.
+[1] 45625390: 8912: synaLib: palCrypto: STATUS: palSecureUnwrap <<<<<<<<
+[1] 45625390: 8912: synaLib: palCrypto: STATUS: palSecureUnwrap >>>>>>>>
+[1] 45625390: 8912: synaLib: palCrypto: STATUS: palCryptoDigest >>>>>>>>
+[1] 45625390: 8912: synaLib: palCrypto: STATUS: palCryptoDigest <<<<<<<<
+[1] 45625390: 8912: synaLib: palCrypto: STATUS: palSecureUnwrap <<<<<<<<
+[1] 45625390: 8912: synaLib: tudor: STATUS: tudorSecurityGetPairingData <<<<<<<<
+[1] 45625406: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsInit >>>>>>>>
+[1] 45625406: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsInit <<<<<<<<
+[1] 45625406: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsEstablish >>>>>>>>
+[1] 45625421: 8912: niseTlsLib: ssiTls: VERBOSE: BEGIN TLS
+[1] 45625421: 8912: niseTlsLib: ssiTls: VERBOSE: STEP: TlsPrepareValidate.
+[1] 45625421: 8912: synaLib: palCrypto: STATUS: palCryptoDigest >>>>>>>>
+[1] 45625421: 8912: synaLib: palCrypto: STATUS: palCryptoDigest <<<<<<<<
+ModLoad: 00007ffb`2a8a0000 00007ffb`2a8b2000   C:\Windows\System32\MSASN1.dll
+[1] 45625421: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsEstablish <<<<<<<<
+[1] 45625421: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsEstablish >>>>>>>>
+[1] 45625421: 8912: niseTlsLib: ssiTls: VERBOSE: STEP: Step 1 of TLS Handshake process
+[1] 45625421: 8912: synaLib: palCrypto: STATUS: palCryptoRng >>>>>>>>
+[1] 45625421: 8912: synaLib: palCrypto: STATUS: palCryptoRng <<<<<<<<
+[1] 45625421: 8912: synaLib: palCrypto: STATUS: palCryptoRng >>>>>>>>
+[1] 45625421: 8912: synaLib: palCrypto: STATUS: palCryptoRng <<<<<<<<
+[1] 45625421: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsEstablish <<<<<<<<
+[1] 45625437: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 45625437: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite >>>>>>>>
+[1] 45625437: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite <<<<<<<<
+[1] 45625437: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 45625437: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 45625437: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 45625453: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsEstablish >>>>>>>>
+[1] 45625453: 8912: synaLib: palCrypto: WARNING: Output buffer too small.
+[1] 45625468: 8912: synaLib: palCrypto: STATUS: palPRF >>>>>>>>
+[1] 45625468: 8912: synaLib: palCrypto: STATUS: palPRF <<<<<<<<
+[1] 45625468: 8912: synaLib: palCrypto: STATUS: palPRF >>>>>>>>
+[1] 45625468: 8912: synaLib: palCrypto: STATUS: prfTLS12 >>>>>>>>
+[1] 45625468: 8912: synaLib: palCrypto: STATUS: palCryptoMAC >>>>>>>>
+[1] 45625484: 8912: synaLib: palCrypto: STATUS: palCryptoMAC <<<<<<<<
+[1] 45625484: 8912: synaLib: palCrypto: STATUS: palCryptoMAC >>>>>>>>
+[1] 45625484: 8912: synaLib: palCrypto: STATUS: palCryptoMAC <<<<<<<<
+[1] 45625484: 8912: synaLib: palCrypto: STATUS: palCryptoMAC >>>>>>>>
+[1] 45625484: 8912: synaLib: palCrypto: STATUS: palCryptoMAC <<<<<<<<
+[1] 45625484: 8912: synaLib: palCrypto: STATUS: palCryptoMAC >>>>>>>>
+[1] 45625484: 8912: synaLib: palCrypto: STATUS: palCryptoMAC <<<<<<<<
+[1] 45625484: 8912: synaLib: palCrypto: STATUS: palCryptoMAC >>>>>>>>
+[1] 45625484: 8912: synaLib: palCrypto: STATUS: palCryptoMAC <<<<<<<<
+[1] 45625484: 8912: synaLib: palCrypto: STATUS: palCryptoMAC >>>>>>>>
+[1] 45625484: 8912: synaLib: palCrypto: STATUS: palCryptoMAC <<<<<<<<
+[1] 45625484: 8912: synaLib: palCrypto: STATUS: prfTLS12 <<<<<<<<
+[1] 45625484: 8912: synaLib: palCrypto: STATUS: palPRF <<<<<<<<
+[1] 45625484: 8912: synaLib: palCrypto: STATUS: palPRF >>>>>>>>
+[1] 45625484: 8912: synaLib: palCrypto: STATUS: prfTLS12 >>>>>>>>
+[1] 45625484: 8912: synaLib: palCrypto: STATUS: palCryptoMAC >>>>>>>>
+[1] 45625484: 8912: synaLib: palCrypto: STATUS: palCryptoMAC <<<<<<<<
+[1] 45625484: 8912: synaLib: palCrypto: STATUS: palCryptoMAC >>>>>>>>
+[1] 45625484: 8912: synaLib: palCrypto: STATUS: palCryptoMAC <<<<<<<<
+[1] 45625484: 8912: synaLib: palCrypto: STATUS: prfTLS12 <<<<<<<<
+[1] 45625484: 8912: synaLib: palCrypto: STATUS: palPRF <<<<<<<<
+[1] 45625484: 8912: synaLib: palCrypto: STATUS: palCryptoRng >>>>>>>>
+[1] 45625484: 8912: synaLib: palCrypto: STATUS: palCryptoRng <<<<<<<<
+[1] 45625484: 8912: synaLib: palCrypto: STATUS: palCryptoEncryptAuth >>>>>>>>
+[1] 45625484: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 45625484: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 45625484: 8912: synaLib: palCrypto: STATUS: palCryptoEncryptAuth <<<<<<<<
+[1] 45625484: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsEstablish <<<<<<<<
+[1] 45625484: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsEstablish >>>>>>>>
+[1] 45625484: 8912: niseTlsLib: ssiTls: VERBOSE: STEP: Step 2 of TLS Handshake process
+[1] 45625484: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsEstablish <<<<<<<<
+[1] 45625484: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 45625484: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite >>>>>>>>
+[1] 45625484: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite <<<<<<<<
+[1] 45625484: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 45625828: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 45625828: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 45625828: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsEstablish >>>>>>>>
+[1] 45625828: 8912: synaLib: palCrypto: STATUS: palCryptoDecryptAuth >>>>>>>>
+[1] 45625828: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 45625828: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 45625828: 8912: synaLib: palCrypto: STATUS: palCryptoDecryptAuth <<<<<<<<
+[1] 45625828: 8912: synaLib: palCrypto: STATUS: palPRF >>>>>>>>
+[1] 45625828: 8912: synaLib: palCrypto: STATUS: prfTLS12 >>>>>>>>
+[1] 45625828: 8912: synaLib: palCrypto: STATUS: palCryptoMAC >>>>>>>>
+[1] 45625828: 8912: synaLib: palCrypto: STATUS: palCryptoMAC <<<<<<<<
+[1] 45625828: 8912: synaLib: palCrypto: STATUS: palCryptoMAC >>>>>>>>
+[1] 45625828: 8912: synaLib: palCrypto: STATUS: palCryptoMAC <<<<<<<<
+[1] 45625828: 8912: synaLib: palCrypto: STATUS: prfTLS12 <<<<<<<<
+[1] 45625828: 8912: synaLib: palCrypto: STATUS: palPRF <<<<<<<<
+[1] 45625828: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsEstablish <<<<<<<<
+[1] 45625828: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsEstablish >>>>>>>>
+[1] 45625828: 8912: niseTlsLib: ssiTls: STATUS: STEP: TLS handshake done!
+[1] 45625828: 8912: niseTlsLib: ssiTls: STATUS: END TLS
+[1] 45625828: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsEstablish <<<<<<<<
+[1] 45625828: 8912: synaLib: tudor: STATUS: tudorTlsEstablishSession <<<<<<<<
+
+tudorSecureBioConnect SEND
+cmdId:
+edx=82
+sendBlobLen:
+000000b1`0ebff838  00000009
+sendBlobData:
+00000259`ed6f5370  82 00 00 00 00 00 00 02-07                       .........
+[1] 45625828: 8912: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_FRAME_STATE_GET
+[1] 45625828: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsWrap >>>>>>>>
+[1] 45625828: 8912: synaLib: palCrypto: STATUS: palCryptoRng >>>>>>>>
+[1] 45625828: 8912: synaLib: palCrypto: STATUS: palCryptoRng <<<<<<<<
+[1] 45625828: 8912: synaLib: palCrypto: STATUS: palCryptoEncryptAuth >>>>>>>>
+[1] 45625828: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 45625828: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 45625828: 8912: synaLib: palCrypto: STATUS: palCryptoEncryptAuth <<<<<<<<
+[1] 45625828: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsWrap <<<<<<<<
+[1] 45625828: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 45625828: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite >>>>>>>>
+[1] 45625828: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite <<<<<<<<
+[1] 45625828: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 45625843: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 45625843: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 45625843: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap >>>>>>>>
+[1] 45625843: 8912: synaLib: palCrypto: STATUS: palCryptoDecryptAuth >>>>>>>>
+[1] 45625843: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 45625843: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 45625843: 8912: synaLib: palCrypto: STATUS: palCryptoDecryptAuth <<<<<<<<
+[1] 45625843: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap <<<<<<<<
+
+tudorSecureBioConnect RECV
+recvBlobLen:
+000000b1`0ebff848  00000022
+recvBlobData:
+00000259`ed6cc540  00 00 18 00 00 00 18 00-00 00 05 00 00 07 10 00  ................
+00000259`ed6cc550  50 00 00 00 00 00 50 00-42 00 00 00 00 00 42 00  P.....P.B.....B.
+00000259`ed6cc560  00 00                                            ..
+[1] 45625843: 8912: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_FRAME_STATE_GET
+[1] 45625843: 8912: synaLib: tudor: STATUS: Device type: 5, FW major: 10, FW minor: 1, FW build num: 3478575
+[1] 45625843: 8912: synaLib: tudor: STATUS: SW release version - major: 6, minor: 0, subminor: 59, build num: 1111
+[1] 45625843: 8912: synaLib: tudor: STATUS: _tudorInitDevice <<<<<<<<
+[1] 45625843: 8912: synaLib: tudor: STATUS: tudorInitDevice <<<<<<<<
+[1] 45625843: 8912: synaLib: vfm: STATUS: vfmDeviceInitialize <<<<<<<<
+[1] 45625843: 8912: synaLib: vfm: STATUS: vfmDeviceInfoGet >>>>>>>>
+    [1] 45625843: 8912: synaLib: tudor: STATUS: tudorGetDeviceInfo >>>>>>>>
+    [1] 45625843: 8912: synaLib: tudor: STATUS: tudorGetDeviceInfo <<<<<<<<
+    [1] 45625843: 8912: synaLib: tudor: STATUS: tudorIoctl opCode: (22)
+[1] 45625843: 8912: synaLib: vfm: STATUS: vfmDeviceInfoGet <<<<<<<<
+[1] 45625843: 8912: synaLib: vfm: STATUS: vfmDeviceUpdateProcess >>>>>>>>
+    [1] 45625843: 8912: synaLib: tudor: STATUS: tudorSensorUpdate >>>>>>>>
+        [1] 45625843: 8912: synaLib: tudor: WARNING: Sensor update 0 state
+        [1] 45625843: 8912: synaLib: tudor: WARNING: Sensor update 4 state
+        [1] 45625843: 8912: synaLib: tudor: WARNING: Sensor update 6 state
+        [1] 45625843: 8912: synaLib: tudor: STATUS: _tudorCheckForSBLPatchUpdate >>>>>>>>
+        [1] 45625843: 8912: synaLib: tudor: WARNING: SBL state: 1
+        [1] 45625843: 8912: synaLib: tudor: WARNING: SBL hash: 0x15595cea
+        [1] 45625843: 8912: synaLib: tudor: WARNING: Sensor update 8 state
+        [1] 45625843: 8912: synaLib: tudor: WARNING: Sensor update 10 state
+    [1] 45625843: 8912: synaLib: tudor: STATUS: tudorSensorUpdate <<<<<<<<
+[1] 45625843: 8912: synaLib: vfm: STATUS: vfmDeviceUpdateProcess <<<<<<<<
+[1] 45625843: 8912: synaLib: vfm: STATUS: vfmGetEnrolledUserList >>>>>>>>
+[1] 45625843: 8912: synaLib: vfm: STATUS: _vfmStgOnChipOpen >>>>>>>>
+[1] 45625843: 8912: synaLib: tudor: STATUS: stiTudorOpen >>>>>>>>
+[1] 45625843: 8912: synaLib: tudor: STATUS: tudorIoctl opCode: (3)
+
+tudorSecureBioConnect SEND
+cmdId:
+edx=9e
+sendBlobLen:
+000000b1`0ebff690  00000002
+sendBlobData:
+00000259`ed6c4c10  9e 01                                            ..
+[1] 45625843: 8912: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_DB2_GET_DB_INFO
+[1] 45625843: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsWrap >>>>>>>>
+[1] 45625843: 8912: synaLib: palCrypto: STATUS: palCryptoRng >>>>>>>>
+[1] 45625843: 8912: synaLib: palCrypto: STATUS: palCryptoRng <<<<<<<<
+[1] 45625843: 8912: synaLib: palCrypto: STATUS: palCryptoEncryptAuth >>>>>>>>
+[1] 45625843: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 45625843: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 45625843: 8912: synaLib: palCrypto: STATUS: palCryptoEncryptAuth <<<<<<<<
+[1] 45625843: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsWrap <<<<<<<<
+[1] 45625843: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 45625843: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite >>>>>>>>
+[1] 45625843: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite <<<<<<<<
+[1] 45625843: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 45625859: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 45625859: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 45625859: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap >>>>>>>>
+[1] 45625859: 8912: synaLib: palCrypto: STATUS: palCryptoDecryptAuth >>>>>>>>
+[1] 45625859: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 45625859: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 45625859: 8912: synaLib: palCrypto: STATUS: palCryptoDecryptAuth <<<<<<<<
+[1] 45625859: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap <<<<<<<<
+
+tudorSecureBioConnect RECV
+recvBlobLen:
+000000b1`0ebff728  00000028
+recvBlobData:
+00000259`ed6d68e0  00 00 00 00 01 00 00 00-f7 00 00 00 04 00 10 02  ................
+00000259`ed6d68f0  64 00 30 00 04 00 01 00-02 00 7c 00 00 00 00 00  d.0.......|.....
+00000259`ed6d6900  0b 00 01 00 00 00 18 00                          ........
+[1] 45625859: 8912: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_DB2_GET_DB_INFO
+[1] 45625859: 8912: synaLib: tudor: VERBOSE: |> dummy = 0
+[1] 45625859: 8912: synaLib: tudor: VERBOSE: |> version_major = 1
+[1] 45625859: 8912: synaLib: tudor: VERBOSE: |> version_minor = 0
+[1] 45625859: 8912: synaLib: tudor: VERBOSE: |> pversion = 247
+[1] 45625859: 8912: synaLib: tudor: VERBOSE: |> UOP_len = 4
+[1] 45625859: 8912: synaLib: tudor: VERBOSE: |> TOP_len = 528
+[1] 45625859: 8912: synaLib: tudor: VERBOSE: |> POP_len = 100
+[1] 45625859: 8912: synaLib: tudor: VERBOSE: |> Template_obj_slot_size = 48
+[1] 45625859: 8912: synaLib: tudor: VERBOSE: |> Payload_obj_slot_size = 4
+[1] 45625859: 8912: synaLib: tudor: VERBOSE: |> NumCurrentUsers = 1
+[1] 45625859: 8912: synaLib: tudor: VERBOSE: |> NumDeletedUsers = 2
+[1] 45625859: 8912: synaLib: tudor: VERBOSE: |> NumAvailableUserSlots = 124
+[1] 45625859: 8912: synaLib: tudor: VERBOSE: |> NumCurrentTemplates = 0
+[1] 45625859: 8912: synaLib: tudor: VERBOSE: |> NumDeletedTemplates = 0
+[1] 45625859: 8912: synaLib: tudor: VERBOSE: |> NumAvailableTemplateSlots = 11
+[1] 45625859: 8912: synaLib: tudor: VERBOSE: |> NumCurrentPayloads = 1
+[1] 45625859: 8912: synaLib: tudor: VERBOSE: |> NumDeletedPayloads = 0
+[1] 45625859: 8912: synaLib: tudor: VERBOSE: |> NumAvailablePayloadSlots = 24
+[1] 45625859: 8912: synaLib: tudor: STATUS: stiTudorOpen <<<<<<<<
+[1] 45625859: 8912: synaLib: vfm: STATUS: _vfmStgGetFirstEnrollmentAlloc >>>>>>>>
+[1] 45625859: 8912: synaLib: vfm: STATUS: _vfmStgGetEnrollment >>>>>>>>
+[1] 45625859: 8912: synaLib: tudor: STATUS: stiTudorGetFirstEnrollment >>>>>>>>
+[1] 45625859: 8912: synaLib: tudor: STATUS: tudorIoctl opCode: (3)
+
+tudorSecureBioConnect SEND
+cmdId:
+edx=9e
+sendBlobLen:
+000000b1`0ebff550  00000002
+sendBlobData:
+00000259`ed6c4ba0  9e 01                                            ..
+[1] 45625859: 8912: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_DB2_GET_DB_INFO
+[1] 45625859: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsWrap >>>>>>>>
+[1] 45625859: 8912: synaLib: palCrypto: STATUS: palCryptoRng >>>>>>>>
+[1] 45625859: 8912: synaLib: palCrypto: STATUS: palCryptoRng <<<<<<<<
+[1] 45625859: 8912: synaLib: palCrypto: STATUS: palCryptoEncryptAuth >>>>>>>>
+[1] 45625859: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 45625859: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 45625859: 8912: synaLib: palCrypto: STATUS: palCryptoEncryptAuth <<<<<<<<
+[1] 45625859: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsWrap <<<<<<<<
+[1] 45625859: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 45625859: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite >>>>>>>>
+[1] 45625859: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite <<<<<<<<
+[1] 45625859: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 45625859: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 45625859: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 45625859: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap >>>>>>>>
+[1] 45625859: 8912: synaLib: palCrypto: STATUS: palCryptoDecryptAuth >>>>>>>>
+[1] 45625859: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 45625859: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 45625859: 8912: synaLib: palCrypto: STATUS: palCryptoDecryptAuth <<<<<<<<
+[1] 45625859: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap <<<<<<<<
+
+tudorSecureBioConnect RECV
+recvBlobLen:
+000000b1`0ebff5e8  00000028
+recvBlobData:
+00000259`ed6d6de0  00 00 00 00 01 00 00 00-f7 00 00 00 04 00 10 02  ................
+00000259`ed6d6df0  64 00 30 00 04 00 01 00-02 00 7c 00 00 00 00 00  d.0.......|.....
+00000259`ed6d6e00  0b 00 01 00 00 00 18 00                          ........
+[1] 45625875: 8912: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_DB2_GET_DB_INFO
+[1] 45625875: 8912: synaLib: tudor: VERBOSE: |> dummy = 0
+[1] 45625875: 8912: synaLib: tudor: VERBOSE: |> version_major = 1
+[1] 45625875: 8912: synaLib: tudor: VERBOSE: |> version_minor = 0
+[1] 45625875: 8912: synaLib: tudor: VERBOSE: |> pversion = 247
+[1] 45625875: 8912: synaLib: tudor: VERBOSE: |> UOP_len = 4
+[1] 45625875: 8912: synaLib: tudor: VERBOSE: |> TOP_len = 528
+[1] 45625875: 8912: synaLib: tudor: VERBOSE: |> POP_len = 100
+[1] 45625875: 8912: synaLib: tudor: VERBOSE: |> Template_obj_slot_size = 48
+[1] 45625875: 8912: synaLib: tudor: VERBOSE: |> Payload_obj_slot_size = 4
+[1] 45625875: 8912: synaLib: tudor: VERBOSE: |> NumCurrentUsers = 1
+[1] 45625875: 8912: synaLib: tudor: VERBOSE: |> NumDeletedUsers = 2
+[1] 45625875: 8912: synaLib: tudor: VERBOSE: |> NumAvailableUserSlots = 124
+[1] 45625875: 8912: synaLib: tudor: VERBOSE: |> NumCurrentTemplates = 0
+[1] 45625875: 8912: synaLib: tudor: VERBOSE: |> NumDeletedTemplates = 0
+[1] 45625875: 8912: synaLib: tudor: VERBOSE: |> NumAvailableTemplateSlots = 11
+[1] 45625875: 8912: synaLib: tudor: VERBOSE: |> NumCurrentPayloads = 1
+[1] 45625875: 8912: synaLib: tudor: VERBOSE: |> NumDeletedPayloads = 0
+[1] 45625875: 8912: synaLib: tudor: VERBOSE: |> NumAvailablePayloadSlots = 24
+[1] 45625875: 8912: synaLib: tudor: STATUS: tudorIoctl opCode: (3)
+
+tudorSecureBioConnect SEND
+cmdId:
+edx=9f
+sendBlobLen:
+000000b1`0ebff570  00000015
+sendBlobData:
+00000259`ed6f5550  9f 02 00 00 00 ff ff ff-ff ff ff ff ff ff ff ff  ................
+00000259`ed6f5560  ff ff ff ff ff                                   .....
+[1] 45625875: 8912: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_DB2_GET_OBJECT_LIST
+[1] 45625875: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsWrap >>>>>>>>
+[1] 45625875: 8912: synaLib: palCrypto: STATUS: palCryptoRng >>>>>>>>
+[1] 45625875: 8912: synaLib: palCrypto: STATUS: palCryptoRng <<<<<<<<
+[1] 45625875: 8912: synaLib: palCrypto: STATUS: palCryptoEncryptAuth >>>>>>>>
+[1] 45625875: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 45625875: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 45625875: 8912: synaLib: palCrypto: STATUS: palCryptoEncryptAuth <<<<<<<<
+[1] 45625875: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsWrap <<<<<<<<
+[1] 45625875: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 45625875: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite >>>>>>>>
+[1] 45625875: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite <<<<<<<<
+[1] 45625875: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 45625890: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 45625890: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 45625890: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap >>>>>>>>
+[1] 45625890: 8912: synaLib: palCrypto: STATUS: palCryptoDecryptAuth >>>>>>>>
+[1] 45625890: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 45625890: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 45625890: 8912: synaLib: palCrypto: STATUS: palCryptoDecryptAuth <<<<<<<<
+[1] 45625890: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap <<<<<<<<
+
+tudorSecureBioConnect RECV
+recvBlobLen:
+000000b1`0ebff5e0  00000004
+recvBlobData:
+00000259`ed6ef9d0  00 00 00 00                                      ....
+[1] 45625890: 8912: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_DB2_GET_OBJECT_LIST
+[1] 45625890: 8912: synaLib: tudor: STATUS: stiTudorGetNextEnrollment >>>>>>>>
+[1] 45625890: 8912: synaLib: tudor: STATUS: stiTudorGetNextEnrollment <<<<<<<<
+[1] 45625890: 8912: synaLib: tudor: WARNING: Call of stiTudorGetNextEnrollment() failed.
+[1] 45625890: 8912: synaLib: tudor: STATUS: stiTudorGetFirstEnrollment <<<<<<<<
+[1] 45625890: 8912: synaLib: vfm: STATUS: _vfmStgGetEnrollment <<<<<<<<
+[1] 45625890: 8912: synaLib: vfm: STATUS: _vfmStgGetFirstEnrollmentAlloc <<<<<<<<
+[1] 45625890: 8912: synaLib: vfm: STATUS: _vfmStgClose >>>>>>>>
+[1] 45625890: 8912: synaLib: tudor: STATUS: stiTudorClose >>>>>>>>
+[1] 45625890: 8912: synaLib: tudor: STATUS: stiTudorClose <<<<<<<<
+[1] 45625890: 8912: synaLib: vfm: STATUS: _vfmStgClose <<<<<<<<
+[1] 45625890: 8912: synaLib: vfm: STATUS: vfmGetEnrolledUserList <<<<<<<<
+[1] 45625890: 8912: synaLib: vfm: STATUS: _vfmStgOnChipOpen >>>>>>>>
+[1] 45625890: 8912: synaLib: tudor: STATUS: stiTudorOpen >>>>>>>>
+[1] 45625890: 8912: synaLib: tudor: STATUS: stiTudorOpen <<<<<<<<
+[1] 45625890: 8912: synaLib: vfm: STATUS: vfmStgGetCommonProperty >>>>>>>>
+[1] 45625890: 8912: synaLib: tudor: STATUS: stiTudorGetCommonProperty >>>>>>>>
+[1] 45625890: 8912: synaLib: tudor: STATUS: _GetCommonPropUsrObjId >>>>>>>>
+[1] 45625890: 8912: synaLib: tudor: STATUS: tudorIoctl opCode: (3)
+
+tudorSecureBioConnect SEND
+cmdId:
+edx=9f
+sendBlobLen:
+000000b1`0ebff740  00000015
+sendBlobData:
+00000259`ed6f5210  9f 01 00 00 00 00 00 00-00 00 00 00 00 00 00 00  ................
+00000259`ed6f5220  00 00 00 00 00                                   .....
+[1] 45625890: 8912: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_DB2_GET_OBJECT_LIST
+[1] 45625890: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsWrap >>>>>>>>
+[1] 45625890: 8912: synaLib: palCrypto: STATUS: palCryptoRng >>>>>>>>
+[1] 45625890: 8912: synaLib: palCrypto: STATUS: palCryptoRng <<<<<<<<
+[1] 45625890: 8912: synaLib: palCrypto: STATUS: palCryptoEncryptAuth >>>>>>>>
+[1] 45625890: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 45625890: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 45625890: 8912: synaLib: palCrypto: STATUS: palCryptoEncryptAuth <<<<<<<<
+[1] 45625890: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsWrap <<<<<<<<
+[1] 45625890: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 45625890: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite >>>>>>>>
+[1] 45625890: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite <<<<<<<<
+[1] 45625890: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 45625890: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 45625890: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 45625890: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap >>>>>>>>
+[1] 45625890: 8912: synaLib: palCrypto: STATUS: palCryptoDecryptAuth >>>>>>>>
+[1] 45625890: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 45625890: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 45625890: 8912: synaLib: palCrypto: STATUS: palCryptoDecryptAuth <<<<<<<<
+[1] 45625890: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap <<<<<<<<
+
+tudorSecureBioConnect RECV
+recvBlobLen:
+000000b1`0ebff7b0  00000014
+recvBlobData:
+00000259`ed6cc540  00 00 01 00 2d 4a 82 c3-9a ff 9d 40 f2 aa df f2  ....-J.....@....
+00000259`ed6cc550  08 1e fe c7                                      ....
+[1] 45625906: 8912: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_DB2_GET_OBJECT_LIST
+[1] 45625906: 8912: synaLib: tudor: STATUS: tudorIoctl opCode: (3)
+
+tudorSecureBioConnect SEND
+cmdId:
+edx=a0
+sendBlobLen:
+000000b1`0ebff730  00000015
+sendBlobData:
+00000259`ed6f5650  a0 01 00 00 00 2d 4a 82-c3 9a ff 9d 40 f2 aa df  .....-J.....@...
+00000259`ed6f5660  f2 08 1e fe c7                                   .....
+[1] 45625906: 8912: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_DB2_GET_OBJECT_INFO
+[1] 45625906: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsWrap >>>>>>>>
+[1] 45625906: 8912: synaLib: palCrypto: STATUS: palCryptoRng >>>>>>>>
+[1] 45625906: 8912: synaLib: palCrypto: STATUS: palCryptoRng <<<<<<<<
+[1] 45625906: 8912: synaLib: palCrypto: STATUS: palCryptoEncryptAuth >>>>>>>>
+[1] 45625906: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 45625906: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 45625906: 8912: synaLib: palCrypto: STATUS: palCryptoEncryptAuth <<<<<<<<
+[1] 45625921: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsWrap <<<<<<<<
+[1] 45625921: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 45625921: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite >>>>>>>>
+[1] 45625921: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite <<<<<<<<
+[1] 45625921: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 45625921: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 45625921: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 45625921: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap >>>>>>>>
+[1] 45625921: 8912: synaLib: palCrypto: STATUS: palCryptoDecryptAuth >>>>>>>>
+[1] 45625921: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 45625921: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 45625921: 8912: synaLib: palCrypto: STATUS: palCryptoDecryptAuth <<<<<<<<
+[1] 45625921: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap <<<<<<<<
+
+tudorSecureBioConnect RECV
+recvBlobLen:
+000000b1`0ebff7a0  0000000c
+recvBlobData:
+00000259`ed6eff10  00 00 00 00 02 01 00 00-01 00 00 00              ............
+[1] 45625921: 8912: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_DB2_GET_OBJECT_INFO
+[1] 45625921: 8912: synaLib: tudor: STATUS: _GetCommonPropUsrObjId <<<<<<<<
+[1] 45625921: 8912: synaLib: tudor: ERROR: _GetCommonPropUsrObjId failed(118)
+[1] 45625921: 8912: synaLib: tudor: STATUS: stiTudorGetCommonProperty <<<<<<<<
+[1] 45625921: 8912: synaLib: vfm: STATUS: vfmStgGetCommonProperty <<<<<<<<
+[1] 45625921: 8912: synaLib: vfm: STATUS: _vfmStgClose >>>>>>>>
+[1] 45625921: 8912: synaLib: tudor: STATUS: stiTudorClose >>>>>>>>
+[1] 45625921: 8912: synaLib: tudor: STATUS: stiTudorClose <<<<<<<<
+[1] 45625921: 8912: synaLib: vfm: STATUS: _vfmStgClose <<<<<<<<
+[1] 45625921: 8912: synaLib: vfm: STATUS: _vfmStgOnChipOpen >>>>>>>>
+[1] 45625921: 8912: synaLib: tudor: STATUS: stiTudorOpen >>>>>>>>
+[1] 45625921: 8912: synaLib: tudor: STATUS: stiTudorOpen <<<<<<<<
+[1] 45625921: 8912: synaLib: vfm: STATUS: vfmStgGetCommonProperty >>>>>>>>
+[1] 45625921: 8912: synaLib: tudor: STATUS: stiTudorGetCommonProperty >>>>>>>>
+[1] 45625921: 8912: synaLib: tudor: STATUS: _GetCommonPropUsrObjId >>>>>>>>
+[1] 45625921: 8912: synaLib: tudor: STATUS: tudorIoctl opCode: (3)
+
+tudorSecureBioConnect SEND
+cmdId:
+edx=9f
+sendBlobLen:
+000000b1`0ebff740  00000015
+sendBlobData:
+00000259`ed6f5890  9f 01 00 00 00 00 00 00-00 00 00 00 00 00 00 00  ................
+00000259`ed6f58a0  00 00 00 00 00                                   .....
+[1] 45625921: 8912: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_DB2_GET_OBJECT_LIST
+[1] 45625921: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsWrap >>>>>>>>
+[1] 45625921: 8912: synaLib: palCrypto: STATUS: palCryptoRng >>>>>>>>
+[1] 45625921: 8912: synaLib: palCrypto: STATUS: palCryptoRng <<<<<<<<
+[1] 45625921: 8912: synaLib: palCrypto: STATUS: palCryptoEncryptAuth >>>>>>>>
+[1] 45625921: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 45625921: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 45625921: 8912: synaLib: palCrypto: STATUS: palCryptoEncryptAuth <<<<<<<<
+[1] 45625921: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsWrap <<<<<<<<
+[1] 45625921: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 45625921: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite >>>>>>>>
+[1] 45625921: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite <<<<<<<<
+[1] 45625921: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 45625921: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 45625921: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 45625921: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap >>>>>>>>
+[1] 45625921: 8912: synaLib: palCrypto: STATUS: palCryptoDecryptAuth >>>>>>>>
+[1] 45625921: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 45625921: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 45625921: 8912: synaLib: palCrypto: STATUS: palCryptoDecryptAuth <<<<<<<<
+[1] 45625921: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap <<<<<<<<
+
+tudorSecureBioConnect RECV
+recvBlobLen:
+000000b1`0ebff7b0  00000014
+recvBlobData:
+00000259`ed6cc850  00 00 01 00 2d 4a 82 c3-9a ff 9d 40 f2 aa df f2  ....-J.....@....
+00000259`ed6cc860  08 1e fe c7                                      ....
+[1] 45625937: 8912: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_DB2_GET_OBJECT_LIST
+[1] 45625937: 8912: synaLib: tudor: STATUS: tudorIoctl opCode: (3)
+
+tudorSecureBioConnect SEND
+cmdId:
+edx=a0
+sendBlobLen:
+000000b1`0ebff730  00000015
+sendBlobData:
+00000259`ed6f5310  a0 01 00 00 00 2d 4a 82-c3 9a ff 9d 40 f2 aa df  .....-J.....@...
+00000259`ed6f5320  f2 08 1e fe c7                                   .....
+[1] 45625937: 8912: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_DB2_GET_OBJECT_INFO
+[1] 45625937: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsWrap >>>>>>>>
+[1] 45625937: 8912: synaLib: palCrypto: STATUS: palCryptoRng >>>>>>>>
+[1] 45625937: 8912: synaLib: palCrypto: STATUS: palCryptoRng <<<<<<<<
+[1] 45625937: 8912: synaLib: palCrypto: STATUS: palCryptoEncryptAuth >>>>>>>>
+[1] 45625937: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 45625937: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 45625937: 8912: synaLib: palCrypto: STATUS: palCryptoEncryptAuth <<<<<<<<
+[1] 45625937: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsWrap <<<<<<<<
+[1] 45625937: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 45625937: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite >>>>>>>>
+[1] 45625937: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite <<<<<<<<
+[1] 45625937: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 45625937: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 45625937: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 45625937: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap >>>>>>>>
+[1] 45625937: 8912: synaLib: palCrypto: STATUS: palCryptoDecryptAuth >>>>>>>>
+[1] 45625937: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 45625937: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 45625937: 8912: synaLib: palCrypto: STATUS: palCryptoDecryptAuth <<<<<<<<
+[1] 45625937: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap <<<<<<<<
+
+tudorSecureBioConnect RECV
+recvBlobLen:
+000000b1`0ebff7a0  0000000c
+recvBlobData:
+00000259`ed6ef2b0  00 00 00 00 02 01 00 00-01 00 00 00              ............
+[1] 45625937: 8912: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_DB2_GET_OBJECT_INFO
+[1] 45625937: 8912: synaLib: tudor: STATUS: _GetCommonPropUsrObjId <<<<<<<<
+[1] 45625937: 8912: synaLib: tudor: ERROR: _GetCommonPropUsrObjId failed(118)
+[1] 45625937: 8912: synaLib: tudor: STATUS: stiTudorGetCommonProperty <<<<<<<<
+[1] 45625937: 8912: synaLib: vfm: STATUS: vfmStgGetCommonProperty <<<<<<<<
+[1] 45625937: 8912: synaLib: vfm: STATUS: vfmStgSetCommonProperty >>>>>>>>
+[1] 45625937: 8912: synaLib: tudor: STATUS: stiTudorSetCommonProperty >>>>>>>>
+[1] 45625937: 8912: synaLib: tudor: STATUS: _GetCommonPropUsrObjId >>>>>>>>
+[1] 45625937: 8912: synaLib: tudor: STATUS: tudorIoctl opCode: (3)
+
+tudorSecureBioConnect SEND
+cmdId:
+edx=9f
+sendBlobLen:
+000000b1`0ebff780  00000015
+sendBlobData:
+00000259`ed6f53f0  9f 01 00 00 00 00 00 00-00 00 00 00 00 00 00 00  ................
+00000259`ed6f5400  00 00 00 00 00                                   .....
+[1] 45625937: 8912: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_DB2_GET_OBJECT_LIST
+[1] 45625953: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsWrap >>>>>>>>
+[1] 45625953: 8912: synaLib: palCrypto: STATUS: palCryptoRng >>>>>>>>
+[1] 45625953: 8912: synaLib: palCrypto: STATUS: palCryptoRng <<<<<<<<
+[1] 45625953: 8912: synaLib: palCrypto: STATUS: palCryptoEncryptAuth >>>>>>>>
+[1] 45625953: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 45625953: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 45625953: 8912: synaLib: palCrypto: STATUS: palCryptoEncryptAuth <<<<<<<<
+[1] 45625953: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsWrap <<<<<<<<
+[1] 45625953: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 45625953: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite >>>>>>>>
+[1] 45625953: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite <<<<<<<<
+[1] 45625953: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 45625968: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 45625968: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 45625968: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap >>>>>>>>
+[1] 45625968: 8912: synaLib: palCrypto: STATUS: palCryptoDecryptAuth >>>>>>>>
+[1] 45625968: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 45625968: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 45625968: 8912: synaLib: palCrypto: STATUS: palCryptoDecryptAuth <<<<<<<<
+[1] 45625968: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap <<<<<<<<
+
+tudorSecureBioConnect RECV
+recvBlobLen:
+000000b1`0ebff7f0  00000014
+recvBlobData:
+00000259`ed6cc620  00 00 01 00 2d 4a 82 c3-9a ff 9d 40 f2 aa df f2  ....-J.....@....
+00000259`ed6cc630  08 1e fe c7                                      ....
+[1] 45625968: 8912: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_DB2_GET_OBJECT_LIST
+[1] 45625968: 8912: synaLib: tudor: STATUS: tudorIoctl opCode: (3)
+
+tudorSecureBioConnect SEND
+cmdId:
+edx=a0
+sendBlobLen:
+000000b1`0ebff770  00000015
+sendBlobData:
+00000259`ed6f55b0  a0 01 00 00 00 2d 4a 82-c3 9a ff 9d 40 f2 aa df  .....-J.....@...
+00000259`ed6f55c0  f2 08 1e fe c7                                   .....
+[1] 45625968: 8912: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_DB2_GET_OBJECT_INFO
+[1] 45625968: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsWrap >>>>>>>>
+[1] 45625968: 8912: synaLib: palCrypto: STATUS: palCryptoRng >>>>>>>>
+[1] 45625968: 8912: synaLib: palCrypto: STATUS: palCryptoRng <<<<<<<<
+[1] 45625968: 8912: synaLib: palCrypto: STATUS: palCryptoEncryptAuth >>>>>>>>
+[1] 45625968: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 45625968: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 45625968: 8912: synaLib: palCrypto: STATUS: palCryptoEncryptAuth <<<<<<<<
+[1] 45625968: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsWrap <<<<<<<<
+[1] 45625968: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 45625968: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite >>>>>>>>
+[1] 45625968: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite <<<<<<<<
+[1] 45625968: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 45625968: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 45625968: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 45625968: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap >>>>>>>>
+[1] 45625968: 8912: synaLib: palCrypto: STATUS: palCryptoDecryptAuth >>>>>>>>
+[1] 45625968: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 45625968: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 45625968: 8912: synaLib: palCrypto: STATUS: palCryptoDecryptAuth <<<<<<<<
+[1] 45625968: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap <<<<<<<<
+
+tudorSecureBioConnect RECV
+recvBlobLen:
+000000b1`0ebff7e0  0000000c
+recvBlobData:
+00000259`ed6ef2b0  00 00 00 00 02 01 00 00-01 00 00 00              ............
+[1] 45625968: 8912: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_DB2_GET_OBJECT_INFO
+[1] 45625968: 8912: synaLib: tudor: STATUS: creating common property user object
+[1] 45625968: 8912: synaLib: tudor: STATUS: tudorIoctl opCode: (3)
+
+tudorSecureBioConnect SEND
+cmdId:
+edx=a2
+sendBlobLen:
+000000b1`0ebff770  00000029
+sendBlobData:
+00000259`ed6a4b70  a2 01 01 00 00 01 00 00-00 00 00 00 00 00 00 00  ................
+00000259`ed6a4b80  00 00 00 00 00 00 00 00-00 00 00 00 00 00 00 00  ................
+00000259`ed6a4b90  00 00 00 00 00 00 00 00-00                       .........
+[1] 45625984: 8912: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_DB2_WRITE_OBJECT
+[1] 45625984: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsWrap >>>>>>>>
+[1] 45625984: 8912: synaLib: palCrypto: STATUS: palCryptoRng >>>>>>>>
+[1] 45625984: 8912: synaLib: palCrypto: STATUS: palCryptoRng <<<<<<<<
+[1] 45625984: 8912: synaLib: palCrypto: STATUS: palCryptoEncryptAuth >>>>>>>>
+[1] 45625984: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 45625984: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 45625984: 8912: synaLib: palCrypto: STATUS: palCryptoEncryptAuth <<<<<<<<
+[1] 45625984: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsWrap <<<<<<<<
+[1] 45625984: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 45625984: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite >>>>>>>>
+[1] 45625984: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite <<<<<<<<
+[1] 45625984: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 45625984: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 45625984: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 45625984: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap >>>>>>>>
+[1] 45625984: 8912: synaLib: palCrypto: STATUS: palCryptoDecryptAuth >>>>>>>>
+[1] 45625984: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 45625984: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 45625984: 8912: synaLib: palCrypto: STATUS: palCryptoDecryptAuth <<<<<<<<
+[1] 45625984: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap <<<<<<<<
+
+tudorSecureBioConnect RECV
+recvBlobLen:
+000000b1`0ebff7f8  00000014
+recvBlobData:
+00000259`ed6cc2a0  00 00 00 00 3c 94 e7 da-62 46 cc e1 8d 0e 27 3a  ....<...bF....':
+00000259`ed6cc2b0  b3 f2 69 bd                                      ..i.
+[1] 45625984: 8912: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_DB2_WRITE_OBJECT
+[1] 45625984: 8912: synaLib: tudor: STATUS: _GetCommonPropUsrObjId <<<<<<<<
+[1] 45625984: 8912: synaLib: tudor: STATUS: tudorIoctl opCode: (3)
+
+tudorSecureBioConnect SEND
+cmdId:
+edx=9f
+sendBlobLen:
+000000b1`0ebff790  00000015
+sendBlobData:
+00000259`ed6f5350  9f 03 00 00 00 3c 94 e7-da 62 46 cc e1 8d 0e 27  .....<...bF....'
+00000259`ed6f5360  3a b3 f2 69 bd                                   :..i.
+[1] 45625984: 8912: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_DB2_GET_OBJECT_LIST
+[1] 45625984: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsWrap >>>>>>>>
+[1] 45625984: 8912: synaLib: palCrypto: STATUS: palCryptoRng >>>>>>>>
+[1] 45625984: 8912: synaLib: palCrypto: STATUS: palCryptoRng <<<<<<<<
+[1] 45625984: 8912: synaLib: palCrypto: STATUS: palCryptoEncryptAuth >>>>>>>>
+[1] 45625984: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 45625984: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 45625984: 8912: synaLib: palCrypto: STATUS: palCryptoEncryptAuth <<<<<<<<
+[1] 45625984: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsWrap <<<<<<<<
+[1] 45625984: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 45625984: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite >>>>>>>>
+[1] 45625984: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite <<<<<<<<
+[1] 45625984: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 45626000: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 45626000: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 45626000: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap >>>>>>>>
+[1] 45626000: 8912: synaLib: palCrypto: STATUS: palCryptoDecryptAuth >>>>>>>>
+[1] 45626000: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 45626000: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 45626000: 8912: synaLib: palCrypto: STATUS: palCryptoDecryptAuth <<<<<<<<
+[1] 45626000: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap <<<<<<<<
+
+tudorSecureBioConnect RECV
+recvBlobLen:
+000000b1`0ebff800  00000004
+recvBlobData:
+00000259`ed6cc700  00 00 00 00                                      ....
+[1] 45626000: 8912: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_DB2_GET_OBJECT_LIST
+[1] 45626000: 8912: synaLib: tudor: STATUS: tudorIoctl opCode: (3)
+
+tudorSecureBioConnect SEND
+cmdId:
+edx=a2
+sendBlobLen:
+000000b1`0ebff820  000000cd
+sendBlobData:
+00000259`ed6a13f0  a2 03 01 00 00 3c 94 e7-da 62 46 cc e1 8d 0e 27  .....<...bF....'
+00000259`ed6a1400  3a b3 f2 69 bd 00 00 00-00 00 00 00 00 a8 00 00  :..i............
+00000259`ed6a1410  00 04 00 02 00 00 00 18-01 05 00 9a 00 00 00 03  ................
+00000259`ed6a1420  00 94 00 00 00 30 00 34-00 37 00 65 00 66 00 64  .....0.4.7.e.f.d
+00000259`ed6a1430  00 62 00 34 00 2d 00 33-00 39 00 35 00 65 00 2d  .b.4.-.3.9.5.e.-
+00000259`ed6a1440  00 34 00 38 00 62 00 30-00 2d 00 38 00 35 00 34  .4.8.b.0.-.8.5.4
+00000259`ed6a1450  00 36 00 2d 00 37 00 62-00 35 00 61 00 34 00 30  .6.-.7.b.5.a.4.0
+00000259`ed6a1460  00 36 00 39 00 35 00 35-00 37 00 31 00 00 00 00  .6.9.5.5.7.1....
+00000259`ed6a1470  00 00 00 00 00 00 00 00-00 00 00 00 00 00 00 00  ................
+00000259`ed6a1480  00 00 00 00 00 00 00 00-00 00 00 00 00 00 00 00  ................
+00000259`ed6a1490  00 00 00 00 00 00 00 00-00 00 00 00 00 00 00 00  ................
+00000259`ed6a14a0  00 00 00 00 00 00 00 00-00 00 00 00 00 00 00 00  ................
+00000259`ed6a14b0  00 00 00 00 00 00 00 00-00 00 00 00 00           .............
+[1] 45626031: 8912: synaLib: tudor: STATUS: CMD SEND: VCSFW_CMD_DB2_WRITE_OBJECT
+[1] 45626031: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsWrap >>>>>>>>
+[1] 45626031: 8912: synaLib: palCrypto: STATUS: palCryptoRng >>>>>>>>
+[1] 45626031: 8912: synaLib: palCrypto: STATUS: palCryptoRng <<<<<<<<
+[1] 45626031: 8912: synaLib: palCrypto: STATUS: palCryptoEncryptAuth >>>>>>>>
+[1] 45626031: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 45626031: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 45626031: 8912: synaLib: palCrypto: STATUS: palCryptoEncryptAuth <<<<<<<<
+[1] 45626031: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsWrap <<<<<<<<
+[1] 45626031: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl >>>>>>>>
+[1] 45626031: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite >>>>>>>>
+[1] 45626031: 8912: synaLib: palSensor: STATUS: palWinUsbBulkWrite <<<<<<<<
+[1] 45626031: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead >>>>>>>>
+[1] 45626031: 8912: synaLib: palSensor: STATUS: palWinUsbBulkRead <<<<<<<<
+[1] 45626031: 8912: synaLib: tudor: STATUS: tudorUsbProtoIoControl <<<<<<<<
+[1] 45626031: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap >>>>>>>>
+[1] 45626031: 8912: synaLib: palCrypto: STATUS: palCryptoDecryptAuth >>>>>>>>
+[1] 45626031: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm >>>>>>>>
+[1] 45626031: 8912: synaLib: palCrypto: STATUS: palCryptoAesGcm <<<<<<<<
+[1] 45626031: 8912: synaLib: palCrypto: STATUS: palCryptoDecryptAuth <<<<<<<<
+[1] 45626031: 8912: niseTlsLib: ssiTls: STATUS: ssiTlsUnwrap <<<<<<<<
+
+tudorSecureBioConnect RECV
+recvBlobLen:
+    00000014
+recvBlobData:
+    0-1: 00 00
+    2-3: 00 00
+    4-19: d3 4c ff 8d 26 f8 bd 84 98 74 64 42 c1 08 ff d9
+[1] 45626046: 8912: synaLib: tudor: STATUS: CMD REPLY: VCSFW_CMD_DB2_WRITE_OBJECT
+[1] 45626046: 8912: synaLib: tudor: STATUS: stiTudorSetCommonProperty <<<<<<<<
+[1] 45626046: 8912: synaLib: vfm: STATUS: vfmStgSetCommonProperty <<<<<<<<
+[1] 45626046: 8912: synaLib: vfm: STATUS: _vfmStgClose >>>>>>>>
+[1] 45626046: 8912: synaLib: tudor: STATUS: stiTudorClose >>>>>>>>
+[1] 45626046: 8912: synaLib: tudor: STATUS: stiTudorClose <<<<<<<<
+[1] 45626046: 8912: synaLib: vfm: STATUS: _vfmStgClose <<<<<<<<

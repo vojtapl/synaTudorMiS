@@ -1,0 +1,70 @@
+﻿[CVA File Information]
+CVATimeStamp=20220531T041159
+CVASyntaxVersion=2.1A9
+
+[Software Title]
+US=Synaptics Fingerprint Driver
+
+[US.Software Description]
+This package contains the driver that enables the Synaptics Fingerprint Sensor in supported computer models that are running a supported operating system. The fingerprint sensor scans fingerprints for use with biometric security applications.
+
+[General]
+PN=P00ZYW-B2H
+Version=6.0.59.1111
+Revision=B
+Pass=3
+Type=Driver
+Category=Driver - I/O
+TargetPartition=
+SystemMustBeRebooted=0
+VendorName=Synaptics
+VendorVersion=6.0.59.1111
+
+[SupportedLanguages]
+Languages=GLOBAL
+Countries=GBL
+
+[ProfessionalInnovations]
+HPPI=No
+LearnMore=
+
+[Softpaq]
+SoftpaqNumber=
+SupersededSoftpaqNumber=
+SoftPaqMD5=
+
+[DetailFileInformation]
+
+[Devices]
+USB\VID_06CB&PID_00FF="Synaptics UWP WBDI"
+
+[System Information]
+SysId01=0x891A
+SysName01=HP Spectre x360 16 inch 2-in-1 Laptop PC,2-in-1 Laptop
+SysId02=0x891B
+SysName02= 2-in-1 Laptop,HP Spectre x360 16 inch 2-in-1 Laptop PC
+SysId03=0x891C
+SysName03= 2-in-1 Laptop,HP Spectre x360 16 inch 2-in-1 Laptop PC
+SysId04=0x891D
+SysName04= 2-in-1 Laptop,HP Spectre x360 16 inch 2-in-1 Laptop PC
+
+[Operating Systems]
+W11=OEM
+
+[ReturnCode]
+0:SUCCESS:NOREBOOT=The action completed successfully.
+14:SUCCESS:NOREBOOT=The action completed successfully.
+3010:SUCCESS:NOREBOOT=The action completed successfully.
+
+[Install Execution]
+Install="installdrv.cmd"
+SilentInstall="install.cmd"
+
+[Private]
+Private_SSMCompliant=1
+DPB_Compliant=0
+
+[CVAToolDocumentStamp]
+Generate By CVA Tool V1.0.0.0; Spec V2.1 A9 on 5/31/2022 4:11:59 AM
+Copyright © 2022 HP Development Company, L.P.
+

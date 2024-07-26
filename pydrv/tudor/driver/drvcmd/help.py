@@ -2,6 +2,7 @@ import inspect
 
 from .cmd import *
 
+
 @cmd("help")
 class CmdHelp(Command):
     """
@@ -9,9 +10,13 @@ class CmdHelp(Command):
     Usage: help [command]
     """
 
-    def run(self, _, args : list):
+    def run(self, _, args: list):
         if len(args) <= 0:
             print("Available commands:")
             print(" ".join(Command.commands.keys()))
         else:
-            print(inspect.cleandoc(Command.commands[args[0].lower().strip()].__doc__).strip())
+            print(
+                inspect.cleandoc(
+                    Command.commands[args[0].lower().strip()].__doc__
+                ).strip()
+            )

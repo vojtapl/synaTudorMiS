@@ -1,0 +1,18 @@
+@REM Starting installation of IF1.xSyna_ZZYWB2
+ 
+ 
+@IFFILE(C:\System.sav\Util\instupd.vbs) 
+@SingleObj cmd.exe /c CSCRIPT.EXE /NOLOGO C:\System.sav\Util\instupd.vbs c:\SWSETUP\DRV\InputDevices\Synaptics\IF1.xSyna_ZZYWB2\6.0.59.1111\install.cmd 
+@ELSE 
+@SingleObj cmd.exe /c c:\SWSETUP\DRV\InputDevices\Synaptics\IF1.xSyna_ZZYWB2\6.0.59.1111\install.cmd 
+@ENDIF 
+  
+@REM Adding a CDC check is optional and can be used to verify a 
+@REM file is present on the hard drive. 
+@REM @CDCAppName IF1.xSyna_ZZYWB2 
+@REM @CDCFileExist ADD_FULL_PATH_TO_BINARY_HERE 
+@REM For example @CDCFileExist "C:\SWSetup\HP Power Manager\Verdiem Energy Saver.ico" 
+ 
+ 
+@REM Finished installation of IF1.xSyna_ZZYWB2 
+ 

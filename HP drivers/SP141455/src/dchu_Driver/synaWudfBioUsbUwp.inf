@@ -1,0 +1,200 @@
+; Copyright (C) 2022 Synaptics Incorporated, All Rights Reserved.
+; synaUMDF.inf - Install the WBDI USB user-mode driver - Synaptics WBDI 
+;
+
+[Version]
+Signature="$Windows NT$"
+Class=Biometric
+ClassGuid={53D29EF7-377C-4D14-864B-EB3A85769359}
+Provider=%SYNAUMDF%
+CatalogFile=synaUMDF.cat
+DriverVer = 01/14/2022,6.0.59.1111
+
+[Manufacturer]
+%SYNAUMDF%=Synaptics,NTamd64,NTamd64.10.0...18362
+
+[Synaptics.NTamd64]
+; TODO: Change the VendorID (VID) and ProductID (PID) to match your device
+%WBDIUsbDeviceName%=Biometric_Install, USB\VID_06CB&PID_00C9
+%WBDIUsbDeviceName%=Biometric_Install, USB\VID_06CB&PID_00D1
+%WBDIUsbDeviceName%=Biometric_Install, USB\VID_06CB&PID_00E7
+%WBDIUsbDeviceName%=Biometric_Install, USB\VID_06CB&PID_00FF
+%WBDIUsbDeviceName%=Biometric_Install, USB\VID_06CB&PID_0124
+
+[Synaptics.NTamd64.10.0...18362]
+; TODO: Change the VendorID (VID) and ProductID (PID) to match your device
+%WBDIUsbDeviceName%=Biometric_Install_DFx, USB\VID_06CB&PID_00C9
+%WBDIUsbDeviceName%=Biometric_Install_DFx, USB\VID_06CB&PID_00D1
+%WBDIUsbDeviceName%=Biometric_Install_DFx, USB\VID_06CB&PID_00E7
+%WBDIUsbDeviceName%=Biometric_Install_DFx, USB\VID_06CB&PID_00FF
+%WBDIUsbDeviceName%=Biometric_Install_DFx, USB\VID_06CB&PID_0124
+
+;[ClassInstall32]
+;AddReg=BiometricClass_RegistryAdd
+
+;[BiometricClass_RegistryAdd]
+;HKR,,,,%ClassName%
+;HKR,,Icon,,"-201"
+;HKR,,IconPath,0x00010000,"%%SYSTEMROOT%%\system32\SysClass.dll,-201"
+
+[SourceDisksFiles]
+synaWudfBioUsb111.dll=1
+synaFpAdapter111.dll=1 ; Synaptics adapter
+
+[SourceDisksNames]
+1 = %MediaDescription%
+
+; =================== UMDF WBDI Usb Device - WBDI IOCTL interface ==================================
+
+[Biometric_Install.NT]
+CopyFiles=UMDriverCopy, WinBioAdapterCopy
+AddProperty=Device_Properties
+Include=WINUSB.INF                      ; Import sections from WINUSB.INF
+Needs=WINUSB.NT                         ; Run the CopyFiles & AddReg directives for WinUsb.INF
+
+[Biometric_Install.NT.hw]
+AddReg=Biometric_Device_AddReg
+AddReg=DriverPlugInAddReg, DatabaseAddReg, EventsAddReg
+
+[Biometric_Install_DFx.NT]
+CopyFiles=UMDriverCopy, WinBioAdapterCopy
+AddProperty=Device_Properties
+Include=WINUSB.INF                      ; Import sections from WINUSB.INF
+Needs=WINUSB.NT                         ; Run the CopyFiles & AddReg directives for WinUsb.INF
+
+[Biometric_Install_DFx.NT.hw]
+AddReg=Biometric_Device_AddReg
+AddReg=DriverPlugInAddReg, DatabaseAddReg, EventsAddReg
+AddReg=DFxReg
+
+[Device_Properties]
+DeviceIcon,,,,"%%SYSTEMROOT%%\system32\SysClass.dll,-201" ; This is where a device specific icon can be specified.
+
+[Biometric_Install.NT.Services]
+AddService=WUDFRd, 0x000001fa,WUDFRD_ServiceInstall  ; flag 0x2 sets this as the service for the device
+AddService=WinUsb, 0x000001f8,WinUsb_ServiceInstall  ; this service is installed because its a filter.
+
+[Biometric_Install.NT.Wdf]
+KmdfService=WINUSB, WinUsb_Install
+UmdfDispatcher=WinUsb
+UmdfService=synaWudfBioUsb111, synaWudfBioUsb_Install
+UmdfServiceOrder=synaWudfBioUsb111
+UmdfHostProcessSharing=ProcessSharingDisabled
+
+[Biometric_Install_DFx.NT.Services]
+AddService=WUDFRd, 0x000001fa,WUDFRD_ServiceInstall  ; flag 0x2 sets this as the service for the device
+AddService=WinUsb, 0x000001f8,WinUsb_ServiceInstall  ; this service is installed because its a filter.
+
+[Biometric_Install_DFx.NT.Wdf]
+KmdfService=WINUSB, WinUsb_Install
+UmdfDispatcher=WinUsb
+UmdfService=synaWudfBioUsb111, synaWudfBioUsb_Install
+UmdfServiceOrder=synaWudfBioUsb111
+UmdfHostProcessSharing=ProcessSharingDisabled
+
+[WinUsb_Install]
+KmdfLibraryVersion = 1.19
+
+[synaWudfBioUsb_Install]
+UmdfLibraryVersion=2.21.0
+ServiceBinary = "%12%\UMDF\synaWudfBioUsb111.dll"
+
+[Biometric_Device_AddReg]
+HKR,,"DeviceCharacteristics",0x10001,0x0100     ; Use same security checks on relative opens
+HKR,,"Security",,"D:P(A;;GA;;;BA)(A;;GA;;;SY)"  ; Allow generic-all access to Built-in administrators and Local system
+HKR,,"LowerFilters",0x00010008,"WinUsb"         ; FLG_ADDREG_TYPE_MULTI_SZ | FLG_ADDREG_APPEND
+HKR,,"Exclusive",0x10001,1
+HKR,,"DeviceIdleEnabled",0x00010001,1
+HKR,,"UserSetDeviceIdleEnabled",0x00010001,1
+HKR,,"DefaultIdleState",0x00010001,1
+HKR,,"DefaultIdleTimeout",0x00010001,5000
+HKR,,"WinUsbPowerPolicyOwnershipDisabled",0x00010001,1
+HKR,,"SystemWakeEnabled",0x00010001,1
+
+[DriverPlugInAddReg]
+HKR,WinBio\Configurations,DefaultConfiguration,,"0"
+HKR,WinBio\Configurations\0,SystemSensor,0x00010001,0x01                        ; UAC/Winlogon - 1
+HKR,WinBio\Configurations\0,SensorMode,0x00010001,0x02                          ; Basic - 1, Advanced - 2
+HKR,WinBio\Configurations\0,SensorAdapterBinary,,"synaFpAdapter111.dll"         ; Synaptics adapter.
+HKR,WinBio\Configurations\0,EngineAdapterBinary,,"synaFpAdapter111.dll"         ; Synaptics adapter
+HKR,WinBio\Configurations\0,StorageAdapterBinary,,"synaFpAdapter111.dll"        ; Synaptics adapter
+HKR,WinBio\Configurations\0,DatabaseId,,"4CD81755-1411-4BB1-A230-D6ED329E025C"  ; must have Synaptics specific GUID for DB
+HKR,WinBio\Configurations,VirtualSecureConfiguration,0x00010001,0x00000001
+HKR,WinBio\Configurations\1,SystemSensor,0x00010001,0x01                        ; UAC/Winlogon - 1
+HKR,WinBio\Configurations\1,SensorMode,0x00010001,0x02                          ; Basic - 1, Advanced - 2
+HKR,WinBio\Configurations\1,SensorAdapterBinary,,"synaFpAdapter111.dll"            ; Synaptics adapter.
+HKR,WinBio\Configurations\1,EngineAdapterBinary,,"synaFpAdapter111.dll"            ; Synaptics adapter
+HKR,WinBio\Configurations\1,StorageAdapterBinary,,"synaFpAdapter111.dll"           ; Synaptics adapter
+HKR,WinBio\Configurations\1,VsmSensorAdapterBinary,,"WinBioVsmNullAdapter"
+HKR,WinBio\Configurations\1,VsmEngineAdapterBinary,,"WinBioVsmNullAdapter"
+HKR,WinBio\Configurations\1,VsmStorageAdapterBinary,,"WinBioVsmNullAdapter"
+HKR,WinBio\Configurations\1,DatabaseId,,"3FEDA356-7301-4020-925A-C71467511B31"  ; must have Synaptics specific GUID for DB
+HKR,WinBio\Configurations\1,VirtualSecureMode,0x00010001,0x00000001
+
+[DatabaseAddReg]
+; DB GUID
+HKLM, System\CurrentControlSet\Services\WbioSrvc\Databases\{4CD81755-1411-4BB1-A230-D6ED329E025C},BiometricType,0x00010001,0x00000008
+HKLM, System\CurrentControlSet\Services\WbioSrvc\Databases\{4CD81755-1411-4BB1-A230-D6ED329E025C},Attributes,0x00010001,0x00000001
+HKLM, System\CurrentControlSet\Services\WbioSrvc\Databases\{4CD81755-1411-4BB1-A230-D6ED329E025C},Format,,"00000000-0000-0000-0000-000000000000"
+HKLM, System\CurrentControlSet\Services\WbioSrvc\Databases\{4CD81755-1411-4BB1-A230-D6ED329E025C},InitialSize,0x00010001,0x00000020
+HKLM, System\CurrentControlSet\Services\WbioSrvc\Databases\{4CD81755-1411-4BB1-A230-D6ED329E025C},AutoCreate,0x00010001,0x00000001
+HKLM, System\CurrentControlSet\Services\WbioSrvc\Databases\{4CD81755-1411-4BB1-A230-D6ED329E025C},AutoName,0x00010001,0x00000001
+HKLM, System\CurrentControlSet\Services\WbioSrvc\Databases\{4CD81755-1411-4BB1-A230-D6ED329E025C},FilePath,,""
+HKLM, System\CurrentControlSet\Services\WbioSrvc\Databases\{4CD81755-1411-4BB1-A230-D6ED329E025C},ConnectionString,,""
+; Secure DB GUID
+HKLM, System\CurrentControlSet\Services\WbioSrvc\Databases\{3FEDA356-7301-4020-925A-C71467511B31},BiometricType,0x00010001,0x00000008
+HKLM, System\CurrentControlSet\Services\WbioSrvc\Databases\{3FEDA356-7301-4020-925A-C71467511B31},Attributes,0x00010001,0x00000001
+HKLM, System\CurrentControlSet\Services\WbioSrvc\Databases\{3FEDA356-7301-4020-925A-C71467511B31},Format,,"00000000-0000-0000-0000-000000000000"
+HKLM, System\CurrentControlSet\Services\WbioSrvc\Databases\{3FEDA356-7301-4020-925A-C71467511B31},InitialSize,0x00010001,0x00000020
+HKLM, System\CurrentControlSet\Services\WbioSrvc\Databases\{3FEDA356-7301-4020-925A-C71467511B31},AutoCreate,0x00010001,0x00000001
+HKLM, System\CurrentControlSet\Services\WbioSrvc\Databases\{3FEDA356-7301-4020-925A-C71467511B31},AutoName,0x00010001,0x00000001
+HKLM, System\CurrentControlSet\Services\WbioSrvc\Databases\{3FEDA356-7301-4020-925A-C71467511B31},FilePath,,""
+HKLM, System\CurrentControlSet\Services\WbioSrvc\Databases\{3FEDA356-7301-4020-925A-C71467511B31},ConnectionString,,""
+
+[EventsAddReg]
+HKLM, System\CurrentControlSet\Services\eventlog\System\Synaptics FPR,EventMessageFile,,"%%SystemRoot%%\System32\drivers\UMDF\synaWudfBioUsb111.dll"
+HKLM, System\CurrentControlSet\Services\eventlog\System\Synaptics FPR,TypesSupported,0x00010001,0x00000007
+
+[DFxReg]
+HKR,"WDF","WdfDirectedPowerTransitionEnable",0x00010001,1
+
+[WUDFRD_ServiceInstall]
+DisplayName    = %WudfRdDisplayName%
+ServiceType    = 1
+StartType      = 3
+ErrorControl   = 1
+ServiceBinary  = %12%\WUDFRd.sys
+LoadOrderGroup = Base
+
+[WinUsb_ServiceInstall]
+DisplayName     = %WinUsb_SvcDesc%
+ServiceType     = 1
+StartType       = 3
+ErrorControl    = 1
+ServiceBinary   = %12%\WinUSB.sys
+
+[DestinationDirs]
+UMDriverCopy=12,UMDF ; copy to \Windows\System32\drivers\UMDF
+WinBioAdapterCopy=11, WinBioPlugins; copy to \Windows\System32\WinBioPlugins
+
+[UMDriverCopy]
+synaWudfBioUsb111.dll
+
+[WinBioAdapterCopy]
+synaFpAdapter111.dll
+
+[SignatureAttributes]
+synaFpAdapter111.dll = SignatureAttributes.WindowsHello
+
+[SignatureAttributes.WindowsHello]
+WindowsHello = true
+
+; =================== Generic ==================================
+
+[Strings]
+SYNAUMDF="Synaptics Incorporated"
+MediaDescription="Synaptics Fingerprint Sensor Driver Installation Media"
+ClassName="Biometric Devices"
+WudfRdDisplayName="Windows Driver Foundation - User-mode Driver Framework Reflector"
+WBDIUsbDeviceName="Synaptics UWP WBDI" 
+WinUsb_SvcDesc="WinUSB Driver"

@@ -1,0 +1,33 @@
+[INSTALL_SEQUENCE]
+//INSTALL_1="UNINSTALL_PROGRAM"
+INSTALL_2="COMMAND_SYSTEM_ID"
+
+[UNINSTALL_PROGRAM]
+UNINSTALL="Synaptics Fingerprint Driver"
+
+[INSTALL_MSI_PROGRAM]
+
+[COMMAND]
+COMMAND_1="installdrv.cmd"
+
+[COMMAND_INSTALL]
+
+[SYSTEM_ID]
+SYSTEM_ID_1="891A"
+SYSTEM_ID_2="891B"
+
+[COMMAND_SYSTEM_ID]
+//%SYSID% defines command sequence for specific system ID
+SYSTEM_ID_1="COMMAND_1"
+SYSTEM_ID_2="COMMAND_1"
+
+[RETURN_CODE]
+RETURN_CODE_32="INSTALL_32"
+RETURN_CODE_64="INSTALL_64"
+
+[RETURN_CODE_TRANSLATION]
+//%1 defines specific return code from execution command return by RETURN_CODE
+//Setup.exe returns translated return code.
+//HPSA Supported return codes are: 0="Success", 259="Failure", 1602="Cancel", 3010="Success Reboot Required"
+//Intel returns 14 as "Success Reboot Required"
+14="3010"

@@ -1,0 +1,121 @@
+# data sent to serializePayload
+## tuid
+- len: 0x10=16
+- data: b'\xf6\x37\x82\xd0\xf7\x5f\x6c\x1a\x30\xcb\x07\xf8\x9a\x62\x3f\x21'
+#
+## sub_id
+- len: 0x01=1
+- data: b'\xf6'
+#
+## eid aka user_id - from winbio
+- len: 0x4c=76
+- data: b'\x03\x00\x00\x00\x1c\x00\x00\x00\x01\x05\x00\x00\x00\x00\x00\x05\x15\x00\x00\x00\x0c\xbb\x01\x4e\x6d\xdd\x74\xeb\x5b\x41\xeb\x98\xe9\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+
+## user SID from windows - seems to nicely match?
+01 05 00 00 00 00 00 05 15 00 00 00 0c bb 01 4e 6d dd 74 eb 5b 41 eb 98 e9 03 00 00
+
+## data decomposition - matches nicely WINBIO_IDENTITY of type WINBIO_ID_TYPE_SID
+## https://learn.microsoft.com/en-us/windows/win32/secbiomet/winbio-identity
+## NOTE: const ULONG SECURITY_MAX_SID_SIZE = (ULONG)68;
+type:                               03 00 00 00
+size:                               1c 00 00 00
+account_sid[SECUTITY_MAX_SID_SIZE]: 01 05 00 00 00 00 00 05 15 00 00 00 0c bb 01 4e 6d dd 74 eb 5b 41 eb 98 e9 03 00 00
+padding of account_sid:             00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+## additional data is unused (the funciton which would add it is not called)
+
+# misEnrollCommit to be sent data
+
+0 - cmd:    96
+1-8:        03 00 00 00 00 00 00 00
+9-12 - len: 6f 00 00 00
+13- data:
+
+tag:
+-> num:  00 00
+-> size: 10 00 00 00
+-> data: f6 37 82 d0 f7 5f 6c 1a 30 cb 07 f8 9a 62 3f 21
+
+tag:
+-> num:  01 00
+-> size: 4c 00 00 00
+-> data: 03 00 00 00 1c 00 00 00 01 05 00 00 00 00 00 05 15 00 00 00 0c bb 01 4e 6d dd 74 eb 5b 41 eb 98 e9 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+tag:
+-> num: 02 00
+-> size: 01 00 00 00
+-> data: f6
+
+
+
+# data of command DB2_GET_OBJ_LIST ater GET_DB2_INFO at the end of enrollment
+- len: 0x15=21
+- data:
+   0 - cmd:     9f
+   1-4 - type:  02 00 00 00
+   5-20 - tuid: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+
+# second call afterwards
+- len: 0x15=21
+- data:
+   0 - cmd:     9f
+   1-4 - type:  03 00 00 00
+   5-20 - tuid: f6 37 82 d0 f7 5f 6c 1a 30 cb 07 f8 9a 62 3f 21
+      -> matches tuid from template list from call above
+
+
+# NOTE: auth with this data does NOT work
+# auth image to templates in tudorsendanycommand
+- len: 0x0d=13 (0d 00 00 00 9c 01 00 00)
+- data:
+   0 - cmd: 99
+   1-4: 01 00 00 00
+   5-8 - num_tuids_to_match: 00 00 00 00
+   9-12 - sizeof(someDataX): 00 00 00 00
+
+# auth image to templates in tudorsendanycommand - different call
+- len: 0x0d=13 (0d 00 00 00 9c 01 00 00)
+- data:
+   0 - cmd: 99
+   1-4: 01 00 00 00
+   5-8 - num_tuids_to_match: 00 00 00 00
+   9-12 - sizeof(someDataX): 00 00 00 00
+
+
+tudorSecureBioConnect
+cmdId:
+edx=9f
+sendBlobLen:
+000000a9`55e7f540  00000015
+sendBlobData:
+000002a3`9eba9400  9f 02 00 00 00 ff ff ff-ff ff ff ff ff ff ff ff  ................
+000002a3`9eba9410  ff ff ff ff ff                                   .....
+
+
+tudorSecureBioConnect
+cmdId:
+edx=9f
+sendBlobLen:
+000000a9`55e7f710  00000015
+sendBlobData:
+000002a3`9eba9460  9f 01 00 00 00 00 00 00-00 00 00 00 00 00 00 00  ................
+000002a3`9eba9470  00 00 00 00 00                                   .....
+
+tudorSecureBioConnect
+cmdId:
+edx=a0
+sendBlobLen:
+000000a9`55e7f700  00000015
+sendBlobData:
+000002a3`9eba9400  a0 01 00 00 00 1d 35 ae-60 2f 4d b9 83 73 a4 db  ......5.`/M..s..
+000002a3`9eba9410  a2 fd d7 9e 90                                   .....
+
+tudorSecureBioConnect
+cmdId:
+edx=a2
+sendBlobLen:
+000000a9`55e7f740  00000029
+sendBlobData:
+000002a3`9eb34e70  a2 01 01 00 00 01 00 00-00 00 00 00 00 00 00 00  ................
+000002a3`9eb34e80  00 00 00 00 00 00 00 00-00 00 00 00 00 00 00 00  ................
+000002a3`9eb34e90  00 00 00 00 00 00 00 00-00                       .........
