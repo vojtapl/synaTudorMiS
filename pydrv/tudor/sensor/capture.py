@@ -3,7 +3,7 @@ import logging
 import tudor
 from .sensor import *
 from .event import *
-from sensor_keys.windows_pairing_data import WINBIO_SAMPLE_SID
+from .windows_pairing_data import WINBIO_SAMPLE_SID
 
 # per vfmUtilAuthImageQuality
 IMAGE_QUALITY_THRESHOLD = 50
@@ -262,7 +262,7 @@ class SensorFrameCapturer:
         return resp in STATUS_SUCCESS
 
     def mis_enroll_add_image(self):
-        # NOTE: mimic misEnrollAddImage
+        # based on mimic misEnrollAddImage
         logging.log(tudor.LOG_COMM, "-> sending enroll add image")
         resp = self.sensor.comm.send_command(struct.pack("<BI", 0x96, 2), 82)
 
@@ -1057,10 +1057,13 @@ class SensorFrameCapturer:
         )
         if 1 in data.vals.keys():
             print(f"host partition verision: {data.vals[1]}")
+            print(f"host partition verision length: {len(data.vals[1])}")
         if 2 in data.vals.keys():
+
             print(
                 "not printing host partition data because if they are from Windows they cannot be easily decoded"
             )
+            print(f"host partition data length: {len(data.vals[2])}")
 
     def get_storage_info(self):
         SEND_LEN = 1
