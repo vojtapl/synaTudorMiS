@@ -64,5 +64,5 @@ The fingerprint reader in my laptop (06CB:00FF) does not seem to support raw fra
 
 ### Acknowledgment
 
-- The driver is based on [Synaptics Tudor Sensors Reverse Engineering Project](https://github.com/Popax21/synaTudor/tree/rev) by Popax21 and his (Driver Relinking Project)[https://github.com/Popax21/synaTudor/tree/relink]
+- The driver is based on [Synaptics Tudor Sensors Reverse Engineering Project](https://github.com/Popax21/synaTudor/tree/rev) by Popax21 and his [Driver Relinking Project](https://github.com/Popax21/synaTudor/tree/relink)
 - This blog post: [Reversing a Fingerprint Reader Protocol](https://blog.th0m.as/misc/fingerprint-reversing/) by Thomas Lambertz was very helpful in the beginning.

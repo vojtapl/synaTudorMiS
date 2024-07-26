@@ -1,3 +1,6 @@
+# Note
+This document is not updated yet.
+
 # Usage of the driver script
 ## Invocation
 The script needs to be run as `root` to be able to access the sensor. You can then invoke it like this:
@@ -11,7 +14,9 @@ Argument | Description
 -q | Decreases the log level
 \<communication mode\> | How to communicate with the sensor. Currently only `usb` is defined
 --vid | The VID of the sensor. Defaults to 0x06cb
---pid | The PID of the sensor. Defaults to 0x00be
+--pid | The PID of the sensor. Defaults to 0x00ff
+--pair-data | The pairing data file to use,so it does not have to be added manually.
+-i | Init automatically if pair-data argument given.
 
 ## Shell
 After you start the script, you should be dropped in a shell waiting for user commands. You can get a list of commands via the command `help`, or print help for a specific command via `help <command>`. You can exit at any time using the command `exit`, or using Ctrl+C or Ctrl+D.
