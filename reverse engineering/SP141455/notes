@@ -132,10 +132,10 @@
 
 - 0x41: VCSFW_CMD_STORAGE_PART_WRITE
     - req: size: 0xd + sizeof(WriteBlob)
-        1: (2)
+        1: id (2)
         2 (0):
         3-4: (0xffff)
-        5-8: (0)
+        5-8: write start offset (0)
         9-blob_len (size)
     - resp: size: 6
       2-5: number of bytes written
@@ -538,12 +538,29 @@
         2-3:
         4-7: new partition version
 
-- 0xa6: ????
+- 0xa6: ?
+    - launched by vfmSecureBioConnect
+    - something with pairing and certificates; device is reset before and after
     - req: size: 177
         1-32:
         33-36: size of data
         37-176: data
     - resp: size: 2234
+      2-3: some size X
+      4-35:
+      36-
+      68-71: size of data from 72-
+      72-
+      1608-1611: size of data from 1612-
+      1612-
+      1752-1755: size of data from 1756-
+      1756-
+      1896-1927:
+      1928-1931: size of data from 1932
+      1932-
+      2080-2083: size of data from 2084-
+      2084-
+
 
 - 0xaa: *reset SBL mode*
     - req: size: 0x15

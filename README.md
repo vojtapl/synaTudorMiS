@@ -9,7 +9,6 @@ The fingerprint reader in my laptop (06CB:00FF) does not seem to support raw fra
 - Please note that some things are not yet changed from to the current sensor, e.g. the iota patches.
 
 
-
 ### Most likely supported devices
 
 - per synaWudfBioUsbUwp.inf
@@ -24,31 +23,33 @@ The fingerprint reader in my laptop (06CB:00FF) does not seem to support raw fra
 ### What works:
 
 - Enroll, authentication.
+- Storing and reading (currently not yet without initializing sensor) pairing data on host partition in plain text (no encryption).
 - Some other misc commands.
 
+
 ### What does not work:
-- More complex working with data partition - saving pairing data, writing, full decode.
-    - This would require an equivalent function to Crypt(Un)ProtectData to encrypt the pairing data before writing to host partition on sensor.
+- Using the same pairing data in Windows and Linux.
+    - This would require an equivalent function to Crypt(Un)ProtectData to encrypt the pairing data before writing to host partition on sensor. Or dumping the pairing data and storing them on Linux as well.
 
 
-### TODOs:
+### To-dos:
 
 - change the identities used
+    - where to get / generate them
 - host partition
-    - how to wrap / unwrap pairing data
-        - CryptUnprotectData and CryptProtectData, so no easy decoding without Windows
-        - mimic the funcitons wrapping / unwrapping data
-    - how to store pairing data on sensor
-        - missing tags 0, 1 and 5
+    - encryption
 - where does the common property come from and what is it for
     -> where does the function highLevelSetCommonProptery get its params from
-- How does BIOS format the host partition
-- What does the 0xa6 command do
+- If there is space store Linux pairing data after Windows pairing data.
 - cleanup logging
 - code cleanup
 - general cleanup
 - (not important) check for update and update
 - (not important) find the newest driver version and check for differences
+- improve security
+
+### Some notes on how does the sensor work
+- Each enrollment is tied to a set of pairing data.
 
 
 ### How to prepare for WinDbg
@@ -57,6 +58,7 @@ The fingerprint reader in my laptop (06CB:00FF) does not seem to support raw fra
 
 
 ### Abbreviations used:
+
 - tuid = template UID
 - SID = windows security identifier
 - FW = firmware

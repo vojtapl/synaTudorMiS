@@ -1,9 +1,12 @@
+# NOTE:
+This does currently not work.
+
 # libfprint patch
 This folder contains a patched version of libfprint, which can interact with the tudor driver contained in this repository.
 
 ## Installation
 1. Install fprintd and libfprint like regular
-2. Make sure you installed the [Python prototype driver package](../pydrv) 
+2. Make sure you installed the [Python prototype driver package](../pydrv)
 2. Uninstall libfprint, **WITHOUT REMOVING IT'S DEPENDENT PACKAGES** (e.g. on Arch Linux: `sudo pacman -Rdd libfprint`)
 3. Go into the `libfprint` folder contained in this folder
 4. Run `meson build` (NOTE: on Arch Linux, run `arch-meson build`)

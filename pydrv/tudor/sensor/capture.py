@@ -857,7 +857,8 @@ class SensorFrameCapturer:
         return
 
     # FIXME: seemed not to work or I did not find the right tuid / id
-    def delete_template(self, tuid):
+    def delete_enrollment(self, tuid):
+        logging.warning("This does not seem to work yet")
         # based on stiTudorDeleteEnrollment
         # NOTE: likely will not delete all enrollments, just a single template
         obj_info = self.get_object_info(OBJ_TYPE_TEMPLATES, tuid)
