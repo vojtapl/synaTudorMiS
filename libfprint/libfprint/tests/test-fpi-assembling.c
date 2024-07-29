@@ -22,7 +22,6 @@
 #include <cairo.h>
 #include "fpi-assembling.h"
 #include "fpi-image.h"
-#include "test-config.h"
 
 typedef struct
 {
@@ -62,12 +61,12 @@ test_frame_assembling (void)
   int test_height;
   guchar *data;
   struct fpi_frame_asmbl_ctx ctx = { 0, };
+  gint xborder = 5;
 
   g_autoptr(FpImage) fp_img = NULL;
   GSList *frames = NULL;
 
-  g_assert_false (SOURCE_ROOT == NULL);
-  path = g_build_path (G_DIR_SEPARATOR_S, SOURCE_ROOT, "tests", "vfs5011", "capture.png", NULL);
+  path = g_test_build_filename (G_TEST_DIST, "vfs5011", "capture.png", NULL);
 
   img = cairo_image_surface_create_from_png (path);
   data = cairo_image_surface_get_data (img);
@@ -79,7 +78,7 @@ test_frame_assembling (void)
   ctx.get_pixel = cairo_get_pixel;
   ctx.frame_width = width;
   ctx.frame_height = 20;
-  ctx.image_width = width;
+  ctx.image_width = width - 2 * xborder;
 
   g_assert (height > ctx.frame_height);
 
@@ -118,8 +117,8 @@ test_frame_assembling (void)
 
   /* The FpImage and cairo surface need to be identical in the test area */
   for (int y = 0; y < test_height; y++)
-    for (int x = 0; x < width; x++)
-      g_assert_cmpint (data[x * 4 + y * stride + 1], ==, fp_img->data[x + y * width]);
+    for (int x = 0; x < ctx.image_width; x++)
+      g_assert_cmpint (data[(x + xborder) * 4 + y * stride + 1], ==, fp_img->data[x + y * ctx.image_width]);
 
   g_slist_free_full (frames, g_free);
   cairo_surface_destroy (img);

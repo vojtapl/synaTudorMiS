@@ -161,7 +161,7 @@ on_list_completed (FpDevice     *dev,
                    finger_to_string (fp_print_get_finger (print)),
                    fp_print_get_username (print));
 
-          if (date)
+          if (date && g_date_valid (date))
             {
               g_date_strftime (buf, G_N_ELEMENTS (buf), "%Y-%m-%d\0", date);
               g_print (", enrolled on %s", buf);
@@ -231,7 +231,7 @@ on_device_opened (FpDevice     *dev,
       return;
     }
 
-  if (!fp_device_has_storage (dev))
+  if (!fp_device_has_feature (dev, FP_DEVICE_FEATURE_STORAGE))
     {
       g_warning ("Device %s doesn't support storage", fp_device_get_name (dev));
       g_main_loop_quit (list_data->loop);

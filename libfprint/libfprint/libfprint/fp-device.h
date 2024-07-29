@@ -38,12 +38,42 @@ G_DECLARE_DERIVABLE_TYPE (FpDevice, fp_device, FP, DEVICE, GObject)
 /**
  * FpDeviceType:
  * @FP_DEVICE_TYPE_VIRTUAL: The device is a virtual device
+ * @FP_DEVICE_TYPE_UDEV: The device is a udev device
  * @FP_DEVICE_TYPE_USB: The device is a USB device
  */
 typedef enum {
   FP_DEVICE_TYPE_VIRTUAL,
+  FP_DEVICE_TYPE_UDEV,
   FP_DEVICE_TYPE_USB,
 } FpDeviceType;
+
+/**
+ * FpDeviceFeature:
+ * @FP_DEVICE_FEATURE_NONE: Device does not support any feature
+ * @FP_DEVICE_FEATURE_CAPTURE: Supports image capture
+ * @FP_DEVICE_FEATURE_VERIFY: Supports finger verification
+ * @FP_DEVICE_FEATURE_IDENTIFY: Supports finger identification
+ * @FP_DEVICE_FEATURE_STORAGE: Device has a persistent storage
+ * @FP_DEVICE_FEATURE_STORAGE_LIST: Supports listing the storage templates
+ * @FP_DEVICE_FEATURE_STORAGE_DELETE: Supports deleting stored templates
+ * @FP_DEVICE_FEATURE_STORAGE_CLEAR: Supports clearing the whole storage
+ * @FP_DEVICE_FEATURE_DUPLICATES_CHECK: Natively supports duplicates detection
+ * @FP_DEVICE_FEATURE_ALWAYS_ON: Whether the device can run continuously
+ * @FP_DEVICE_FEATURE_UPDATE_PRINT: Supports updating an existing print record using new scans
+ */
+typedef enum /*< flags >*/ {
+  FP_DEVICE_FEATURE_NONE = 0,
+  FP_DEVICE_FEATURE_CAPTURE = 1 << 0,
+  FP_DEVICE_FEATURE_IDENTIFY = 1 << 1,
+  FP_DEVICE_FEATURE_VERIFY = 1 << 2,
+  FP_DEVICE_FEATURE_STORAGE = 1 << 3,
+  FP_DEVICE_FEATURE_STORAGE_LIST = 1 << 4,
+  FP_DEVICE_FEATURE_STORAGE_DELETE = 1 << 5,
+  FP_DEVICE_FEATURE_STORAGE_CLEAR = 1 << 6,
+  FP_DEVICE_FEATURE_DUPLICATES_CHECK = 1 << 7,
+  FP_DEVICE_FEATURE_ALWAYS_ON = 1 << 8,
+  FP_DEVICE_FEATURE_UPDATE_PRINT = 1 << 9,
+} FpDeviceFeature;
 
 /**
  * FpScanType:
@@ -54,6 +84,23 @@ typedef enum {
   FP_SCAN_TYPE_SWIPE,
   FP_SCAN_TYPE_PRESS,
 } FpScanType;
+
+/**
+ * FpTemperature:
+ * @FP_TEMPERATURE_COLD: Sensor is considered cold.
+ * @FP_TEMPERATURE_WARM: Sensor is warm, usage time may be limited.
+ * @FP_TEMPERATURE_HOT: Sensor is hot and cannot be used.
+ *
+ * When a device is created, it is assumed to be cold. Applications such as
+ * fprintd may want to ensure all devices on the system are cold before
+ * shutting down in order to ensure that the cool-off period is not violated
+ * because the internal libfprint state about the device is lost.
+ */
+typedef enum {
+  FP_TEMPERATURE_COLD,
+  FP_TEMPERATURE_WARM,
+  FP_TEMPERATURE_HOT,
+} FpTemperature;
 
 /**
  * FpDeviceRetry:
@@ -92,6 +139,7 @@ typedef enum {
  * @FP_DEVICE_ERROR_DATA_FULL: No space on device available for operation
  * @FP_DEVICE_ERROR_DATA_DUPLICATE: Enrolling template duplicates storaged templates
  * @FP_DEVICE_ERROR_REMOVED: The device has been removed.
+ * @FP_DEVICE_ERROR_TOO_HOT: The device might be getting too hot
  *
  * Error codes for device operations. More specific errors from other domains
  * such as #G_IO_ERROR or #G_USB_DEVICE_ERROR may also be reported.
@@ -109,6 +157,7 @@ typedef enum {
   FP_DEVICE_ERROR_DATA_DUPLICATE,
   /* Leave some room to add more DATA related errors */
   FP_DEVICE_ERROR_REMOVED = 0x100,
+  FP_DEVICE_ERROR_TOO_HOT,
 } FpDeviceError;
 
 GQuark fp_device_retry_quark (void);
@@ -175,10 +224,11 @@ gboolean     fp_device_is_open (FpDevice *device);
 FpScanType   fp_device_get_scan_type (FpDevice *device);
 FpFingerStatusFlags fp_device_get_finger_status (FpDevice *device);
 gint         fp_device_get_nr_enroll_stages (FpDevice *device);
+FpTemperature fp_device_get_temperature (FpDevice *device);
 
-gboolean     fp_device_supports_identify (FpDevice *device);
-gboolean     fp_device_supports_capture (FpDevice *device);
-gboolean     fp_device_has_storage (FpDevice *device);
+FpDeviceFeature     fp_device_get_features (FpDevice *device);
+gboolean            fp_device_has_feature (FpDevice       *device,
+                                           FpDeviceFeature feature);
 
 /* Opening the device */
 void fp_device_open (FpDevice           *device,
@@ -190,6 +240,16 @@ void fp_device_close (FpDevice           *device,
                       GCancellable       *cancellable,
                       GAsyncReadyCallback callback,
                       gpointer            user_data);
+
+void fp_device_suspend (FpDevice           *device,
+                        GCancellable       *cancellable,
+                        GAsyncReadyCallback callback,
+                        gpointer            user_data);
+
+void fp_device_resume (FpDevice           *device,
+                       GCancellable       *cancellable,
+                       GAsyncReadyCallback callback,
+                       gpointer            user_data);
 
 void fp_device_enroll (FpDevice           *device,
                        FpPrint            *template_print,
@@ -235,12 +295,23 @@ void fp_device_list_prints (FpDevice           *device,
                             GAsyncReadyCallback callback,
                             gpointer            user_data);
 
+void fp_device_clear_storage (FpDevice           *device,
+                              GCancellable       *cancellable,
+                              GAsyncReadyCallback callback,
+                              gpointer            user_data);
+
 gboolean fp_device_open_finish (FpDevice     *device,
                                 GAsyncResult *result,
                                 GError      **error);
 gboolean fp_device_close_finish (FpDevice     *device,
                                  GAsyncResult *result,
                                  GError      **error);
+gboolean fp_device_suspend_finish (FpDevice     *device,
+                                   GAsyncResult *result,
+                                   GError      **error);
+gboolean fp_device_resume_finish (FpDevice     *device,
+                                  GAsyncResult *result,
+                                  GError      **error);
 FpPrint *fp_device_enroll_finish (FpDevice     *device,
                                   GAsyncResult *result,
                                   GError      **error);
@@ -263,7 +334,9 @@ gboolean fp_device_delete_print_finish (FpDevice     *device,
 GPtrArray * fp_device_list_prints_finish (FpDevice     *device,
                                           GAsyncResult *result,
                                           GError      **error);
-
+gboolean fp_device_clear_storage_finish (FpDevice     *device,
+                                         GAsyncResult *result,
+                                         GError      **error);
 
 gboolean fp_device_open_sync (FpDevice     *device,
                               GCancellable *cancellable,
@@ -304,6 +377,22 @@ gboolean fp_device_delete_print_sync (FpDevice     *device,
 GPtrArray * fp_device_list_prints_sync (FpDevice     *device,
                                         GCancellable *cancellable,
                                         GError      **error);
+gboolean fp_device_clear_storage_sync (FpDevice     *device,
+                                       GCancellable *cancellable,
+                                       GError      **error);
+gboolean fp_device_suspend_sync (FpDevice     *device,
+                                 GCancellable *cancellable,
+                                 GError      **error);
+gboolean fp_device_resume_sync (FpDevice     *device,
+                                GCancellable *cancellable,
+                                GError      **error);
 
+/* Deprecated functions */
+G_DEPRECATED_FOR (fp_device_get_features)
+gboolean     fp_device_supports_identify (FpDevice *device);
+G_DEPRECATED_FOR (fp_device_get_features)
+gboolean     fp_device_supports_capture (FpDevice *device);
+G_DEPRECATED_FOR (fp_device_get_features)
+gboolean     fp_device_has_storage (FpDevice *device);
 
 G_END_DECLS

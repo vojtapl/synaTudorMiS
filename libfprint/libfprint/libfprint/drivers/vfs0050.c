@@ -581,7 +581,7 @@ activate_ssm (FpiSsm *ssm, FpDevice *dev)
             /* Initialize fingerprint buffer */
             g_free (self->lines_buffer);
             self->memory = VFS_USB_BUFFER_SIZE;
-            self->lines_buffer = g_malloc (self->memory);
+            self->lines_buffer = g_malloc0 (self->memory);
             self->bytes = 0;
 
             /* Finger is on the scanner */
@@ -589,12 +589,15 @@ activate_ssm (FpiSsm *ssm, FpDevice *dev)
           }
 
         /* Increase buffer size while it's insufficient */
-        while (self->bytes + VFS_USB_BUFFER_SIZE > self->memory)
+        while (self->memory < self->bytes + VFS_USB_BUFFER_SIZE)
           {
-            self->memory <<= 1;
+            int pre_memory = self->memory;
+            self->memory += VFS_USB_BUFFER_SIZE;
             self->lines_buffer =
               (struct vfs_line *) g_realloc (self->lines_buffer,
                                              self->memory);
+            memset ((guint8 *) self->lines_buffer + pre_memory, 0,
+                    VFS_USB_BUFFER_SIZE);
           }
 
         /* Receive chunk of data */
@@ -613,7 +616,7 @@ activate_ssm (FpiSsm *ssm, FpDevice *dev)
       clear_data (self);
 
       /* Wait for probable vdev->active changing */
-      fpi_ssm_next_state_delayed (ssm, VFS_SSM_TIMEOUT, NULL);
+      fpi_ssm_next_state_delayed (ssm, VFS_SSM_TIMEOUT);
       break;
 
     case SSM_NEXT_RECEIVE:
@@ -632,8 +635,7 @@ activate_ssm (FpiSsm *ssm, FpDevice *dev)
 
     case SSM_WAIT_ANOTHER_SCAN:
       /* Orange light is on now */
-      fpi_ssm_jump_to_state_delayed (ssm, SSM_TURN_ON, VFS_SSM_ORANGE_TIMEOUT,
-                                     NULL);
+      fpi_ssm_jump_to_state_delayed (ssm, SSM_TURN_ON, VFS_SSM_ORANGE_TIMEOUT);
       break;
 
     default:

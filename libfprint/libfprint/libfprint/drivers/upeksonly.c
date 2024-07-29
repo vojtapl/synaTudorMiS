@@ -74,26 +74,26 @@ struct _FpiDeviceUpeksonly
   FpiSsm       *loopsm;
 
   /* Do we really need multiple concurrent transfers? */
-  GCancellable                    *img_cancellable;
-  GPtrArray                       *img_transfers;
-  int                              num_flying;
+  GCancellable  *img_cancellable;
+  GPtrArray     *img_transfers;
+  int            num_flying;
 
-  GSList                          *rows;
-  size_t                           num_rows;
-  unsigned char                   *rowbuf;
-  int                              rowbuf_offset;
+  GSList        *rows;
+  unsigned       num_rows;
+  unsigned char *rowbuf;
+  int            rowbuf_offset;
 
-  int                              wraparounds;
-  int                              num_blank;
-  int                              num_nonblank;
-  enum sonly_fs                    finger_state;
-  int                              last_seqnum;
+  int            wraparounds;
+  int            num_blank;
+  int            num_nonblank;
+  enum sonly_fs finger_state;
+  int            last_seqnum;
 
   enum sonly_kill_transfers_action killing_transfers;
-  GError                          *kill_error;
-  FpiSsm                          *kill_ssm;
+  GError                   *kill_error;
+  FpiSsm                   *kill_ssm;
 
-  struct fpi_line_asmbl_ctx        assembling_ctx;
+  struct fpi_line_asmbl_ctx assembling_ctx;
 };
 G_DECLARE_FINAL_TYPE (FpiDeviceUpeksonly, fpi_device_upeksonly, FPI,
                       DEVICE_UPEKSONLY, FpImageDevice);
@@ -176,6 +176,7 @@ last_transfer_killed (FpImageDevice *dev)
       fpi_image_device_session_error (dev, g_steal_pointer (&self->kill_error));
       return;
 
+    case NOT_KILLING:
     default:
       return;
     }
@@ -214,7 +215,7 @@ handoff_img (FpImageDevice *dev)
 
   self->rows = g_slist_reverse (self->rows);
 
-  fp_dbg ("%lu rows", self->num_rows);
+  fp_dbg ("%u rows", self->num_rows);
   img = fpi_assemble_lines (&self->assembling_ctx, self->rows, self->num_rows);
 
   g_slist_free_full (self->rows, g_free);
@@ -294,7 +295,7 @@ row_complete (FpImageDevice *dev)
           if (self->num_blank > FINGER_REMOVED_THRESHOLD)
             {
               self->finger_state = FINGER_REMOVED;
-              fp_dbg ("detected finger removal. Blank rows: %d, Full rows: %lu",
+              fp_dbg ("detected finger removal. Blank rows: %d, Full rows: %u",
                       self->num_blank, self->num_rows);
               handoff_img (dev);
               return;
@@ -693,8 +694,6 @@ sm_read_reg_cb (FpiUsbTransfer *transfer, FpDevice *device,
       fp_dbg ("read reg result = %02x", self->read_reg_result);
       fpi_ssm_next_state (transfer->ssm);
     }
-
-  g_free (transfer->buffer);
 }
 
 static void
@@ -731,7 +730,6 @@ sm_await_intr_cb (FpiUsbTransfer *transfer, FpDevice *device,
 
   if (error)
     {
-      g_free (transfer->buffer);
       fpi_ssm_mark_failed (transfer->ssm, error);
       return;
     }
@@ -739,7 +737,6 @@ sm_await_intr_cb (FpiUsbTransfer *transfer, FpDevice *device,
   fp_dbg ("interrupt received: %02x %02x %02x %02x",
           transfer->buffer[0], transfer->buffer[1],
           transfer->buffer[2], transfer->buffer[3]);
-  g_free (transfer->buffer);
 
   self->finger_state = FINGER_DETECTED;
   fpi_image_device_report_finger_status (dev, TRUE);

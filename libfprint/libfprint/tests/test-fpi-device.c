@@ -17,6 +17,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "fp-device.h"
+#include "fp-enums.h"
 #include <libfprint/fprint.h>
 
 #define FP_COMPONENT "device"
@@ -25,6 +27,13 @@
 #include "fpi-compat.h"
 #include "fpi-log.h"
 #include "test-device-fake.h"
+#include "fp-print-private.h"
+
+/* gcc 12.0.1 is complaining about dangling pointers in the auto_close* functions */
+#if G_GNUC_CHECK_VERSION (12, 0)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdangling-pointer"
+#endif
 
 /* Utility functions */
 
@@ -33,9 +42,11 @@ typedef FpDevice FpAutoCloseDevice;
 static FpAutoCloseDevice *
 auto_close_fake_device_new (void)
 {
+  g_autoptr(GError) error = NULL;
   FpAutoCloseDevice *device = g_object_new (FPI_TYPE_DEVICE_FAKE, NULL);
 
-  g_assert_true (fp_device_open_sync (device, NULL, NULL));
+  if (!fp_device_open_sync (device, NULL, &error))
+    g_error ("Could not open device: %s", error->message);
 
   return device;
 }
@@ -43,6 +54,7 @@ auto_close_fake_device_new (void)
 static void
 auto_close_fake_device_free (FpAutoCloseDevice *device)
 {
+  g_autoptr(GError) error = NULL;
   FpiDeviceFake *fake_dev = FPI_DEVICE_FAKE (device);
 
   if (fake_dev->return_action_error)
@@ -52,11 +64,16 @@ auto_close_fake_device_free (FpAutoCloseDevice *device)
     }
 
   if (fp_device_is_open (device))
-    g_assert_true (fp_device_close_sync (device, NULL, NULL));
+    if (!fp_device_close_sync (device, NULL, &error))
+      g_error ("Could not close device: %s", error->message);
 
   g_object_unref (device);
 }
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (FpAutoCloseDevice, auto_close_fake_device_free)
+
+#if G_GNUC_CHECK_VERSION (12, 0)
+#pragma GCC diagnostic pop
+#endif
 
 typedef FpDeviceClass FpAutoResetClass;
 static FpAutoResetClass default_fake_dev_class = {0};
@@ -132,6 +149,16 @@ make_fake_print (FpDevice *device,
   if (!print_data)
     print_data = g_variant_new_string ("Test print private data");
   g_object_set (G_OBJECT (enrolled_print), "fpi-data", print_data, NULL);
+
+  return enrolled_print;
+}
+
+static FpPrint *
+make_fake_nbis_print (FpDevice *device)
+{
+  FpPrint *enrolled_print = fp_print_new (device);
+
+  fpi_print_set_type (enrolled_print, FPI_PRINT_NBIS);
 
   return enrolled_print;
 }
@@ -507,6 +534,266 @@ test_driver_get_driver_data (void)
 }
 
 static void
+test_driver_features_probe_updates (void)
+{
+  g_autoptr(FpDevice) device = g_object_new (FPI_TYPE_DEVICE_FAKE, NULL);
+  FpDeviceClass *dev_class = FP_DEVICE_GET_CLASS (device);
+  FpiDeviceFake *fake_dev;
+
+  g_assert_cmpuint (dev_class->features, !=, FP_DEVICE_FEATURE_NONE);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_CAPTURE);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_IDENTIFY);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_VERIFY);
+  g_assert_false (dev_class->features & FP_DEVICE_FEATURE_DUPLICATES_CHECK);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_STORAGE);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_STORAGE_LIST);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_STORAGE_DELETE);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_STORAGE_CLEAR);
+
+  /* Effectively clears FP_DEVICE_FEATURE_STORAGE_DELETE */
+  fake_dev = FPI_DEVICE_FAKE (device);
+  fake_dev->probe_features_update = FP_DEVICE_FEATURE_STORAGE_LIST | FP_DEVICE_FEATURE_STORAGE_DELETE;
+  fake_dev->probe_features_value = FP_DEVICE_FEATURE_STORAGE_LIST;
+
+  g_async_initable_init_async (G_ASYNC_INITABLE (device),
+                               G_PRIORITY_DEFAULT, NULL, NULL, NULL);
+  while (g_main_context_iteration (NULL, FALSE))
+    continue;
+
+  g_assert_true (fp_device_has_feature (device, FP_DEVICE_FEATURE_CAPTURE));
+  g_assert_true (fp_device_has_feature (device, FP_DEVICE_FEATURE_IDENTIFY));
+  g_assert_true (fp_device_has_feature (device, FP_DEVICE_FEATURE_VERIFY));
+  g_assert_false (fp_device_has_feature (device, FP_DEVICE_FEATURE_DUPLICATES_CHECK));
+  g_assert_true (fp_device_has_feature (device, FP_DEVICE_FEATURE_STORAGE));
+  g_assert_true (fp_device_has_feature (device, FP_DEVICE_FEATURE_STORAGE_LIST));
+  g_assert_false (fp_device_has_feature (device, FP_DEVICE_FEATURE_STORAGE_DELETE));
+  g_assert_true (fp_device_has_feature (device, FP_DEVICE_FEATURE_STORAGE_CLEAR));
+
+  g_assert_cmpuint (fp_device_get_features (device),
+                    ==,
+                    FP_DEVICE_FEATURE_CAPTURE |
+                    FP_DEVICE_FEATURE_IDENTIFY |
+                    FP_DEVICE_FEATURE_VERIFY |
+                    FP_DEVICE_FEATURE_STORAGE |
+                    FP_DEVICE_FEATURE_STORAGE_LIST |
+                    FP_DEVICE_FEATURE_STORAGE_CLEAR);
+}
+
+static void
+test_driver_initial_features (void)
+{
+  g_autoptr(FpDevice) device = g_object_new (FPI_TYPE_DEVICE_FAKE, NULL);
+  FpDeviceClass *dev_class = FP_DEVICE_GET_CLASS (device);
+
+  g_assert_cmpuint (dev_class->features, !=, FP_DEVICE_FEATURE_NONE);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_CAPTURE);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_IDENTIFY);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_VERIFY);
+  g_assert_false (dev_class->features & FP_DEVICE_FEATURE_DUPLICATES_CHECK);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_STORAGE);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_STORAGE_LIST);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_STORAGE_DELETE);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_STORAGE_CLEAR);
+
+  g_async_initable_init_async (G_ASYNC_INITABLE (device),
+                               G_PRIORITY_DEFAULT, NULL, NULL, NULL);
+  while (g_main_context_iteration (NULL, FALSE))
+    continue;
+
+  g_assert_true (fp_device_has_feature (device, FP_DEVICE_FEATURE_CAPTURE));
+  g_assert_true (fp_device_has_feature (device, FP_DEVICE_FEATURE_IDENTIFY));
+  g_assert_true (fp_device_has_feature (device, FP_DEVICE_FEATURE_VERIFY));
+  g_assert_false (fp_device_has_feature (device, FP_DEVICE_FEATURE_DUPLICATES_CHECK));
+  g_assert_true (fp_device_has_feature (device, FP_DEVICE_FEATURE_STORAGE));
+  g_assert_true (fp_device_has_feature (device, FP_DEVICE_FEATURE_STORAGE_LIST));
+  g_assert_true (fp_device_has_feature (device, FP_DEVICE_FEATURE_STORAGE_DELETE));
+  g_assert_true (fp_device_has_feature (device, FP_DEVICE_FEATURE_STORAGE_CLEAR));
+
+  g_assert_cmpuint (fp_device_get_features (device),
+                    ==,
+                    FP_DEVICE_FEATURE_CAPTURE |
+                    FP_DEVICE_FEATURE_IDENTIFY |
+                    FP_DEVICE_FEATURE_VERIFY |
+                    FP_DEVICE_FEATURE_STORAGE |
+                    FP_DEVICE_FEATURE_STORAGE_LIST |
+                    FP_DEVICE_FEATURE_STORAGE_DELETE |
+                    FP_DEVICE_FEATURE_STORAGE_CLEAR);
+}
+
+static void
+test_driver_initial_features_none (void)
+{
+  g_autoptr(FpAutoResetClass) dev_class = auto_reset_device_class ();
+
+  dev_class->list = NULL;
+  dev_class->capture = NULL;
+  dev_class->verify = NULL;
+  dev_class->identify = NULL;
+  dev_class->delete = NULL;
+  dev_class->clear_storage = NULL;
+  dev_class->features = FP_DEVICE_FEATURE_NONE;
+
+  fpi_device_class_auto_initialize_features (dev_class);
+
+  g_assert_cmpuint (dev_class->features, ==, FP_DEVICE_FEATURE_NONE);
+  g_assert_false (dev_class->features & FP_DEVICE_FEATURE_CAPTURE);
+  g_assert_false (dev_class->features & FP_DEVICE_FEATURE_IDENTIFY);
+  g_assert_false (dev_class->features & FP_DEVICE_FEATURE_VERIFY);
+  g_assert_false (dev_class->features & FP_DEVICE_FEATURE_DUPLICATES_CHECK);
+  g_assert_false (dev_class->features & FP_DEVICE_FEATURE_STORAGE);
+  g_assert_false (dev_class->features & FP_DEVICE_FEATURE_STORAGE_LIST);
+  g_assert_false (dev_class->features & FP_DEVICE_FEATURE_STORAGE_DELETE);
+  g_assert_false (dev_class->features & FP_DEVICE_FEATURE_STORAGE_CLEAR);
+}
+
+static void
+test_driver_initial_features_no_capture (void)
+{
+  g_autoptr(FpAutoResetClass) dev_class = auto_reset_device_class ();
+
+  dev_class->capture = NULL;
+  dev_class->features = FP_DEVICE_FEATURE_NONE;
+
+  fpi_device_class_auto_initialize_features (dev_class);
+
+  g_assert_cmpuint (dev_class->features, !=, FP_DEVICE_FEATURE_NONE);
+  g_assert_false (dev_class->features & FP_DEVICE_FEATURE_CAPTURE);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_IDENTIFY);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_VERIFY);
+  g_assert_false (dev_class->features & FP_DEVICE_FEATURE_DUPLICATES_CHECK);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_STORAGE);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_STORAGE_LIST);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_STORAGE_DELETE);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_STORAGE_CLEAR);
+}
+
+static void
+test_driver_initial_features_no_verify (void)
+{
+  g_autoptr(FpAutoResetClass) dev_class = auto_reset_device_class ();
+
+  dev_class->verify = NULL;
+  dev_class->features = FP_DEVICE_FEATURE_NONE;
+
+  fpi_device_class_auto_initialize_features (dev_class);
+
+  g_assert_cmpuint (dev_class->features, !=, FP_DEVICE_FEATURE_NONE);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_CAPTURE);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_IDENTIFY);
+  g_assert_false (dev_class->features & FP_DEVICE_FEATURE_VERIFY);
+  g_assert_false (dev_class->features & FP_DEVICE_FEATURE_DUPLICATES_CHECK);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_STORAGE);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_STORAGE_LIST);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_STORAGE_DELETE);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_STORAGE_CLEAR);
+}
+
+static void
+test_driver_initial_features_no_identify (void)
+{
+  g_autoptr(FpAutoResetClass) dev_class = auto_reset_device_class ();
+
+  dev_class->identify = NULL;
+  dev_class->features = FP_DEVICE_FEATURE_NONE;
+
+  fpi_device_class_auto_initialize_features (dev_class);
+
+  g_assert_cmpuint (dev_class->features, !=, FP_DEVICE_FEATURE_NONE);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_CAPTURE);
+  g_assert_false (dev_class->features & FP_DEVICE_FEATURE_IDENTIFY);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_VERIFY);
+  g_assert_false (dev_class->features & FP_DEVICE_FEATURE_DUPLICATES_CHECK);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_STORAGE);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_STORAGE_LIST);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_STORAGE_DELETE);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_STORAGE_CLEAR);
+}
+
+static void
+test_driver_initial_features_no_storage (void)
+{
+  g_autoptr(FpAutoResetClass) dev_class = auto_reset_device_class ();
+
+  dev_class->delete = NULL;
+  dev_class->features = FP_DEVICE_FEATURE_NONE;
+
+  fpi_device_class_auto_initialize_features (dev_class);
+
+  g_assert_cmpuint (dev_class->features, !=, FP_DEVICE_FEATURE_NONE);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_CAPTURE);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_IDENTIFY);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_VERIFY);
+  g_assert_false (dev_class->features & FP_DEVICE_FEATURE_DUPLICATES_CHECK);
+  g_assert_false (dev_class->features & FP_DEVICE_FEATURE_STORAGE);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_STORAGE_LIST);
+  g_assert_false (dev_class->features & FP_DEVICE_FEATURE_STORAGE_DELETE);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_STORAGE_CLEAR);
+}
+
+static void
+test_driver_initial_features_no_list (void)
+{
+  g_autoptr(FpAutoResetClass) dev_class = auto_reset_device_class ();
+
+  dev_class->list = NULL;
+  dev_class->features = FP_DEVICE_FEATURE_NONE;
+
+  fpi_device_class_auto_initialize_features (dev_class);
+
+  g_assert_cmpuint (dev_class->features, !=, FP_DEVICE_FEATURE_NONE);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_CAPTURE);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_IDENTIFY);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_VERIFY);
+  g_assert_false (dev_class->features & FP_DEVICE_FEATURE_DUPLICATES_CHECK);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_STORAGE);
+  g_assert_false (dev_class->features & FP_DEVICE_FEATURE_STORAGE_LIST);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_STORAGE_DELETE);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_STORAGE_CLEAR);
+}
+
+static void
+test_driver_initial_features_no_delete (void)
+{
+  g_autoptr(FpAutoResetClass) dev_class = auto_reset_device_class ();
+
+  dev_class->delete = NULL;
+  dev_class->features = FP_DEVICE_FEATURE_NONE;
+
+  fpi_device_class_auto_initialize_features (dev_class);
+
+  g_assert_cmpuint (dev_class->features, !=, FP_DEVICE_FEATURE_NONE);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_CAPTURE);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_IDENTIFY);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_VERIFY);
+  g_assert_false (dev_class->features & FP_DEVICE_FEATURE_DUPLICATES_CHECK);
+  g_assert_false (dev_class->features & FP_DEVICE_FEATURE_STORAGE);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_STORAGE_LIST);
+  g_assert_false (dev_class->features & FP_DEVICE_FEATURE_STORAGE_DELETE);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_STORAGE_CLEAR);
+}
+
+static void
+test_driver_initial_features_no_clear (void)
+{
+  g_autoptr(FpAutoResetClass) dev_class = auto_reset_device_class ();
+
+  dev_class->clear_storage = NULL;
+  dev_class->features = FP_DEVICE_FEATURE_NONE;
+
+  fpi_device_class_auto_initialize_features (dev_class);
+
+  g_assert_cmpuint (dev_class->features, !=, FP_DEVICE_FEATURE_NONE);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_CAPTURE);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_IDENTIFY);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_VERIFY);
+  g_assert_false (dev_class->features & FP_DEVICE_FEATURE_DUPLICATES_CHECK);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_STORAGE);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_STORAGE_LIST);
+  g_assert_true (dev_class->features & FP_DEVICE_FEATURE_STORAGE_DELETE);
+  g_assert_false (dev_class->features & FP_DEVICE_FEATURE_STORAGE_CLEAR);
+}
+
+static void
 on_driver_probe_async (GObject *initable, GAsyncResult *res, gpointer user_data)
 {
   g_autoptr(GError) error = NULL;
@@ -779,12 +1066,118 @@ test_driver_enroll_error_no_print (void)
   out_print =
     fp_device_enroll_sync (device, fp_print_new (device), NULL, NULL, NULL, &error);
 
-  g_test_assert_expected_messages ();
   g_assert (fake_dev->last_called_function == dev_class->enroll);
   g_assert_error (error, FP_DEVICE_ERROR, FP_DEVICE_ERROR_GENERAL);
   g_assert_null (out_print);
   g_assert_null (fake_dev->ret_print);
   g_clear_error (&error);
+}
+
+static void
+test_driver_enroll_update_nbis (void)
+{
+  g_autoptr(GError) error = NULL;
+  g_autoptr(FpAutoResetClass) dev_class = auto_reset_device_class ();
+  g_autoptr(FpAutoCloseDevice) device = NULL;
+  g_autoptr(FpPrint) template_print = NULL;
+  FpiDeviceFake *fake_dev = NULL;
+  FpPrint *out_print = NULL;
+
+  dev_class->features |= FP_DEVICE_FEATURE_UPDATE_PRINT;
+  device = auto_close_fake_device_new ();
+  fake_dev = FPI_DEVICE_FAKE (device);
+
+  template_print = make_fake_nbis_print (device);
+  fake_dev->ret_print = template_print;
+
+  out_print =
+    fp_device_enroll_sync (device, template_print, NULL, NULL, NULL, &error);
+
+  g_assert (fake_dev->last_called_function == dev_class->enroll);
+  g_assert (fake_dev->action_data == template_print);
+
+  g_assert_no_error (error);
+  g_assert (out_print == template_print);
+}
+
+static void
+test_driver_enroll_update_nbis_wrong_device (void)
+{
+  g_autoptr(GError) error = NULL;
+  g_autoptr(FpAutoResetClass) dev_class = auto_reset_device_class ();
+  g_autoptr(FpAutoCloseDevice) device = NULL;
+  g_autoptr(FpPrint) template_print = NULL;
+  FpiDeviceFake *fake_dev = NULL;
+  FpPrint *out_print = NULL;
+
+  dev_class->features |= FP_DEVICE_FEATURE_UPDATE_PRINT;
+
+  device = auto_close_fake_device_new ();
+  fake_dev = FPI_DEVICE_FAKE (device);
+
+  template_print = make_fake_nbis_print (device);
+  g_clear_pointer (&template_print->device_id, g_free);
+  template_print->device_id = g_strdup ("wrong_device");
+  fake_dev->ret_print = template_print;
+
+  out_print =
+    fp_device_enroll_sync (device, template_print, NULL, NULL, NULL, &error);
+
+  g_assert_error (error, FP_DEVICE_ERROR, FP_DEVICE_ERROR_DATA_INVALID);
+  g_assert (out_print == NULL);
+}
+
+static void
+test_driver_enroll_update_nbis_wrong_driver (void)
+{
+  g_autoptr(GError) error = NULL;
+  g_autoptr(FpAutoResetClass) dev_class = auto_reset_device_class ();
+  g_autoptr(FpAutoCloseDevice) device = NULL;
+  g_autoptr(FpPrint) template_print = NULL;
+  FpiDeviceFake *fake_dev = NULL;
+  FpPrint *out_print = NULL;
+
+  dev_class->features |= FP_DEVICE_FEATURE_UPDATE_PRINT;
+
+  device = auto_close_fake_device_new ();
+  fake_dev = FPI_DEVICE_FAKE (device);
+
+  template_print = make_fake_nbis_print (device);
+  g_clear_pointer (&template_print->driver, g_free);
+  template_print->driver = g_strdup ("wrong_driver");
+  fake_dev->ret_print = template_print;
+
+  out_print =
+    fp_device_enroll_sync (device, template_print, NULL, NULL, NULL, &error);
+
+  g_assert_error (error, FP_DEVICE_ERROR, FP_DEVICE_ERROR_DATA_INVALID);
+  g_assert (out_print == NULL);
+}
+
+static void
+test_driver_enroll_update_nbis_missing_feature (void)
+{
+  g_autoptr(GError) error = NULL;
+  g_autoptr(FpAutoResetClass) dev_class = auto_reset_device_class ();
+  g_autoptr(FpAutoCloseDevice) device = NULL;
+  g_autoptr(FpPrint) template_print = NULL;
+  FpiDeviceFake *fake_dev = NULL;
+  FpPrint *out_print = NULL;
+
+  device = auto_close_fake_device_new ();
+  fake_dev = FPI_DEVICE_FAKE (device);
+
+  template_print = make_fake_nbis_print (device);
+  fake_dev->ret_print = template_print;
+
+  out_print =
+    fp_device_enroll_sync (device, template_print, NULL, NULL, NULL, &error);
+
+  g_assert (fake_dev->last_called_function == dev_class->open);
+  g_assert (fake_dev->action_data == NULL);
+
+  g_assert_error (error, FP_DEVICE_ERROR, FP_DEVICE_ERROR_DATA_INVALID);
+  g_assert (out_print == NULL);
 }
 
 typedef struct
@@ -963,6 +1356,11 @@ test_driver_match_cb (FpDevice *device,
 }
 
 static void
+fake_device_stub_verify (FpDevice *device)
+{
+}
+
+static void
 test_driver_verify (void)
 {
   g_autoptr(GError) error = NULL;
@@ -990,6 +1388,39 @@ test_driver_verify (void)
 
   g_assert (out_print == enrolled_print);
   g_assert_true (match);
+}
+
+static void
+test_driver_verify_not_supported (void)
+{
+  g_autoptr(GError) error = NULL;
+  g_autoptr(FpPrint) enrolled_print = NULL;
+  g_autoptr(FpPrint) out_print = NULL;
+  g_autoptr(MatchCbData) match_data = g_new0 (MatchCbData, 1);
+  g_autoptr(FpAutoResetClass) dev_class = auto_reset_device_class ();
+  g_autoptr(FpAutoCloseDevice) device = NULL;
+  FpiDeviceFake *fake_dev;
+  gboolean match;
+
+  dev_class->features &= ~FP_DEVICE_FEATURE_VERIFY;
+
+  device = auto_close_fake_device_new ();
+  fake_dev = FPI_DEVICE_FAKE (device);
+  fake_dev->last_called_function = NULL;
+
+  enrolled_print = make_fake_print_reffed (device, g_variant_new_uint64 (3));
+  g_assert_false (fp_device_verify_sync (device, enrolled_print, NULL,
+                                         test_driver_match_cb, match_data,
+                                         &match, &out_print, &error));
+
+  g_assert_null (fake_dev->last_called_function);
+  g_assert_error (error, FP_DEVICE_ERROR, FP_DEVICE_ERROR_NOT_SUPPORTED);
+
+  g_assert_false (match_data->called);
+  g_assert_no_error (match_data->error);
+
+  g_assert_null (out_print);
+  g_assert_false (match);
 }
 
 static void
@@ -1294,6 +1725,28 @@ fake_device_stub_identify (FpDevice *device)
 }
 
 static void
+test_driver_identify_cb (FpDevice     *device,
+                         GAsyncResult *res,
+                         gpointer      user_data)
+{
+  MatchCbData *data = user_data;
+  gboolean r;
+
+  g_assert (data->called == FALSE);
+  data->called = TRUE;
+
+  r = fp_device_identify_finish (device, res, &data->match, &data->print, &data->error);
+
+  if (r)
+    g_assert_no_error (data->error);
+  else
+    g_assert_nonnull (data->error);
+
+  if (data->match)
+    g_assert_no_error (data->error);
+}
+
+static void
 test_driver_supports_identify (void)
 {
   g_autoptr(FpAutoResetClass) dev_class = auto_reset_device_class ();
@@ -1302,7 +1755,10 @@ test_driver_supports_identify (void)
   dev_class->identify = fake_device_stub_identify;
 
   device = g_object_new (FPI_TYPE_DEVICE_FAKE, NULL);
-  g_assert_true (fp_device_supports_identify (device));
+  G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    g_assert_true (fp_device_supports_identify (device));
+  G_GNUC_END_IGNORE_DEPRECATIONS
+  g_assert_true (fp_device_has_feature (device, FP_DEVICE_FEATURE_IDENTIFY));
 }
 
 static void
@@ -1311,10 +1767,13 @@ test_driver_do_not_support_identify (void)
   g_autoptr(FpAutoResetClass) dev_class = auto_reset_device_class ();
   g_autoptr(FpDevice) device = NULL;
 
-  dev_class->identify = NULL;
+  dev_class->features &= ~FP_DEVICE_FEATURE_IDENTIFY;
 
   device = g_object_new (FPI_TYPE_DEVICE_FAKE, NULL);
-  g_assert_false (fp_device_supports_identify (device));
+  G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    g_assert_false (fp_device_supports_identify (device));
+  G_GNUC_END_IGNORE_DEPRECATIONS
+  g_assert_false (fp_device_has_feature (device, FP_DEVICE_FEATURE_IDENTIFY));
 }
 
 static void
@@ -1333,7 +1792,10 @@ test_driver_identify (void)
   expected_matched = g_ptr_array_index (prints, g_random_int_range (0, 499));
   fp_print_set_description (expected_matched, "fake-verified");
 
-  g_assert_true (fp_device_supports_identify (device));
+  G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    g_assert_true (fp_device_supports_identify (device));
+  G_GNUC_END_IGNORE_DEPRECATIONS
+  g_assert_true (fp_device_has_feature (device, FP_DEVICE_FEATURE_IDENTIFY));
 
   match_data->gallery = prints;
 
@@ -1366,7 +1828,10 @@ test_driver_identify_fail (void)
   FpDeviceClass *dev_class = FP_DEVICE_GET_CLASS (device);
   FpiDeviceFake *fake_dev = FPI_DEVICE_FAKE (device);
 
-  g_assert_true (fp_device_supports_identify (device));
+  G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    g_assert_true (fp_device_supports_identify (device));
+  G_GNUC_END_IGNORE_DEPRECATIONS
+  g_assert_true (fp_device_has_feature (device, FP_DEVICE_FEATURE_IDENTIFY));
 
   fake_dev->ret_print = make_fake_print (device, NULL);
   g_assert_true (fp_device_identify_sync (device, prints, NULL,
@@ -1402,7 +1867,10 @@ test_driver_identify_retry (void)
   expected_matched = g_ptr_array_index (prints, g_random_int_range (0, 499));
   fp_print_set_description (expected_matched, "fake-verified");
 
-  g_assert_true (fp_device_supports_identify (device));
+  G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    g_assert_true (fp_device_supports_identify (device));
+  G_GNUC_END_IGNORE_DEPRECATIONS
+  g_assert_true (fp_device_has_feature (device, FP_DEVICE_FEATURE_IDENTIFY));
 
   fake_dev->ret_error = fpi_device_retry_new (FP_DEVICE_RETRY_GENERAL);
   g_assert_false (fp_device_identify_sync (device, prints, NULL,
@@ -1436,7 +1904,10 @@ test_driver_identify_error (void)
   expected_matched = g_ptr_array_index (prints, g_random_int_range (0, 499));
   fp_print_set_description (expected_matched, "fake-verified");
 
-  g_assert_true (fp_device_supports_identify (device));
+  G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    g_assert_true (fp_device_supports_identify (device));
+  G_GNUC_END_IGNORE_DEPRECATIONS
+  g_assert_true (fp_device_has_feature (device, FP_DEVICE_FEATURE_IDENTIFY));
 
   fake_dev->ret_error = fpi_device_error_new (FP_DEVICE_ERROR_GENERAL);
   g_assert_false (fp_device_identify_sync (device, prints, NULL,
@@ -1629,6 +2100,319 @@ test_driver_identify_report_no_callback (void)
 }
 
 static void
+test_driver_identify_suspend_continues (void)
+{
+  g_autoptr(FpAutoResetClass) dev_class = auto_reset_device_class ();
+  g_autoptr(MatchCbData) match_data = g_new0 (MatchCbData, 1);
+  g_autoptr(MatchCbData) identify_data = g_new0 (MatchCbData, 1);
+  g_autoptr(GPtrArray) prints = NULL;
+  g_autoptr(FpAutoCloseDevice) device = NULL;
+  g_autoptr(GError) error = NULL;
+  void (*orig_identify) (FpDevice *device);
+  FpiDeviceFake *fake_dev;
+  FpPrint *expected_matched;
+
+  device = g_object_new (FPI_TYPE_DEVICE_FAKE, NULL);
+  fake_dev = FPI_DEVICE_FAKE (device);
+  orig_identify = dev_class->identify;
+  dev_class->identify = fake_device_stub_identify;
+
+  prints = make_fake_prints_gallery (device, 500);
+  expected_matched = g_ptr_array_index (prints, g_random_int_range (0, 499));
+  fp_print_set_description (expected_matched, "fake-verified");
+
+  match_data->gallery = prints;
+
+  fake_dev->ret_print = make_fake_print (device, NULL);
+
+  g_assert_true (fp_device_open_sync (device, NULL, NULL));
+
+  fp_device_identify (device, prints, NULL,
+                      test_driver_match_cb, match_data, NULL,
+                      (GAsyncReadyCallback) test_driver_identify_cb, identify_data);
+
+  while (g_main_context_iteration (NULL, FALSE))
+    continue;
+
+  fake_dev->ret_suspend = NULL;
+  fp_device_suspend_sync (device, NULL, &error);
+  g_assert (fake_dev->last_called_function == dev_class->suspend);
+  g_assert_no_error (error);
+
+  while (g_main_context_iteration (NULL, FALSE))
+    continue;
+
+  g_assert_false (match_data->called);
+  g_assert_false (identify_data->called);
+
+  fake_dev->ret_resume = NULL;
+  fp_device_resume_sync (device, NULL, &error);
+  g_assert (fake_dev->last_called_function == dev_class->resume);
+  g_assert_no_error (error);
+
+  orig_identify (device);
+
+  /* This currently happens immediately (not ABI though) */
+  g_assert_true (match_data->called);
+  g_assert (match_data->match == expected_matched);
+
+  while (g_main_context_iteration (NULL, FALSE))
+    continue;
+
+  g_assert_true (identify_data->called);
+  g_assert (identify_data->match == expected_matched);
+
+  g_assert (fake_dev->last_called_function == orig_identify);
+}
+
+static void
+test_driver_identify_suspend_succeeds (void)
+{
+  g_autoptr(FpAutoResetClass) dev_class = auto_reset_device_class ();
+  g_autoptr(MatchCbData) match_data = g_new0 (MatchCbData, 1);
+  g_autoptr(MatchCbData) identify_data = g_new0 (MatchCbData, 1);
+  g_autoptr(GPtrArray) prints = NULL;
+  g_autoptr(FpAutoCloseDevice) device = NULL;
+  g_autoptr(GError) error = NULL;
+  void (*orig_identify) (FpDevice *device);
+  FpiDeviceFake *fake_dev;
+  FpPrint *expected_matched;
+
+  device = g_object_new (FPI_TYPE_DEVICE_FAKE, NULL);
+  fake_dev = FPI_DEVICE_FAKE (device);
+  orig_identify = dev_class->identify;
+  dev_class->identify = fake_device_stub_identify;
+
+  prints = make_fake_prints_gallery (device, 500);
+  expected_matched = g_ptr_array_index (prints, g_random_int_range (0, 499));
+  fp_print_set_description (expected_matched, "fake-verified");
+
+  match_data->gallery = prints;
+
+  g_assert_true (fp_device_open_sync (device, NULL, NULL));
+
+  fake_dev->ret_print = make_fake_print (device, NULL);
+  fp_device_identify (device, prints, NULL,
+                      test_driver_match_cb, match_data, NULL,
+                      (GAsyncReadyCallback) test_driver_identify_cb, identify_data);
+
+  while (g_main_context_iteration (NULL, FALSE))
+    continue;
+
+  /* suspend_sync hangs until cancellation, so we need to trigger orig_identify
+   * from the mainloop after calling suspend_sync.
+   */
+  fpi_device_add_timeout (device, 0, (FpTimeoutFunc) orig_identify, NULL, NULL);
+
+  fake_dev->ret_suspend = fpi_device_error_new (FP_DEVICE_ERROR_NOT_SUPPORTED);
+  fp_device_suspend_sync (device, NULL, &error);
+
+  /* At this point we are done with everything */
+  g_assert (fake_dev->last_called_function == orig_identify);
+  g_assert_error (error, FP_DEVICE_ERROR, FP_DEVICE_ERROR_NOT_SUPPORTED);
+  g_clear_error (&error);
+
+  /* We suspended, but device reported success and that will be reported. */
+  g_assert_true (match_data->called);
+  g_assert (match_data->match == expected_matched);
+  g_assert_true (identify_data->called);
+  g_assert (identify_data->match == expected_matched);
+
+  /* Resuming the device does not call resume handler, as the action was
+   * cancelled already.
+   */
+  fake_dev->last_called_function = NULL;
+  fp_device_resume_sync (device, NULL, &error);
+  g_assert (fake_dev->last_called_function == NULL);
+  g_assert_no_error (error);
+}
+
+static void
+test_driver_identify_suspend_busy_error (void)
+{
+  g_autoptr(FpAutoResetClass) dev_class = auto_reset_device_class ();
+  g_autoptr(MatchCbData) match_data = g_new0 (MatchCbData, 1);
+  g_autoptr(MatchCbData) identify_data = g_new0 (MatchCbData, 1);
+  g_autoptr(GPtrArray) prints = NULL;
+  g_autoptr(FpAutoCloseDevice) device = NULL;
+  g_autoptr(GError) error = NULL;
+  void (*orig_identify) (FpDevice *device);
+  FpiDeviceFake *fake_dev;
+  FpPrint *expected_matched;
+
+  device = g_object_new (FPI_TYPE_DEVICE_FAKE, NULL);
+  fake_dev = FPI_DEVICE_FAKE (device);
+  orig_identify = dev_class->identify;
+  dev_class->identify = fake_device_stub_identify;
+
+  prints = make_fake_prints_gallery (device, 500);
+  expected_matched = g_ptr_array_index (prints, g_random_int_range (0, 499));
+  fp_print_set_description (expected_matched, "fake-verified");
+
+  match_data->gallery = prints;
+
+  g_assert_true (fp_device_open_sync (device, NULL, NULL));
+
+  fake_dev->ret_error = fpi_device_error_new (FP_DEVICE_ERROR_GENERAL);
+  fake_dev->ret_print = make_fake_print (device, NULL);
+  fp_device_identify (device, prints, NULL,
+                      test_driver_match_cb, match_data, NULL,
+                      (GAsyncReadyCallback) test_driver_identify_cb, identify_data);
+
+  while (g_main_context_iteration (NULL, FALSE))
+    continue;
+
+  /* suspend_sync hangs until cancellation, so we need to trigger orig_identify
+   * from the mainloop after calling suspend_sync.
+   */
+  fpi_device_add_timeout (device, 0, (FpTimeoutFunc) orig_identify, NULL, NULL);
+
+  fake_dev->ret_suspend = fpi_device_error_new (FP_DEVICE_ERROR_NOT_SUPPORTED);
+  fp_device_suspend_sync (device, NULL, &error);
+  fake_dev->ret_error = NULL;
+
+  /* At this point we are done with everything */
+  g_assert (fake_dev->last_called_function == orig_identify);
+  g_assert_error (error, FP_DEVICE_ERROR, FP_DEVICE_ERROR_NOT_SUPPORTED);
+  g_clear_error (&error);
+
+  /* The device reported an error, an this error will be overwritten.
+   */
+  g_assert_false (match_data->called);
+  g_assert_true (identify_data->called);
+  g_assert_null (identify_data->match);
+  g_assert_error (identify_data->error, FP_DEVICE_ERROR, FP_DEVICE_ERROR_BUSY);
+
+  fake_dev->last_called_function = NULL;
+  fp_device_resume_sync (device, NULL, &error);
+  g_assert (fake_dev->last_called_function == NULL);
+  g_assert_no_error (error);
+}
+
+static void
+test_driver_identify_suspend_while_idle (void)
+{
+  g_autoptr(FpAutoResetClass) dev_class = auto_reset_device_class ();
+  g_autoptr(FpAutoCloseDevice) device = NULL;
+  g_autoptr(GError) error = NULL;
+  FpiDeviceFake *fake_dev;
+
+  device = g_object_new (FPI_TYPE_DEVICE_FAKE, NULL);
+  fake_dev = FPI_DEVICE_FAKE (device);
+
+  /* Suspending and resuming a closed device works */
+  fp_device_suspend (device, NULL, (GAsyncReadyCallback) fp_device_suspend_finish, &error);
+  while (g_main_context_iteration (NULL, FALSE))
+    continue;
+  g_assert (fake_dev->last_called_function == NULL);
+  g_assert_no_error (error);
+
+  fp_device_resume (device, NULL, (GAsyncReadyCallback) fp_device_resume_finish, NULL);
+  while (g_main_context_iteration (NULL, FALSE))
+    continue;
+  g_assert (fake_dev->last_called_function == NULL);
+  g_assert_no_error (error);
+
+  g_assert_true (fp_device_open_sync (device, NULL, NULL));
+
+  fake_dev->last_called_function = NULL;
+  fp_device_suspend (device, NULL, (GAsyncReadyCallback) fp_device_suspend_finish, &error);
+  while (g_main_context_iteration (NULL, FALSE))
+    continue;
+  g_assert (fake_dev->last_called_function == NULL);
+  g_assert_no_error (error);
+
+  fp_device_resume (device, NULL, (GAsyncReadyCallback) fp_device_resume_finish, NULL);
+  while (g_main_context_iteration (NULL, FALSE))
+    continue;
+  g_assert (fake_dev->last_called_function == NULL);
+  g_assert_no_error (error);
+}
+
+static void
+test_driver_identify_warmup_cooldown (void)
+{
+  g_autoptr(FpAutoResetClass) dev_class = auto_reset_device_class ();
+  g_autoptr(MatchCbData) identify_data = g_new0 (MatchCbData, 1);
+  g_autoptr(GPtrArray) prints = NULL;
+  g_autoptr(FpAutoCloseDevice) device = NULL;
+  g_autoptr(GError) error = NULL;
+  void (*orig_identify) (FpDevice *device);
+  FpiDeviceFake *fake_dev;
+  gint64 start_time;
+
+  dev_class->temp_hot_seconds = 2;
+  dev_class->temp_cold_seconds = 5;
+
+  device = g_object_new (FPI_TYPE_DEVICE_FAKE, NULL);
+  fake_dev = FPI_DEVICE_FAKE (device);
+  orig_identify = dev_class->identify;
+  dev_class->identify = fake_device_stub_identify;
+
+  prints = make_fake_prints_gallery (device, 500);
+
+  g_assert_true (fp_device_open_sync (device, NULL, NULL));
+  fake_dev->last_called_function = NULL;
+
+  fake_dev->ret_error = fpi_device_error_new (FP_DEVICE_ERROR_GENERAL);
+
+  /* Undefined: Whether match_cb is called. */
+  fp_device_identify (device, prints, NULL,
+                      NULL, NULL, NULL,
+                      (GAsyncReadyCallback) test_driver_identify_cb, identify_data);
+
+  /* Identify is running, the temperature will change after only a short time.
+   * Changes are delayed by 100ms and we give 150ms of slack for the test.
+   */
+  start_time = g_get_monotonic_time ();
+  g_assert_cmpint (fp_device_get_temperature (device), ==, FP_TEMPERATURE_COLD);
+  while (fp_device_get_temperature (device) == FP_TEMPERATURE_COLD)
+    g_main_context_iteration (NULL, TRUE);
+  g_assert_cmpint (fp_device_get_temperature (device), ==, FP_TEMPERATURE_WARM);
+  g_assert_false (g_cancellable_is_cancelled (fpi_device_get_cancellable (device)));
+  g_assert_cmpint (g_get_monotonic_time () - start_time, <, 0 + 250000);
+
+  /* we reach hot 2 seconds later */
+  while (fp_device_get_temperature (device) == FP_TEMPERATURE_WARM)
+    g_main_context_iteration (NULL, TRUE);
+  g_assert_cmpint (fp_device_get_temperature (device), ==, FP_TEMPERATURE_HOT);
+  g_assert_true (g_cancellable_is_cancelled (fpi_device_get_cancellable (device)));
+  g_assert_cmpint (g_get_monotonic_time () - start_time, <, 2000000 + 250000);
+
+  /* cancel vfunc will be called now */
+  g_assert (fake_dev->last_called_function == NULL);
+  while (g_main_context_iteration (NULL, FALSE))
+    continue;
+  g_assert (fake_dev->last_called_function == dev_class->cancel);
+
+  orig_identify (device);
+  fake_dev->ret_error = NULL;
+  while (g_main_context_iteration (NULL, FALSE))
+    continue;
+  g_assert_true (identify_data->called);
+  g_assert_error (identify_data->error, FP_DEVICE_ERROR, FP_DEVICE_ERROR_TOO_HOT);
+
+  /* Try to identify again, and ensure that we fail early */
+  fp_device_identify_sync (device, prints, NULL, NULL, NULL, NULL, NULL, &error);
+  g_assert_error (error, FP_DEVICE_ERROR, FP_DEVICE_ERROR_TOO_HOT);
+  g_clear_error (&error);
+
+  /* Now, wait for it to cool down again;
+   * WARM should be reached after about 2s
+   * COLD after 5s but give it some more slack. */
+  start_time = g_get_monotonic_time ();
+  while (fp_device_get_temperature (device) == FP_TEMPERATURE_HOT)
+    g_main_context_iteration (NULL, TRUE);
+  g_assert_cmpint (fp_device_get_temperature (device), ==, FP_TEMPERATURE_WARM);
+  g_assert_cmpint (g_get_monotonic_time () - start_time, <, 2000000 + 250000);
+
+  while (fp_device_get_temperature (device) == FP_TEMPERATURE_WARM)
+    g_main_context_iteration (NULL, TRUE);
+  g_assert_cmpint (fp_device_get_temperature (device), ==, FP_TEMPERATURE_COLD);
+  g_assert_cmpint (g_get_monotonic_time () - start_time, <, 5000000 + 500000);
+}
+
+static void
 fake_device_stub_capture (FpDevice *device)
 {
 }
@@ -1639,10 +2423,14 @@ test_driver_supports_capture (void)
   g_autoptr(FpAutoResetClass) dev_class = auto_reset_device_class ();
   g_autoptr(FpDevice) device = NULL;
 
+  dev_class->features |= FP_DEVICE_FEATURE_CAPTURE;
   dev_class->capture = fake_device_stub_capture;
 
   device = g_object_new (FPI_TYPE_DEVICE_FAKE, NULL);
-  g_assert_true (fp_device_supports_capture (device));
+  G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    g_assert_true (fp_device_supports_capture (device));
+  G_GNUC_END_IGNORE_DEPRECATIONS
+  g_assert_true (fp_device_has_feature (device, FP_DEVICE_FEATURE_CAPTURE));
 }
 
 static void
@@ -1651,10 +2439,14 @@ test_driver_do_not_support_capture (void)
   g_autoptr(FpAutoResetClass) dev_class = auto_reset_device_class ();
   g_autoptr(FpDevice) device = NULL;
 
+  dev_class->features &= ~FP_DEVICE_FEATURE_CAPTURE;
   dev_class->capture = NULL;
 
   device = g_object_new (FPI_TYPE_DEVICE_FAKE, NULL);
-  g_assert_false (fp_device_supports_capture (device));
+  G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    g_assert_false (fp_device_supports_capture (device));
+  G_GNUC_END_IGNORE_DEPRECATIONS
+  g_assert_false (fp_device_has_feature (device, FP_DEVICE_FEATURE_CAPTURE));
 }
 
 static void
@@ -1677,6 +2469,29 @@ test_driver_capture (void)
 }
 
 static void
+test_driver_capture_not_supported (void)
+{
+  g_autoptr(GError) error = NULL;
+  g_autoptr(FpImage) image = NULL;
+  g_autoptr(FpAutoResetClass) dev_class = auto_reset_device_class ();
+  g_autoptr(FpAutoCloseDevice) device = NULL;
+  gboolean wait_for_finger = TRUE;
+  FpiDeviceFake *fake_dev;
+
+  dev_class->features &= ~FP_DEVICE_FEATURE_CAPTURE;
+
+  device = auto_close_fake_device_new ();
+  fake_dev = FPI_DEVICE_FAKE (device);
+  fake_dev->last_called_function = NULL;
+
+  image = fp_device_capture_sync (device, wait_for_finger, NULL, &error);
+  g_assert_null (fake_dev->last_called_function);
+  g_assert_error (error, FP_DEVICE_ERROR, FP_DEVICE_ERROR_NOT_SUPPORTED);
+
+  g_assert_null (image);
+}
+
+static void
 test_driver_capture_error (void)
 {
   g_autoptr(GError) error = NULL;
@@ -1696,20 +2511,18 @@ test_driver_capture_error (void)
 }
 
 static void
-fake_device_stub_list (FpDevice *device)
-{
-}
-
-static void
 test_driver_has_storage (void)
 {
   g_autoptr(FpAutoResetClass) dev_class = auto_reset_device_class ();
   g_autoptr(FpDevice) device = NULL;
 
-  dev_class->list = fake_device_stub_list;
+  dev_class->features |= FP_DEVICE_FEATURE_STORAGE;
 
   device = g_object_new (FPI_TYPE_DEVICE_FAKE, NULL);
-  g_assert_true (fp_device_has_storage (device));
+  G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    g_assert_true (fp_device_has_storage (device));
+  G_GNUC_END_IGNORE_DEPRECATIONS
+  g_assert_true (fp_device_has_feature (device, FP_DEVICE_FEATURE_STORAGE));
 }
 
 static void
@@ -1718,10 +2531,13 @@ test_driver_has_not_storage (void)
   g_autoptr(FpAutoResetClass) dev_class = auto_reset_device_class ();
   g_autoptr(FpDevice) device = NULL;
 
-  dev_class->list = NULL;
+  dev_class->features &= ~FP_DEVICE_FEATURE_STORAGE;
 
   device = g_object_new (FPI_TYPE_DEVICE_FAKE, NULL);
-  g_assert_false (fp_device_has_storage (device));
+  G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    g_assert_false (fp_device_has_storage (device));
+  G_GNUC_END_IGNORE_DEPRECATIONS
+  g_assert_false (fp_device_has_feature (device, FP_DEVICE_FEATURE_STORAGE));
 }
 
 static void
@@ -1770,10 +2586,13 @@ test_driver_list_no_storage (void)
   g_autoptr(GPtrArray) prints = NULL;
   g_autoptr(GError) error = NULL;
 
-  dev_class->list = NULL;
+  dev_class->features &= ~FP_DEVICE_FEATURE_STORAGE;
 
   device = auto_close_fake_device_new ();
-  g_assert_false (fp_device_has_storage (device));
+  G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    g_assert_false (fp_device_has_storage (device));
+  G_GNUC_END_IGNORE_DEPRECATIONS
+  g_assert_false (fp_device_has_feature (device, FP_DEVICE_FEATURE_STORAGE));
 
   prints = fp_device_list_prints_sync (device, NULL, &error);
   g_assert_null (prints);
@@ -1810,6 +2629,39 @@ test_driver_delete_error (void)
   fake_dev->ret_error = fpi_device_error_new (FP_DEVICE_ERROR_GENERAL);
   ret = fp_device_delete_print_sync (device, enrolled_print, NULL, &error);
   g_assert (fake_dev->last_called_function == dev_class->delete);
+  g_assert_error (error, FP_DEVICE_ERROR, FP_DEVICE_ERROR_GENERAL);
+  g_assert (error == g_steal_pointer (&fake_dev->ret_error));
+
+  g_assert_false (ret);
+}
+
+static void
+test_driver_clear_storage (void)
+{
+  g_autoptr(GError) error = NULL;
+  g_autoptr(FpAutoCloseDevice) device = auto_close_fake_device_new ();
+  FpDeviceClass *dev_class = FP_DEVICE_GET_CLASS (device);
+  FpiDeviceFake *fake_dev = FPI_DEVICE_FAKE (device);
+  gboolean ret;
+
+  ret = fp_device_clear_storage_sync (device, NULL, &error);
+  g_assert (fake_dev->last_called_function == dev_class->clear_storage);
+  g_assert_no_error (error);
+  g_assert_true (ret);
+}
+
+static void
+test_driver_clear_storage_error (void)
+{
+  g_autoptr(GError) error = NULL;
+  g_autoptr(FpAutoCloseDevice) device = auto_close_fake_device_new ();
+  FpDeviceClass *dev_class = FP_DEVICE_GET_CLASS (device);
+  FpiDeviceFake *fake_dev = FPI_DEVICE_FAKE (device);
+  gboolean ret;
+
+  fake_dev->ret_error = fpi_device_error_new (FP_DEVICE_ERROR_GENERAL);
+  ret = fp_device_clear_storage_sync (device, NULL, &error);
+  g_assert (fake_dev->last_called_function == dev_class->clear_storage);
   g_assert_error (error, FP_DEVICE_ERROR, FP_DEVICE_ERROR_GENERAL);
   g_assert (error == g_steal_pointer (&fake_dev->ret_error));
 
@@ -1904,6 +2756,89 @@ test_driver_cancel_fail (void)
 }
 
 static void
+test_driver_critical (void)
+{
+  g_autoptr(FpAutoCloseDevice) device = auto_close_fake_device_new ();
+  g_autoptr(GCancellable) cancellable = g_cancellable_new ();
+  g_autoptr(FpPrint) enrolled_print = make_fake_print_reffed (device, NULL);
+  g_autoptr(FpAutoResetClass) dev_class = auto_reset_device_class ();
+  void (*orig_verify) (FpDevice *device) = dev_class->verify;
+  FpiDeviceFake *fake_dev = FPI_DEVICE_FAKE (device);
+
+  fake_dev->last_called_function = NULL;
+
+  dev_class->verify = fake_device_stub_verify;
+  fp_device_verify (device, enrolled_print, cancellable,
+                    NULL, NULL, NULL,
+                    NULL, NULL);
+
+  /* We started a verify operation, now emulate a "critical" section */
+  fpi_device_critical_enter (device);
+
+  /* Throw a suspend and external cancellation against it. */
+  fp_device_suspend (device, NULL, NULL, NULL);
+  g_cancellable_cancel (cancellable);
+
+  /* The only thing that happens is that the cancellable is cancelled */
+  g_assert_true (fpi_device_action_is_cancelled (device));
+  g_assert (fake_dev->last_called_function == NULL);
+  while (g_main_context_iteration (NULL, FALSE))
+    continue;
+  g_assert (fake_dev->last_called_function == NULL);
+
+  /* Leaving and entering the critical section in the same mainloop iteration
+   * does not do anything. */
+  fpi_device_critical_leave (device);
+  fpi_device_critical_enter (device);
+  while (g_main_context_iteration (NULL, FALSE))
+    continue;
+  g_assert (fake_dev->last_called_function == NULL);
+
+  /* Leaving it and running the mainloop will first run the cancel handler */
+  fpi_device_critical_leave (device);
+  while (g_main_context_iteration (NULL, FALSE) && !fake_dev->last_called_function)
+    continue;
+  g_assert (fake_dev->last_called_function == dev_class->cancel);
+  g_assert_true (fpi_device_action_is_cancelled (device));
+  fake_dev->last_called_function = NULL;
+
+  /* Then the suspend handler */
+  while (g_main_context_iteration (NULL, FALSE) && !fake_dev->last_called_function)
+    continue;
+  g_assert (fake_dev->last_called_function == dev_class->suspend);
+  fake_dev->last_called_function = NULL;
+
+  /* Nothing happens afterwards */
+  while (g_main_context_iteration (NULL, FALSE))
+    continue;
+  g_assert (fake_dev->last_called_function == NULL);
+
+
+  /* Throw a resume at the system */
+  fpi_device_critical_enter (device);
+  fp_device_resume (device, NULL, NULL, NULL);
+
+  /* Nothing will happen, as the resume is delayed */
+  while (g_main_context_iteration (NULL, FALSE))
+    continue;
+  g_assert (fake_dev->last_called_function == NULL);
+
+  /* Finally the resume is called from the mainloop after leaving the critical section */
+  fpi_device_critical_leave (device);
+  g_assert (fake_dev->last_called_function == NULL);
+  while (g_main_context_iteration (NULL, FALSE) && !fake_dev->last_called_function)
+    continue;
+  g_assert (fake_dev->last_called_function == dev_class->resume);
+  fake_dev->last_called_function = NULL;
+
+
+  /* The "verify" operation is still ongoing, finish it. */
+  orig_verify (device);
+  while (g_main_context_iteration (NULL, FALSE))
+    continue;
+}
+
+static void
 test_driver_current_action (void)
 {
   g_autoptr(FpDevice) device = g_object_new (FPI_TYPE_DEVICE_FAKE, NULL);
@@ -1969,32 +2904,32 @@ test_driver_action_get_cancellable_open (void)
 }
 
 static void
-test_driver_action_get_cancellable_open_fail_vfunc (FpDevice *device)
+test_driver_action_get_cancellable_open_internal_vfunc (FpDevice *device)
 {
   FpiDeviceFake *fake_dev = FPI_DEVICE_FAKE (device);
 
   g_assert_cmpuint (fpi_device_get_current_action (device), ==, FPI_DEVICE_ACTION_OPEN);
-  fake_dev->last_called_function = test_driver_action_get_cancellable_open_fail_vfunc;
+  fake_dev->last_called_function = test_driver_action_get_cancellable_open_internal_vfunc;
 
-  g_assert_false (G_IS_CANCELLABLE (fpi_device_get_cancellable (device)));
+  g_assert_true (G_IS_CANCELLABLE (fpi_device_get_cancellable (device)));
 
   fpi_device_open_complete (device, NULL);
 }
 
 static void
-test_driver_action_get_cancellable_open_fail (void)
+test_driver_action_get_cancellable_open_internal (void)
 {
   g_autoptr(FpAutoResetClass) dev_class = auto_reset_device_class ();
   g_autoptr(FpAutoCloseDevice) device = NULL;
   FpiDeviceFake *fake_dev;
 
-  dev_class->open = test_driver_action_get_cancellable_open_fail_vfunc;
+  dev_class->open = test_driver_action_get_cancellable_open_internal_vfunc;
   device = g_object_new (FPI_TYPE_DEVICE_FAKE, NULL);
   fake_dev = FPI_DEVICE_FAKE (device);
 
   g_assert_true (fp_device_open_sync (device, NULL, NULL));
 
-  g_assert (fake_dev->last_called_function == test_driver_action_get_cancellable_open_fail_vfunc);
+  g_assert (fake_dev->last_called_function == test_driver_action_get_cancellable_open_internal_vfunc);
 }
 
 static void
@@ -2019,7 +2954,11 @@ test_driver_action_is_cancelled_open_vfunc (FpDevice *device)
   g_assert_true (G_IS_CANCELLABLE (fpi_device_get_cancellable (device)));
   g_assert_false (fpi_device_action_is_cancelled (device));
 
-  g_cancellable_cancel (fpi_device_get_cancellable (device));
+  if (fake_dev->ext_cancellable)
+    g_cancellable_cancel (fake_dev->ext_cancellable);
+  else
+    g_cancellable_cancel (fpi_device_get_cancellable (device));
+
   g_assert_true (fpi_device_action_is_cancelled (device));
 
   fpi_device_open_complete (device, NULL);
@@ -2038,9 +2977,30 @@ test_driver_action_is_cancelled_open (void)
   device = g_object_new (FPI_TYPE_DEVICE_FAKE, NULL);
   fake_dev = FPI_DEVICE_FAKE (device);
 
-  cancellable = g_cancellable_new ();
+  cancellable = fake_dev->ext_cancellable = g_cancellable_new ();
   g_assert_false (fp_device_open_sync (device, cancellable, &error));
   g_assert_error (error, G_IO_ERROR, G_IO_ERROR_CANCELLED);
+
+  g_assert (fake_dev->last_called_function == test_driver_action_is_cancelled_open_vfunc);
+}
+
+static void
+test_driver_action_internally_cancelled_open (void)
+{
+  g_autoptr(FpAutoResetClass) dev_class = auto_reset_device_class ();
+  g_autoptr(FpAutoCloseDevice) device = NULL;
+  g_autoptr(GCancellable) cancellable = NULL;
+  g_autoptr(GError) error = NULL;
+  FpiDeviceFake *fake_dev;
+
+  dev_class->open = test_driver_action_is_cancelled_open_vfunc;
+  device = g_object_new (FPI_TYPE_DEVICE_FAKE, NULL);
+  fake_dev = FPI_DEVICE_FAKE (device);
+
+  /* No error, just some internal cancellation but we let nothing happen externally. */
+  cancellable = g_cancellable_new ();
+  g_assert_true (fp_device_open_sync (device, cancellable, &error));
+  g_assert_null (error);
 
   g_assert (fake_dev->last_called_function == test_driver_action_is_cancelled_open_vfunc);
 }
@@ -2182,6 +3142,12 @@ test_driver_action_error_all (void)
   g_assert_error (error, FP_DEVICE_ERROR, FP_DEVICE_ERROR_DATA_INVALID);
   g_clear_error (&error);
 
+  fake_dev->ret_error = fpi_device_error_new (FP_DEVICE_ERROR_DATA_INVALID);
+  g_assert_false (fp_device_clear_storage_sync (device, NULL, &error));
+  g_assert_true (fake_dev->last_called_function == dev_class->clear_storage);
+  g_assert_error (error, FP_DEVICE_ERROR, FP_DEVICE_ERROR_DATA_INVALID);
+  g_clear_error (&error);
+
   /* Test close last, as we can't operate on a closed device. */
   fake_dev->ret_error = fpi_device_error_new (FP_DEVICE_ERROR_DATA_INVALID);
   g_assert_false (fp_device_close_sync (device, NULL, &error));
@@ -2278,6 +3244,16 @@ test_driver_action_error_fallback_all (void)
   g_assert_false (fp_device_delete_print_sync (device, enrolled_print, NULL, &error));
   g_test_assert_expected_messages ();
   g_assert_true (fake_dev->last_called_function == dev_class->delete);
+  g_assert_error (error, FP_DEVICE_ERROR, FP_DEVICE_ERROR_GENERAL);
+  g_clear_error (&error);
+
+  g_test_expect_message (G_LOG_DOMAIN, G_LOG_LEVEL_WARNING,
+                         "*Device failed to pass an error to generic action "
+                         "error function*");
+
+  g_assert_false (fp_device_clear_storage_sync (device, NULL, &error));
+  g_test_assert_expected_messages ();
+  g_assert_true (fake_dev->last_called_function == dev_class->clear_storage);
   g_assert_error (error, FP_DEVICE_ERROR, FP_DEVICE_ERROR_GENERAL);
   g_clear_error (&error);
 
@@ -2439,6 +3415,17 @@ main (int argc, char *argv[])
   g_test_add_func ("/driver/get_usb_device", test_driver_get_usb_device);
   g_test_add_func ("/driver/get_virtual_env", test_driver_get_virtual_env);
   g_test_add_func ("/driver/get_driver_data", test_driver_get_driver_data);
+  g_test_add_func ("/driver/features/probe_updates", test_driver_features_probe_updates);
+  g_test_add_func ("/driver/initial_features", test_driver_initial_features);
+  g_test_add_func ("/driver/initial_features/none", test_driver_initial_features_none);
+  g_test_add_func ("/driver/initial_features/no_capture", test_driver_initial_features_no_capture);
+  g_test_add_func ("/driver/initial_features/no_verify", test_driver_initial_features_no_verify);
+  g_test_add_func ("/driver/initial_features/no_identify", test_driver_initial_features_no_identify);
+  g_test_add_func ("/driver/initial_features/no_storage", test_driver_initial_features_no_storage);
+  g_test_add_func ("/driver/initial_features/no_list", test_driver_initial_features_no_list);
+  g_test_add_func ("/driver/initial_features/no_delete", test_driver_initial_features_no_delete);
+  g_test_add_func ("/driver/initial_features/no_clear", test_driver_initial_features_no_clear);
+
 
   g_test_add_func ("/driver/probe", test_driver_probe);
   g_test_add_func ("/driver/probe/error", test_driver_probe_error);
@@ -2451,10 +3438,18 @@ main (int argc, char *argv[])
   g_test_add_func ("/driver/enroll/error", test_driver_enroll_error);
   g_test_add_func ("/driver/enroll/error/no_print", test_driver_enroll_error_no_print);
   g_test_add_func ("/driver/enroll/progress", test_driver_enroll_progress);
+  g_test_add_func ("/driver/enroll/update_nbis", test_driver_enroll_update_nbis);
+  g_test_add_func ("/driver/enroll/update_nbis_wrong_device",
+                   test_driver_enroll_update_nbis_wrong_device);
+  g_test_add_func ("/driver/enroll/update_nbis_wrong_driver",
+                   test_driver_enroll_update_nbis_wrong_driver);
+  g_test_add_func ("/driver/enroll/update_nbis_missing_feature",
+                   test_driver_enroll_update_nbis_missing_feature);
   g_test_add_func ("/driver/verify", test_driver_verify);
   g_test_add_func ("/driver/verify/fail", test_driver_verify_fail);
   g_test_add_func ("/driver/verify/retry", test_driver_verify_retry);
   g_test_add_func ("/driver/verify/error", test_driver_verify_error);
+  g_test_add_func ("/driver/verify/not_supported", test_driver_verify_not_supported);
   g_test_add_func ("/driver/verify/report_no_cb", test_driver_verify_report_no_callback);
   g_test_add_func ("/driver/verify/not_reported", test_driver_verify_not_reported);
   g_test_add_func ("/driver/verify/complete_retry", test_driver_verify_complete_retry);
@@ -2465,22 +3460,36 @@ main (int argc, char *argv[])
   g_test_add_func ("/driver/identify/not_reported", test_driver_identify_not_reported);
   g_test_add_func ("/driver/identify/complete_retry", test_driver_identify_complete_retry);
   g_test_add_func ("/driver/identify/report_no_cb", test_driver_identify_report_no_callback);
+
+  g_test_add_func ("/driver/identify/suspend_continues", test_driver_identify_suspend_continues);
+  g_test_add_func ("/driver/identify/suspend_succeeds", test_driver_identify_suspend_succeeds);
+  g_test_add_func ("/driver/identify/suspend_busy_error", test_driver_identify_suspend_busy_error);
+  g_test_add_func ("/driver/identify/suspend_while_idle", test_driver_identify_suspend_while_idle);
+
+  g_test_add_func ("/driver/identify/warmup_cooldown", test_driver_identify_warmup_cooldown);
+
   g_test_add_func ("/driver/capture", test_driver_capture);
+  g_test_add_func ("/driver/capture/not_supported", test_driver_capture_not_supported);
   g_test_add_func ("/driver/capture/error", test_driver_capture_error);
   g_test_add_func ("/driver/list", test_driver_list);
   g_test_add_func ("/driver/list/error", test_driver_list_error);
   g_test_add_func ("/driver/list/no_storage", test_driver_list_no_storage);
   g_test_add_func ("/driver/delete", test_driver_delete);
   g_test_add_func ("/driver/delete/error", test_driver_delete_error);
+  g_test_add_func ("/driver/clear_storage", test_driver_clear_storage);
+  g_test_add_func ("/driver/clear_storage/error", test_driver_clear_storage_error);
   g_test_add_func ("/driver/cancel", test_driver_cancel);
   g_test_add_func ("/driver/cancel/fail", test_driver_cancel_fail);
+
+  g_test_add_func ("/driver/critical", test_driver_critical);
 
   g_test_add_func ("/driver/get_current_action", test_driver_current_action);
   g_test_add_func ("/driver/get_current_action/open", test_driver_current_action_open);
   g_test_add_func ("/driver/get_cancellable/error", test_driver_action_get_cancellable_error);
   g_test_add_func ("/driver/get_cancellable/open", test_driver_action_get_cancellable_open);
-  g_test_add_func ("/driver/get_cancellable/open/fail", test_driver_action_get_cancellable_open_fail);
+  g_test_add_func ("/driver/get_cancellable/open/internal", test_driver_action_get_cancellable_open_internal);
   g_test_add_func ("/driver/action_is_cancelled/open", test_driver_action_is_cancelled_open);
+  g_test_add_func ("/driver/action_is_cancelled/open/internal", test_driver_action_internally_cancelled_open);
   g_test_add_func ("/driver/action_is_cancelled/error", test_driver_action_is_cancelled_error);
   g_test_add_func ("/driver/complete_action/all/error", test_driver_complete_actions_errors);
   g_test_add_func ("/driver/action_error/error", test_driver_action_error_error);

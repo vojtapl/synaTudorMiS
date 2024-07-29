@@ -42,8 +42,7 @@ dev_identify (FpDevice *dev)
   FpDeviceVirtualDevice *self = FP_DEVICE_VIRTUAL_DEVICE (dev);
   g_autofree char *scan_id = NULL;
 
-  scan_id = start_scan_command (self, &error);
-  if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_PENDING))
+  if (!start_scan_command (self, &scan_id, &error))
     return;
 
   if (scan_id)
@@ -68,12 +67,17 @@ dev_identify (FpDevice *dev)
                                              new_scan,
                                              (GEqualFunc) fp_print_equal,
                                              NULL))
-        error = fpi_device_error_new (FP_DEVICE_ERROR_DATA_NOT_FOUND);
+        {
+          match = FALSE;
+          g_clear_object (&new_scan);
+        }
       else if (g_ptr_array_find_with_equal_func (prints,
                                                  new_scan,
                                                  (GEqualFunc) fp_print_equal,
                                                  &idx))
-        match = g_ptr_array_index (prints, idx);
+        {
+          match = g_ptr_array_index (prints, idx);
+        }
 
       if (!self->match_reported)
         {
@@ -147,17 +151,37 @@ dev_list (FpDevice *dev)
   g_autoptr(GError) error = NULL;
   FpDeviceVirtualDevice *vdev = FP_DEVICE_VIRTUAL_DEVICE (dev);
 
-  process_cmds (vdev, FALSE, &error);
-  if (should_wait_for_command (vdev, error))
+  if (!process_cmds (vdev, FALSE, NULL, &error))
     return;
 
-  if (error && !g_error_matches (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+  if (error)
     {
       fpi_device_list_complete (dev, NULL, g_steal_pointer (&error));
       return;
     }
 
   fpi_device_list_complete (dev, get_stored_prints (vdev), NULL);
+}
+
+static void
+dev_clear_storage (FpDevice *dev)
+{
+  g_autoptr(GPtrArray) prints_list = NULL;
+  g_autoptr(GError) error = NULL;
+  FpDeviceVirtualDevice *vdev = FP_DEVICE_VIRTUAL_DEVICE (dev);
+
+  if (!process_cmds (vdev, FALSE, NULL, &error))
+    return;
+
+  if (error)
+    {
+      fpi_device_clear_storage_complete (dev, g_steal_pointer (&error));
+      return;
+    }
+
+  g_hash_table_remove_all (vdev->prints_storage);
+
+  fpi_device_clear_storage_complete (dev, NULL);
 }
 
 static void
@@ -169,11 +193,10 @@ dev_delete (FpDevice *dev)
   FpPrint *print = NULL;
   const char *id = NULL;
 
-  process_cmds (vdev, FALSE, &error);
-  if (should_wait_for_command (vdev, error))
+  if (!process_cmds (vdev, FALSE, NULL, &error))
     return;
 
-  if (error && !g_error_matches (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+  if (error)
     {
       fpi_device_delete_complete (dev, g_steal_pointer (&error));
       return;
@@ -203,6 +226,15 @@ dev_delete (FpDevice *dev)
 }
 
 static void
+dev_probe (FpDevice *dev)
+{
+  /* Disable features listed in driver_data */
+  fpi_device_update_features (dev, fpi_device_get_driver_data (dev), 0);
+
+  fpi_device_probe_complete (dev, NULL, NULL, NULL);
+}
+
+static void
 fpi_device_virtual_device_storage_init (FpDeviceVirtualDeviceStorage *self)
 {
   FpDeviceVirtualDevice *vdev = FP_DEVICE_VIRTUAL_DEVICE (self);
@@ -224,8 +256,8 @@ fpi_device_virtual_device_storage_finalize (GObject *object)
 }
 
 static const FpIdEntry driver_ids[] = {
-  { .virtual_envvar = "FP_VIRTUAL_DEVICE_STORAGE" },
-  { .virtual_envvar = "FP_VIRTUAL_DEVICE_IDENT" },
+  { .virtual_envvar = "FP_VIRTUAL_DEVICE_STORAGE", .driver_data = 0 },
+  { .virtual_envvar = "FP_VIRTUAL_DEVICE_STORAGE_NO_LIST", .driver_data = FP_DEVICE_FEATURE_STORAGE_LIST },
   { .virtual_envvar = NULL }
 };
 
@@ -241,7 +273,12 @@ fpi_device_virtual_device_storage_class_init (FpDeviceVirtualDeviceStorageClass 
   dev_class->full_name = "Virtual device with storage and identification for debugging";
   dev_class->id_table = driver_ids;
 
+  dev_class->probe = dev_probe;
   dev_class->identify = dev_identify;
   dev_class->list = dev_list;
   dev_class->delete = dev_delete;
+  dev_class->clear_storage = dev_clear_storage;
+
+  fpi_device_class_auto_initialize_features (dev_class);
+  dev_class->features |= FP_DEVICE_FEATURE_DUPLICATES_CHECK;
 }

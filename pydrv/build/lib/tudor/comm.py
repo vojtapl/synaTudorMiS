@@ -159,7 +159,7 @@ class CommunicationInterface:
     def reset(self):
         raise NotImplementedError()
 
-    def send_command(
+    def end_command(
         self,
         cmd: bytes,
         resp_size: int,

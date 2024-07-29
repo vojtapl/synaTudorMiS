@@ -10,19 +10,20 @@
  * Copyright (C) <1999> Erik Walthinsen <omega@cse.ogi.edu>
  * Copyright (C) 2004,2006 Thomas Vander Stichele <thomas at apestaart dot org>
 
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; version
- * 2.1 of the License.
+ * This library is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as
+ * published by the Free Software Foundation; either version 2.1 of the
+ * License, or (at your option) any later version.
  *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * This library is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ * 02110-1301 USA
  */
 
 #define FP_COMPONENT "upekts"
@@ -365,7 +366,7 @@ read_msg_cb (FpiUsbTransfer *transfer, FpDevice *device,
       fp_err ("async msg read too short (%d)",
               (gint) transfer->actual_length);
       error = fpi_device_error_new_msg (FP_DEVICE_ERROR_PROTO,
-                                        "Packet from device was too short (%lu)",
+                                        "Packet from device was too short (%" G_GSSIZE_FORMAT ")",
                                         transfer->actual_length);
       goto err;
     }
@@ -992,7 +993,7 @@ e_handle_resp00 (FpDevice *dev, unsigned char *data,
 
   if (data_len != 14)
     {
-      fp_err ("received 3001 poll response of %lu bytes?", data_len);
+      fp_err ("received 3001 poll response of %" G_GSIZE_FORMAT " bytes?", data_len);
       do_enroll_stop (dev, NULL,
                       fpi_device_error_new_msg (FP_DEVICE_ERROR_PROTO,
                                                 "received 3001 response with wrong length"));
@@ -1089,7 +1090,7 @@ e_handle_resp02 (FpDevice *dev, unsigned char *data,
 
   if (data_len < sizeof (scan_comp))
     {
-      fp_err ("fingerprint data too short (%lu bytes)", data_len);
+      fp_err ("fingerprint data too short (%" G_GSIZE_FORMAT "u bytes)", data_len);
       error = fpi_device_error_new_msg (FP_DEVICE_ERROR_PROTO, "fingerprint data too short");
     }
   else if (memcmp (data, scan_comp, sizeof (scan_comp)) != 0)
@@ -1317,7 +1318,7 @@ v_handle_resp00 (FpDevice *dev, unsigned char *data,
 
   if (data_len != 14)
     {
-      fp_warn ("received 3001 poll response of %lu bytes?", data_len);
+      fp_warn ("received 3001 poll response of %" G_GSIZE_FORMAT "u bytes?", data_len);
       error = fpi_device_error_new (FP_DEVICE_ERROR_PROTO);
       goto out;
     }
@@ -1555,4 +1556,6 @@ fpi_device_upekts_class_init (FpiDeviceUpektsClass *klass)
   dev_class->verify = verify;
   dev_class->enroll = enroll;
   /* dev_class->cancel = cancel; */
+
+  fpi_device_class_auto_initialize_features (dev_class);
 }

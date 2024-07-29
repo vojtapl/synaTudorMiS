@@ -1,10 +1,15 @@
 #!/usr/bin/python3
 
-import gi
-gi.require_version('FPrint', '2.0')
-from gi.repository import FPrint, GLib
 import cairo
 import sys
+import traceback
+import gi
+
+gi.require_version('FPrint', '2.0')
+from gi.repository import FPrint, GLib
+
+# Exit with error on any exception, included those happening in async callbacks
+sys.excepthook = lambda *args: (traceback.print_exception(*args), sys.exit(1))
 
 if len(sys.argv) != 2:
     print("Please specify exactly one argument, the output location for the capture image")
@@ -17,6 +22,14 @@ c.enumerate()
 devices = c.get_devices()
 
 d = devices[0]
+assert d.has_feature(FPrint.DeviceFeature.CAPTURE)
+assert d.has_feature(FPrint.DeviceFeature.IDENTIFY)
+assert d.has_feature(FPrint.DeviceFeature.VERIFY)
+assert not d.has_feature(FPrint.DeviceFeature.DUPLICATES_CHECK)
+assert not d.has_feature(FPrint.DeviceFeature.STORAGE)
+assert not d.has_feature(FPrint.DeviceFeature.STORAGE_LIST)
+assert not d.has_feature(FPrint.DeviceFeature.STORAGE_DELETE)
+assert not d.has_feature(FPrint.DeviceFeature.STORAGE_CLEAR)
 del devices
 
 d.open_sync()

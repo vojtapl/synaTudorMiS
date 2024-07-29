@@ -37,7 +37,8 @@ ENROLL_TAG_USERID = 1
 ENROLL_TAG_SUBID = 2
 
 # hardcoded value used in sensorUpdatePairHostPartitionProgram
-VERSION_TAG_DATA = b"\x01\x00\x00\x00"
+HOST_PARITION_VERSION_TAG_DATA = b"\x01\x00\x00\x00"
+PAIR_DATA_VERSION_TAG_DATA = b"\x00\x00"
 
 # SBL revocery patch hashes hardcoded in synaWudfBioUsb111.dll
 SBL_RECOVERY_HASHES = [0xB63DEB5F, 0x8ABDEFD6, 0x15595CEA, 0x9ACC5A48, 0x59A1E20D]
@@ -856,7 +857,8 @@ class SensorFrameCapturer:
         return
 
     # FIXME: seemed not to work or I did not find the right tuid / id
-    def delete_template(self, tuid):
+    def delete_enrollment(self, tuid):
+        logging.warning("This does not seem to work yet")
         # based on stiTudorDeleteEnrollment
         # NOTE: likely will not delete all enrollments, just a single template
         obj_info = self.get_object_info(OBJ_TYPE_TEMPLATES, tuid)
@@ -904,7 +906,7 @@ class SensorFrameCapturer:
         return cache
 
     # FIXME: untested
-    def get_common_property(self, in_prop_id: bytes=ID_ZERO) -> bytes | None:
+    def get_common_property(self, in_prop_id: bytes = ID_ZERO) -> bytes | None:
         # based on stiTudorGetCommonProperty
 
         common_prop_user_obj_id = self.get_common_prop_user_obj_id(create=False)
@@ -1051,7 +1053,7 @@ class SensorFrameCapturer:
 
         msg = struct.pack(
             "<BBBHII",
-            tudor.Command.STORAGE_PART_READ,
+            tudor.Command.STORAGE_PART_WRITE,
             part_id,
             PARAM_2,
             0xFFFF,
@@ -1059,6 +1061,7 @@ class SensorFrameCapturer:
             size,
         )
         msg += data
+        print(len(msg))
         assert len(msg) == send_len
 
         resp = self.sensor.comm.send_command(msg, RECV_LEN)
@@ -1082,9 +1085,13 @@ class SensorFrameCapturer:
             print(f"host partition data length: {len(data.vals[2])}")
 
     def host_partition_write_pairing_data(self, pairing_data: SensorPairingData):
-        serialized = self.serialize_host_partition(pairing_data)
+        serialized = self.host_partition_serialize(pairing_data)
         self.host_partition_write(serialized)
 
+    def host_partition_read_pairing_data(self) -> SensorPairingData:
+        serialized = self.host_partition_read()
+        pairing_data = self.host_partition_deserialize(serialized)
+        return pairing_data
 
     def storage_get_info(self):
         SEND_LEN = 1
@@ -1151,7 +1158,9 @@ class SensorFrameCapturer:
     def create_version_tag(self):
         # based on sensorUpdatePairHostPartitionProgram
         if HOST_TAG_VERSION not in self.sensor.host_partition:
-            self.sensor.host_partition[HOST_TAG_VERSION] = VERSION_TAG_DATA
+            self.sensor.host_partition[HOST_TAG_VERSION] = (
+                HOST_PARITION_VERSION_TAG_DATA
+            )
 
     def reset_sbl_mode(self, is_type_2: bool = False):
         # based on reset_SBL_mode, params in: reset_sensor_2 and reset_sensor
@@ -1195,15 +1204,14 @@ class SensorFrameCapturer:
         assert len(msg) == SEND_LEN
         self.sensor.comm.send_command(msg, RESP_LEN)
 
-    # FIXME: untested
-    def serialize_host_partition(self, pairing_data: SensorPairingData) -> bytes:
+    def host_partition_serialize(self, pairing_data: SensorPairingData) -> bytes:
         pairing_data_plain = self.wrap_pairing_data(pairing_data)
 
         # TODO: add de/encryption
         pairing_data_encrypted = pairing_data_plain
 
         to_serialize = {
-            HOST_TAG_VERSION: VERSION_TAG_DATA,
+            HOST_TAG_VERSION: HOST_PARITION_VERSION_TAG_DATA,
             HOST_TAG_PAIRED_DATA: pairing_data_encrypted,
         }
         container = tudor.win.HashTagValContainer(to_serialize)
@@ -1214,8 +1222,7 @@ class SensorFrameCapturer:
         serialized = container.tobytes()
         return serialized
 
-    # FIXME: untested
-    def deserialize_host_partition(self, to_deserialize: bytes) -> SensorPairingData:
+    def host_partition_deserialize(self, to_deserialize: bytes) -> SensorPairingData:
 
         deserialized = tudor.win.HashTagValContainer().frombytes(to_deserialize)
 
@@ -1231,7 +1238,6 @@ class SensorFrameCapturer:
         pairing_data = self.unwrap_pairing_data(unencrypted_pairing_data)
         return pairing_data
 
-    # FIXME: untested
     def wrap_pairing_data(self, pairing_data: SensorPairingData):
         # NOTE: this may be improved greatly
         # currently just a proof of concept
@@ -1239,14 +1245,16 @@ class SensorFrameCapturer:
         format = ser.PrivateFormat.PKCS8
         # no need to encrypt, as the whole container should be de/encrypted at once
         encryption = ser.NoEncryption()
-        private_key_bytes = pairing_data.priv_key.private_bytes(encoding, format, encryption)
+        private_key_bytes = pairing_data.priv_key.private_bytes(
+            encoding, format, encryption
+        )
         # public_key_bytes = pairing_data.sensor_cert.priv_key.public_key().public_bytes(encoding, format, encryption)
 
         to_serialize = {
-            PAIR_DATA_TAG_VERSION : b'\x00'*2,
-            PAIR_DATA_TAG_HOST_CERT : pairing_data.host_cert.tobytes(),
-            PAIR_DATA_TAG_PRIVATE_KEY : private_key_bytes,
-            PAIR_DATA_TAG_SENSOR_CERT : pairing_data.sensor_cert.tobytes(),
+            PAIR_DATA_TAG_VERSION: PAIR_DATA_VERSION_TAG_DATA,
+            PAIR_DATA_TAG_HOST_CERT: pairing_data.host_cert.tobytes(),
+            PAIR_DATA_TAG_PRIVATE_KEY: private_key_bytes,
+            PAIR_DATA_TAG_SENSOR_CERT: pairing_data.sensor_cert.tobytes(),
             # TODO: in original they seem to store a bit more
             # PAIR_DATA_TAG_PUB_KEY_SEC_DATA :
             # unused
@@ -1254,8 +1262,6 @@ class SensorFrameCapturer:
         }
         return tudor.win.WinTagValContainer(to_serialize).tobytes()
 
-
-    # FIXME: untested
     def unwrap_pairing_data(self, to_unwrap: bytes) -> SensorPairingData:
         deserialized = tudor.win.WinTagValContainer().frombytes(to_unwrap)
 
@@ -1266,7 +1272,8 @@ class SensorFrameCapturer:
         # TODO: in original they seem to store a bit more
         # public_key = deserialized[PAIR_DATA_TAG_PUB_KEY_SEC_DATA]
 
-        assert version == PAIR_DATA_TAG_VERSION
+        print(version)
+        assert version == PAIR_DATA_VERSION_TAG_DATA
 
         host_cert = SensorCertificate.frombytes(host_cert_bytes)
         # no need to encrypt, as the whole container should be de/encrypted at once

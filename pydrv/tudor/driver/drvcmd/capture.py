@@ -24,11 +24,36 @@ class CmdEnroll(Command):
         ctx.sensor.frame_capturer.enroll()
 
 
-@cmd("auth")
-class CmdAuth(Command):
+@cmd("verify")
+class CmdVerify(Command):
     """
-    Captures a frame from the sensor and tries to auth
-    Usage: auth
+    Captures a frame from the sensor and tries to match to given tuid
+    Usage: verify <tuid_list>
+    """
+
+    def run(self, ctx: CmdContext, args: list):
+        if not ctx.sensor.initialized:
+            raise Exception("Sensor isn't initialized!")
+
+        if len(args) < 1:
+            raise Exception("No tuid list given")
+
+        tuid = eval(args[0])
+
+        # Wait for finger to be lifted
+        print("Waiting for finger to be lifted...")
+        ctx.sensor.event_handler.wait_for_event(
+            [tudor.sensor.SensorEventType.EV_FINGER_UP]
+        )
+
+
+        ctx.sensor.frame_capturer.auth(tuid)
+
+@cmd("identify")
+class CmdIdentify(Command):
+    """
+    Captures a frame from the sensor and tries to identify match
+    Usage: identify
     """
 
     def run(self, ctx: CmdContext, args: list):

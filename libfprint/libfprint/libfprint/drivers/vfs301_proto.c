@@ -157,7 +157,7 @@ vfs301_proto_generate_0B (int subtype, gssize *len)
 }
 
 #define HEX_TO_INT(c) \
-  (((c) >= '0' && (c) <= '9') ? ((c) - '0') : ((c) - 'A' + 10))
+        (((c) >= '0' && (c) <= '9') ? ((c) - '0') : ((c) - 'A' + 10))
 
 static guint8 *
 translate_str (const char **srcL, gssize *len)
@@ -422,17 +422,17 @@ img_process_data (int first_block, FpDeviceVfs301 *dev, const guint8 *buf, int l
 /************************** PROTOCOL STUFF ************************************/
 
 #define USB_RECV(from, len) \
-  usb_recv (dev, from, len, NULL, NULL)
+        usb_recv (dev, from, len, NULL, NULL)
 
 #define USB_SEND(type, subtype) \
-  { \
-    const guint8 *data; \
-    gssize len; \
-    data = vfs301_proto_generate (type, subtype, &len); \
-    usb_send (dev, data, len, NULL); \
-  }
+        { \
+          const guint8 *data; \
+          gssize len; \
+          data = vfs301_proto_generate (type, subtype, &len); \
+          usb_send (dev, data, len, NULL); \
+        }
 
-#define RAW_DATA(x) g_memdup (x, sizeof (x)), sizeof (x)
+#define RAW_DATA(x) g_memdup2 (x, sizeof (x)), sizeof (x)
 
 #define IS_VFS301_FP_SEQ_START(b) ((b[0] == 0x01) && (b[1] == 0xfe))
 
@@ -465,7 +465,7 @@ int
 vfs301_proto_peek_event (FpDeviceVfs301 *dev)
 {
   g_autoptr(GError) error = NULL;
-  FpiUsbTransfer *transfer;
+  g_autoptr(FpiUsbTransfer) transfer = NULL;
 
   const char no_event[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
   const char got_event[] = {0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00};
@@ -489,13 +489,13 @@ vfs301_proto_peek_event (FpDeviceVfs301 *dev)
  *      we will run into timeouts randomly and need to then try again.
  */
 #define PARALLEL_RECEIVE(e1, l1, e2, l2) \
-  { \
-    g_autoptr(GError) error = NULL; \
-    usb_recv (dev, e1, l1, NULL, &error); \
-    usb_recv (dev, e2, l2, NULL, NULL); \
-    if (g_error_matches (error, G_USB_DEVICE_ERROR, G_USB_DEVICE_ERROR_TIMED_OUT)) \
-    usb_recv (dev, e1, l1, NULL, NULL); \
-  }
+        { \
+          g_autoptr(GError) error = NULL; \
+          usb_recv (dev, e1, l1, NULL, &error); \
+          usb_recv (dev, e2, l2, NULL, NULL); \
+          if (g_error_matches (error, G_USB_DEVICE_ERROR, G_USB_DEVICE_ERROR_TIMED_OUT)) \
+          usb_recv (dev, e1, l1, NULL, NULL); \
+        }
 
 static void
 vfs301_proto_process_event_cb (FpiUsbTransfer *transfer,

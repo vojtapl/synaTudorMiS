@@ -143,6 +143,7 @@ on_identify_cb (FpDevice *dev, FpPrint *match, FpPrint *print,
   if (match)
     {
       g_autoptr(FpPrint) matched_print = g_object_ref (match);
+      const GDate *date;
       char date_str[128] = {};
 
       identify_data->ret_value = EXIT_SUCCESS;
@@ -155,7 +156,8 @@ on_identify_cb (FpDevice *dev, FpPrint *match, FpPrint *print,
             matched_print = g_steal_pointer (&stored_print);
         }
 
-      if (fp_print_get_enroll_date (matched_print))
+      date = fp_print_get_enroll_date (matched_print);
+      if (date && g_date_valid (date))
         g_date_strftime (date_str, G_N_ELEMENTS (date_str), "%Y-%m-%d\0",
                          fp_print_get_enroll_date (matched_print));
       else
@@ -212,7 +214,7 @@ on_list_completed (FpDevice *dev, GAsyncResult *res, gpointer user_data)
 static void
 start_identification (FpDevice *dev, IdentifyData *identify_data)
 {
-  if (fp_device_has_storage (dev))
+  if (fp_device_has_feature (dev, FP_DEVICE_FEATURE_STORAGE))
     {
       g_print ("Creating finger template, using device storage...\n");
       fp_device_list_prints (dev, NULL,
@@ -293,7 +295,7 @@ main (void)
       return EXIT_FAILURE;
     }
 
-  if (!fp_device_supports_identify (dev))
+  if (!fp_device_has_feature (dev, FP_DEVICE_FEATURE_IDENTIFY))
     {
       g_warning ("Device %s does not support identification.",
                  fp_device_get_name (dev));

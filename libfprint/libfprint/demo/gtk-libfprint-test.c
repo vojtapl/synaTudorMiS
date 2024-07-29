@@ -102,9 +102,9 @@ plot_minutiae (unsigned char *rgbdata,
   int i;
 
 #define write_pixel(num) do { \
-      rgbdata[((num) * 3)] = 0xff; \
-      rgbdata[((num) * 3) + 1] = 0; \
-      rgbdata[((num) * 3) + 2] = 0; \
+            rgbdata[((num) * 3)] = 0xff; \
+            rgbdata[((num) * 3) + 1] = 0; \
+            rgbdata[((num) * 3) + 2] = 0; \
   } while(0)
 
   for (i = 0; i < minutiae->len; i++)
@@ -526,7 +526,7 @@ libfprint_demo_window_init (LibfprintDemoWindow *window)
       return;
     }
 
-  if (!fp_device_supports_capture (g_ptr_array_index (devices, 0)))
+  if (!fp_device_has_feature (g_ptr_array_index (devices, 0), FP_DEVICE_FEATURE_CAPTURE))
     {
       libfprint_demo_set_mode (window, NOIMAGING_MODE);
       return;

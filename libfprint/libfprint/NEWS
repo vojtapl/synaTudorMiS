@@ -1,6 +1,151 @@
 This file lists notable changes in each release. For the full history of all
 changes, see ChangeLog.
 
+2024-02-20: v1.94.7 release
+
+Highlights:
+ * synaptics: fix enroll identify problem after user reset database.
+ * synaptics: New PIDs 0x0173, 0x0106, 0x0124.
+ * goodixmoc: New PID 0x6582.
+ * build: Do not require bash to build, only posix sh.
+ * fp-image: Simplify minutiae detection tasks.
+ * GLib 2.68 is now required to build libfprint.
+
+New drivers:
+ * realtek (PID 0x5813).
+ * focaltech_moc (PIDs 0x9E48, 0xD979, 0xA959).
+ * egismoc (PIDs 0x0582, 0x05a1).
+
+2023-08-17: v1.94.6 release
+
+Highlights:
+ * goodixmoc: New PIDs 0x60A4, 0x60BC, 0x6092, 0x633C and 0x6304.
+ * goodixmoc: Fix missing "enroll create" state.
+ * elanmoc: New PID 0x0C99.
+ * upektc: Improve compatibility with sensors 147e:2016.
+ * aes4000: Actually support 08FF:5501 devices.
+ * virtual-device-listener: Fix failing tests with GLib 2.76
+ * tests: Add installed tests
+
+Bugs fixed:
+ * #526 libfprint: fpcmoc: use after free if enrollment or identification is
+   cancelled (Vasily Khoruzhick)
+
+2022-10-13: v1.94.5 release
+
+Highlights:
+ * New driver: fpcmoc, supporting various FPC MOC Fingerprint Sensors
+ * goodixmoc: New PIDs 0x6014, 0x6094, 0x631C, 0x634C, 0x6384, 0x659A.
+ * goodixmoc: Support resetting device on firmware failure due to corrupted DB.
+ * elanmoc: New PIDs 0x0c88, 0x0c8c, 0x0c8d.
+ * synaptics: New PID 0x0104.
+ * upektc: New PID 0x2017.
+ * Fixed various memory leaks
+ * More tests
+
+2022-05-24: v1.94.4 release
+
+Highlights:
+ * synaptics: New PIDs 0x0168, 0x015f
+ * elan: New PID 0x0c4b
+ * elanspi: New PID 0x241f
+ * synaptics: Minor fix to interrupt transfer resubmission
+ * Avoid sysfs writes if value is already expected
+ * Improvements to the testing setup
+ * Fixes to the internal critical section API
+
+2021-11-02: v1.94.3 release
+
+Highlights:
+ * Ensure idle mainloop before completing enumeration (fprintd#119)
+ * It is now possible to extend already enrolled prints
+ * elanspi: Fix timeout error with some hardware (#438)
+ * elanspi: Fix cancellation issues
+ * goodixmoc: Return matching device print; fixes duplicate checking (#444)
+ * goodixmoc: Support clearing the storage (usually unused)
+
+2021-11-02: v1.94.2 release
+
+Highlights:
+ * goodixmoc: Fix protocol error with certain username lengths
+ * elanmoc: New PID 0x0c7d
+ * goodixmoc: New PID 0x63cc
+
+2021-09-24: v1.94.1 release
+
+Highlights:
+ * Ship a simple script to create new CI tests using tshark
+ * Added CI tests for elan, uru4000, aes2501
+ * goodixmoc: Remove duplicate checking during enroll and let fprintd handle it
+ * uru4000: Fix USB transfer type
+ * synaptics: Support for new PIDs
+ * goodixmoc: Support for new PIDs
+
+2021-08-20: v1.94.0 release
+
+Highlights:
+ * Implement suspend/resume handling including USB wakeup configuration.
+   This requires writing the "persist" and "wakeup" sysfs attributes.
+ * Add simple temperature module to prevent devices from becoming too hot
+ * Add feature for continuous scanning
+ * New internal "critical section" API to simplify driver development
+ * elan: new PID 0x0c58
+ * elanmoc: Fixes for multi-user handling and FW changes
+ * virtual-device: Do not time out for SCAN command
+
+2021-06-30: v1.92.1 release
+
+Highlights:
+ * elanmoc: New driver for ELAN match-on-chip devices
+ * egis0570: New driver for some Egis Technology devices
+ * synaptics: Fix empty identify causing enroll issues
+ * elan: Support more PIDs
+ * misc: Architecture related bugfixes
+
+2021-06-30: v1.92.0 release
+
+Highlights:
+ * Support for SPI devices was added together with the elanspi driver
+ * Generate hwdb for autosuspend (which is now pulled by systemd)
+ * An API was added to clear the device storage.
+   Note: Devices may not implement the "list" API anymore.
+ * Device features can now be queried using a common API
+
+New drivers:
+ * vfs7552
+ * nb1010
+ * elanspi
+
+Driver changes:
+ * uru4000: Fix deactivation when unplugged unexpectedly
+ * goodixmoc: Correctly complete verify/identify after retry condition
+ * goodixmoc: Support power shield feature
+ * goodixmoc: Support new PIDs
+ * synaptics: Fix driver lockup when sequence counter overflows (#358)
+ * synaptics: Remove unnecessary device reset
+ * synaptics: Support new PIDs
+ * synaptics: Add clear_storage and remove list support
+ * synaptics: Fix initialization if the device is still busy when opening
+ * upeksonly: Fix double free in USB transfer callbacks
+ * elan: Support new PIDs
+ * vfs301: Fix leak of USB transfer
+ * uru4000: Silence warning happening during startup
+
+Internal API changes:
+ * ssm: Add getter for the device
+ * ssm: Add cleanup state feature
+ * image-device: Allow overriding number of enroll stages
+ * context: Support udev based device discovery
+ * spi-transfer: Add SPI transfer helper routines
+
+Other:
+ * Use pcap based USB replay for CI
+ * New virtual drivers for more advanced testing
+ * Ensure async operations are run in the thread local main context
+ * Disable drivers on big-endian unless they are verified to work
+ * Add missing gobject-introspection dependency
+
+
 2020-12-01: v1.90.7 release
 
 Highlights:
@@ -227,7 +372,7 @@ tests of the drivers using umockdev.
   - Mark fp_dscv_print functions as deprecated
 
 * Udev rules:
-  - Add some unsupported devices to the whitelist
+  - Add some unsupported devices to the allowlist
 
 2017-05-14: v0.7.0 release
 * Drivers:
@@ -277,7 +422,7 @@ tests of the drivers using umockdev.
   - Fix possible race condition, and cancellation in uru4000 driver
 
 * Udev rules:
-  - Add Microsoft keyboard to the suspend blacklist
+  - Add Microsoft keyboard to the suspend denylist
 
 * Plenty of build fixes
 

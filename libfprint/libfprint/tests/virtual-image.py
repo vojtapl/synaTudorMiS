@@ -21,13 +21,8 @@ except Exception as e:
 
 FPrint = None
 
-# Re-run the test with the passed wrapper if set
-wrapper = os.getenv('LIBFPRINT_TEST_WRAPPER')
-if wrapper:
-    wrap_cmd = wrapper.split(' ') + [sys.executable, os.path.abspath(__file__)] + \
-        sys.argv[1:]
-    os.unsetenv('LIBFPRINT_TEST_WRAPPER')
-    sys.exit(subprocess.check_call(wrap_cmd))
+# Exit with error on any exception, included those happening in async callbacks
+sys.excepthook = lambda *args: (traceback.print_exception(*args), sys.exit(1))
 
 def load_image(img):
     png = cairo.ImageSurface.create_from_png(img)
@@ -51,12 +46,15 @@ def load_image(img):
 
     return img
 
-if hasattr(os.environ, 'MESON_SOURCE_ROOT'):
-    root = os.environ['MESON_SOURCE_ROOT']
+if 'FP_PRINTS_PATH' in os.environ:
+    prints_path = os.environ['FP_PRINTS_PATH']
 else:
-    root = os.path.join(os.path.dirname(__file__), '..')
+    if 'MESON_SOURCE_ROOT' in os.environ:
+        root = os.environ['MESON_SOURCE_ROOT']
+    else:
+        root = os.path.join(os.path.dirname(__file__), '..')
 
-imgdir = os.path.join(root, 'examples', 'prints')
+    prints_path = os.path.join(root, 'examples', 'prints')
 
 ctx = GLib.main_context_default()
 
@@ -81,9 +79,11 @@ class VirtualImage(unittest.TestCase):
         assert cls.dev is not None, "You need to compile with virtual_image for testing"
 
         cls.prints = {}
-        for f in glob.glob(os.path.join(imgdir, '*.png')):
+        for f in glob.glob(os.path.join(prints_path, '*.png')):
             n = os.path.basename(f)[:-4]
             cls.prints[n] = load_image(f)
+
+        assert cls.prints, "No prints found in " + prints_path
 
     @classmethod
     def tearDownClass(cls):
@@ -140,6 +140,22 @@ class VirtualImage(unittest.TestCase):
         while iterate and ctx.pending():
             ctx.iteration(False)
 
+    def test_features(self):
+        self.assertTrue(self.dev.has_feature(FPrint.DeviceFeature.CAPTURE))
+        self.assertTrue(self.dev.has_feature(FPrint.DeviceFeature.IDENTIFY))
+        self.assertTrue(self.dev.has_feature(FPrint.DeviceFeature.VERIFY))
+        self.assertTrue(self.dev.has_feature(FPrint.DeviceFeature.UPDATE_PRINT))
+        self.assertFalse(self.dev.has_feature(FPrint.DeviceFeature.DUPLICATES_CHECK))
+        self.assertFalse(self.dev.has_feature(FPrint.DeviceFeature.STORAGE))
+        self.assertFalse(self.dev.has_feature(FPrint.DeviceFeature.STORAGE_LIST))
+        self.assertFalse(self.dev.has_feature(FPrint.DeviceFeature.STORAGE_DELETE))
+        self.assertFalse(self.dev.has_feature(FPrint.DeviceFeature.STORAGE_CLEAR))
+        self.assertEqual(self.dev.get_features(),
+                         FPrint.DeviceFeature.CAPTURE |
+                         FPrint.DeviceFeature.IDENTIFY |
+                         FPrint.DeviceFeature.VERIFY |
+                         FPrint.DeviceFeature.UPDATE_PRINT)
+
     def test_capture_prevents_close(self):
         cancel = Gio.Cancellable()
         def cancelled_cb(dev, res, obj):
@@ -161,7 +177,7 @@ class VirtualImage(unittest.TestCase):
         while not self._cancelled:
             ctx.iteration(True)
 
-    def enroll_print(self, image):
+    def enroll_print(self, image, template=None):
         self._step = 0
         self._enrolled = None
 
@@ -175,14 +191,15 @@ class VirtualImage(unittest.TestCase):
             self.assertEqual(self.dev.get_finger_status(), FPrint.FingerStatusFlags.NONE)
             self._enrolled = fp
 
-        template = FPrint.Print.new(self.dev)
-        template.props.finger = FPrint.Finger.LEFT_THUMB
-        template.props.username = "testuser"
-        template.props.description = "test print"
-        datetime = GLib.DateTime.new_now_local()
-        date = GLib.Date()
-        date.set_dmy(*datetime.get_ymd()[::-1])
-        template.props.enroll_date = date
+        if template is None:
+            template = FPrint.Print.new(self.dev)
+            template.props.finger = FPrint.Finger.LEFT_THUMB
+            template.props.username = "testuser"
+            template.props.description = "test print"
+            datetime = GLib.DateTime.new_now_local()
+            date = GLib.Date()
+            date.set_dmy(*datetime.get_ymd()[::-1])
+            template.props.enroll_date = date
         self.assertEqual(self.dev.get_finger_status(), FPrint.FingerStatusFlags.NONE)
         self.dev.enroll(template, None, progress_cb, tuple(), done_cb)
 
@@ -225,7 +242,8 @@ class VirtualImage(unittest.TestCase):
         self.assertEqual(self.dev.get_finger_status(), FPrint.FingerStatusFlags.NONE)
         self.assertEqual(self._enrolled.props.driver, self.dev.get_driver())
         self.assertEqual(self._enrolled.props.device_id, self.dev.get_device_id())
-        self.assertEqual(self._enrolled.props.device_stored, self.dev.has_storage())
+        self.assertEqual(self._enrolled.props.device_stored,
+                         bool(self.dev.get_features() & FPrint.DeviceFeature.STORAGE))
         self.assertIsNone(self._enrolled.get_image())
 
         return self._enrolled
@@ -257,6 +275,28 @@ class VirtualImage(unittest.TestCase):
         while self._verify_match is None:
             ctx.iteration(True)
         assert(not self._verify_match)
+
+        # Test fingerprint updates
+        # Enroll a second print
+        fp_whorl_tended_arch = self.enroll_print('tented_arch', fp_whorl)
+
+        # Make sure the first print verifies successfully after the update
+        self._verify_match = None
+        self._verify_fp = None
+        self.dev.verify(fp_whorl_tended_arch, callback=verify_cb)
+        self.send_image('whorl')
+        while self._verify_match is None:
+            ctx.iteration(True)
+        assert(self._verify_match)
+
+        # Make sure the second print verifies successfully after the update
+        self._verify_match = None
+        self._verify_fp = None
+        self.dev.verify(fp_whorl_tended_arch, callback=verify_cb)
+        self.send_image('tented_arch')
+        while self._verify_match is None:
+            ctx.iteration(True)
+        assert(self._verify_match)
 
         # Test verify error cases
         self._verify_fp = None

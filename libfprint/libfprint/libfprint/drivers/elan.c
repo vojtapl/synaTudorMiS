@@ -357,7 +357,7 @@ elan_cmd_cb (FpiUsbTransfer *transfer, FpDevice *dev,
   if (transfer->endpoint & FPI_USB_ENDPOINT_IN)
     {
       /* just finished receiving */
-      self->last_read = g_memdup (transfer->buffer, transfer->actual_length);
+      self->last_read = g_memdup2 (transfer->buffer, transfer->actual_length);
       elan_cmd_done (ssm);
     }
   else
@@ -760,7 +760,7 @@ calibrate_run_state (FpiSsm *ssm, FpDevice *dev)
           if (self->calib_status == 0x00 &&
               self->last_read[0] == 0x01)
             self->calib_status = 0x01;
-          fpi_ssm_next_state_delayed (ssm, 50, NULL);
+          fpi_ssm_next_state_delayed (ssm, 50);
         }
       break;
 

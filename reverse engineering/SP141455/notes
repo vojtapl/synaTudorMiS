@@ -35,7 +35,7 @@
 
 - 0x01: get version (VCSFW_CMD_GET_VERSION)
     - req: size: 1
-    - resp: size: 38
+    - resp: size: 38local_18
         somewhere: prodcert
         2-5: FW build time
         6-9: FW build num
@@ -316,7 +316,7 @@
         2-0x45: host certificate echo
         0x46-0x89: device certificate
 
-- 0x96: enroll start/commit
+- 0x96: enroll start/commit (non-original name VCSFW_CMD_ENROLL)
     - in misEnrollStartCmd (used in misEnrollStart)
        - req: size: 13
            1-4: 1=start
@@ -562,7 +562,8 @@
       2084-
 
 
-- 0xaa: *reset SBL mode*
+# TODO:
+- 0xaa: *reset SBL mode* (non-original name VCSFW_CMD_RESET_SBL_MODE)
     - req: size: 0x15
         1-4: (0xffffffff)
         5-8: (0xff7fffff or 0xffbfffff)
@@ -614,7 +615,7 @@
     0x406 -> 0x06f = VCS_RESULT_GEN_BAD_PARAM
     0x407 -> 0x06f = VCS_RESULT_GEN_BAD_PARAM
     0x412 -> 0
-    0x48c -> not converted (return val is unchanged)
+    0x48c -> retry
     0x509 -> 0x12e = VCS_RESULT_MATCHER_MATCH_FAILED
     0x5b6 -> 0x0da = VCS_RESULT_SENSOR_FRAME_NOT_READY
     0x5cb -> 0x0dd =

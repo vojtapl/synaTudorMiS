@@ -20,7 +20,6 @@
 
 #pragma once
 
-#include <config.h>
 #include "fp-image.h"
 
 /**
@@ -34,6 +33,7 @@
  * rely on the image to be normalized by libfprint before further processing.
  */
 typedef enum {
+  FPI_IMAGE_NONE            = 0,
   FPI_IMAGE_V_FLIPPED       = 1 << 0,
   FPI_IMAGE_H_FLIPPED       = 1 << 1,
   FPI_IMAGE_COLORS_INVERTED = 1 << 2,
@@ -68,7 +68,8 @@ struct _FpImage
   guint8    *binarized;
 
   GPtrArray *minutiae;
-  guint      ref_count;
+
+  gboolean   detection_in_progress;
 };
 
 gint fpi_std_sq_dev (const guint8 *buf,
@@ -77,8 +78,6 @@ gint fpi_mean_sq_diff_norm (const guint8 *buf1,
                             const guint8 *buf2,
                             gint          size);
 
-#if HAVE_PIXMAN
 FpImage *fpi_image_resize (FpImage *orig,
                            guint    w_factor,
                            guint    h_factor);
-#endif

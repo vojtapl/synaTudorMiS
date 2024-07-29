@@ -306,7 +306,7 @@ fpi_image_device_minutiae_detected (GObject *source_object, GAsyncResult *res, g
                                   g_steal_pointer (&print), error);
 
       /* Start another scan or deactivate. */
-      if (priv->enroll_stage == IMG_ENROLL_STAGES)
+      if (priv->enroll_stage == fp_device_get_nr_enroll_stages (device))
         {
           fp_image_device_maybe_complete_action (self, g_steal_pointer (&error));
           fpi_image_device_deactivate (self, FALSE);
@@ -565,7 +565,7 @@ fpi_image_device_retry_scan (FpImageDevice *self, FpDeviceRetry retry)
 /**
  * fpi_image_device_session_error:
  * @self: a #FpImageDevice imaging fingerprint device
- * @error: The #GError to report
+ * @error: (nullable) (transfer full): The #GError to report.
  *
  * Report an error while interacting with the device. This effectively
  * aborts the current ongoing action. Note that doing so will result in
@@ -624,7 +624,7 @@ fpi_image_device_session_error (FpImageDevice *self, GError *error)
 /**
  * fpi_image_device_activate_complete:
  * @self: a #FpImageDevice imaging fingerprint device
- * @error: A #GError or %NULL on success
+ * @error: (nullable) (transfer full): The #GError or %NULL on success
  *
  * Reports completion of device activation.
  */
@@ -663,7 +663,7 @@ fpi_image_device_activate_complete (FpImageDevice *self, GError *error)
 /**
  * fpi_image_device_deactivate_complete:
  * @self: a #FpImageDevice imaging fingerprint device
- * @error: A #GError or %NULL on success
+ * @error: (nullable) (transfer full): The #GError or %NULL on success
  *
  * Reports completion of device deactivation.
  */
@@ -690,7 +690,7 @@ fpi_image_device_deactivate_complete (FpImageDevice *self, GError *error)
 /**
  * fpi_image_device_open_complete:
  * @self: a #FpImageDevice imaging fingerprint device
- * @error: A #GError or %NULL on success
+ * @error: (nullable) (transfer full): The #GError or %NULL on success
  *
  * Reports completion of open operation.
  */
@@ -718,7 +718,7 @@ fpi_image_device_open_complete (FpImageDevice *self, GError *error)
 /**
  * fpi_image_device_close_complete:
  * @self: a #FpImageDevice imaging fingerprint device
- * @error: A #GError or %NULL on success
+ * @error: (nullable) (transfer full): The #GError or %NULL on success
  *
  * Reports completion of close operation.
  */

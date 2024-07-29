@@ -27,18 +27,26 @@ G_DECLARE_FINAL_TYPE (FpiDeviceFake, fpi_device_fake, FPI, DEVICE_FAKE, FpDevice
 
 struct _FpiDeviceFake
 {
-  FpDevice       parent;
+  FpDevice        parent;
 
-  gpointer       last_called_function;
-  gboolean       return_action_error;
+  gpointer        last_called_function;
+  gboolean        return_action_error;
 
-  GError        *ret_error;
-  FpPrint       *ret_print;
-  FpPrint       *ret_match;
-  FpiMatchResult ret_result;
-  FpImage       *ret_image;
-  GPtrArray     *ret_list;
+  GCancellable   *ext_cancellable;
 
-  gpointer       action_data;
-  gpointer       user_data;
+  GError         *ret_error;
+  FpPrint        *ret_print;
+  FpPrint        *ret_match;
+  FpiMatchResult  ret_result;
+  FpImage        *ret_image;
+  GPtrArray      *ret_list;
+
+  GError         *ret_suspend;
+  GError         *ret_resume;
+
+  gpointer        action_data;
+  gpointer        user_data;
+
+  FpDeviceFeature probe_features_update;
+  FpDeviceFeature probe_features_value;
 };

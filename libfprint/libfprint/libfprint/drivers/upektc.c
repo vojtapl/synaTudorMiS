@@ -411,7 +411,7 @@ dev_init (FpImageDevice *dev)
       break;
 
     default:
-      fp_err ("Device variant %lu is not known", driver_data);
+      fp_err ("Device variant %" G_GUINT64_FORMAT " is not known", driver_data);
       g_assert_not_reached ();
       fpi_image_device_open_complete (dev, fpi_device_error_new (FP_DEVICE_ERROR_GENERAL));
       return;
@@ -431,6 +431,7 @@ dev_deinit (FpImageDevice *dev)
 
 static const FpIdEntry id_table[] = {
   { .vid = 0x0483,  .pid = 0x2015, .driver_data = UPEKTC_2015 },
+  { .vid = 0x0483,  .pid = 0x2017, .driver_data = UPEKTC_2015 },
   { .vid = 0x147e,  .pid = 0x3001, .driver_data = UPEKTC_3001 },
   { .vid = 0,  .pid = 0,  .driver_data = 0 },
 };

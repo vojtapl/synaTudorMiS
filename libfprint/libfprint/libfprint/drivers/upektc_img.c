@@ -31,10 +31,6 @@ static void start_deactivation (FpImageDevice *dev);
 #define CTRL_TIMEOUT 4000
 #define BULK_TIMEOUT 4000
 
-#define IMAGE_WIDTH 144
-#define IMAGE_HEIGHT 384
-#define IMAGE_SIZE (IMAGE_WIDTH * IMAGE_HEIGHT)
-
 #define MAX_CMD_SIZE 64
 #define MAX_RESPONSE_SIZE 2052
 #define SHORT_RESPONSE_SIZE 64
@@ -47,8 +43,10 @@ struct _FpiDeviceUpektcImg
   unsigned char  response[MAX_RESPONSE_SIZE];
   unsigned char *image_bits;
   unsigned char  seq;
+  size_t         expected_image_size;
   size_t         image_size;
   size_t         response_rest;
+  gboolean       area_sensor;
   gboolean       deactivating;
 };
 G_DECLARE_FINAL_TYPE (FpiDeviceUpektcImg, fpi_device_upektc_img, FPI,
@@ -180,6 +178,7 @@ capture_read_data_cb (FpiUsbTransfer *transfer, FpDevice *device,
                       gpointer user_data, GError *error)
 {
   FpImageDevice *dev = FP_IMAGE_DEVICE (device);
+  FpImageDeviceClass *img_class = FP_IMAGE_DEVICE_GET_CLASS (dev);
   FpiDeviceUpektcImg *self = FPI_DEVICE_UPEKTC_IMG (dev);
   unsigned char *data = self->response;
   FpImage *img;
@@ -221,7 +220,7 @@ capture_read_data_cb (FpiUsbTransfer *transfer, FpDevice *device,
       if (response_size > transfer->actual_length)
         {
           fp_dbg ("response_size is %lu, actual_length is %d",
-                  response_size, (gint) transfer->actual_length);
+                  (gulong) response_size, (gint) transfer->actual_length);
           fp_dbg ("Waiting for rest of transfer");
           BUG_ON (self->response_rest);
           self->response_rest = response_size - transfer->actual_length;
@@ -247,8 +246,30 @@ capture_read_data_cb (FpiUsbTransfer *transfer, FpDevice *device,
                                      CAPTURE_ACK_00_28);
               break;
 
+            case 0x13:
+              /* finger is present keep your finger on reader */
+              fpi_device_report_finger_status_changes (device,
+                                                       FP_FINGER_STATUS_NEEDED,
+                                                       FP_FINGER_STATUS_NONE);
+              fpi_ssm_jump_to_state (transfer->ssm,
+                                     self->area_sensor ?
+                                     CAPTURE_ACK_00_28 : CAPTURE_ACK_00_28_TERM);
+              break;
+
             case 0x00:
               /* finger is present! */
+              fpi_device_report_finger_status_changes (device,
+                                                       FP_FINGER_STATUS_PRESENT,
+                                                       FP_FINGER_STATUS_NONE);
+              fpi_ssm_jump_to_state (transfer->ssm,
+                                     CAPTURE_ACK_00_28);
+              break;
+
+            case 0x01:
+              /* no finger! */
+              fpi_device_report_finger_status_changes (device,
+                                                       FP_FINGER_STATUS_NONE,
+                                                       FP_FINGER_STATUS_PRESENT);
               fpi_ssm_jump_to_state (transfer->ssm,
                                      CAPTURE_ACK_00_28);
               break;
@@ -261,18 +282,20 @@ capture_read_data_cb (FpiUsbTransfer *transfer, FpDevice *device,
               fpi_image_device_report_finger_status (dev,
                                                      FALSE);
               fpi_ssm_jump_to_state (transfer->ssm,
-                                     CAPTURE_ACK_00_28_TERM);
+                                     self->area_sensor ?
+                                     CAPTURE_ACK_00_28 : CAPTURE_ACK_00_28_TERM);
               break;
 
             case 0x1d:
-              /* too much horisontal movement */
-              fp_err ("too much horisontal movement, aborting");
+              /* too much horizontal movement */
+              fp_err ("too much horizontal movement, aborting");
               fpi_image_device_retry_scan (dev,
                                            FP_DEVICE_RETRY_CENTER_FINGER);
               fpi_image_device_report_finger_status (dev,
                                                      FALSE);
               fpi_ssm_jump_to_state (transfer->ssm,
-                                     CAPTURE_ACK_00_28_TERM);
+                                     self->area_sensor ?
+                                     CAPTURE_ACK_00_28 : CAPTURE_ACK_00_28_TERM);
               break;
 
             default:
@@ -283,7 +306,8 @@ capture_read_data_cb (FpiUsbTransfer *transfer, FpDevice *device,
               fpi_image_device_report_finger_status (dev,
                                                      FALSE);
               fpi_ssm_jump_to_state (transfer->ssm,
-                                     CAPTURE_ACK_00_28_TERM);
+                                     self->area_sensor ?
+                                     CAPTURE_ACK_00_28 : CAPTURE_ACK_00_28_TERM);
               break;
             }
           break;
@@ -307,13 +331,13 @@ capture_read_data_cb (FpiUsbTransfer *transfer, FpDevice *device,
           self->image_size +=
             upektc_img_process_image_frame (self->image_bits + self->image_size,
                                             data);
-          BUG_ON (self->image_size != IMAGE_SIZE);
+          BUG_ON (self->image_size != self->expected_image_size);
           fp_dbg ("Image size is %lu",
-                  self->image_size);
-          img = fp_image_new (IMAGE_WIDTH, IMAGE_HEIGHT);
+                  (gulong) self->image_size);
+          img = fp_image_new (img_class->img_width, img_class->img_height);
           img->flags |= FPI_IMAGE_PARTIAL;
           memcpy (img->data, self->image_bits,
-                  IMAGE_SIZE);
+                  self->image_size);
           fpi_image_device_image_captured (dev, img);
           fpi_image_device_report_finger_status (dev,
                                                  FALSE);
@@ -346,8 +370,12 @@ capture_run_state (FpiSsm *ssm, FpDevice *_dev)
   switch (fpi_ssm_get_cur_state (ssm))
     {
     case CAPTURE_INIT_CAPTURE:
-      upektc_img_submit_req (ssm, dev, upek2020_init_capture, sizeof (upek2020_init_capture),
-                             self->seq, capture_reqs_cb);
+      if (self->area_sensor)
+        upektc_img_submit_req (ssm, dev, upek2020_init_capture_press, sizeof (upek2020_init_capture_press),
+                               self->seq, capture_reqs_cb);
+      else
+        upektc_img_submit_req (ssm, dev, upek2020_init_capture, sizeof (upek2020_init_capture),
+                               self->seq, capture_reqs_cb);
       self->seq++;
       break;
 
@@ -513,15 +541,81 @@ init_reqs_cb (FpiUsbTransfer *transfer, FpDevice *device,
     fpi_ssm_mark_failed (transfer->ssm, error);
 }
 
-/* TODO: process response properly */
 static void
 init_read_data_cb (FpiUsbTransfer *transfer, FpDevice *device,
                    gpointer user_data, GError *error)
 {
-  if (!error)
-    fpi_ssm_next_state (transfer->ssm);
-  else
-    fpi_ssm_mark_failed (transfer->ssm, error);
+  FpImageDevice *dev = FP_IMAGE_DEVICE (device);
+  FpiDeviceUpektcImg *self = FPI_DEVICE_UPEKTC_IMG (dev);
+  unsigned char *data = self->response;
+
+  if (error)
+    {
+      fpi_ssm_mark_failed (transfer->ssm, error);
+      return;
+    }
+
+  if (data[12] == 0x06 && data[13] == 0x14)  /* if get_info */
+    {
+      FpImageDeviceClass *img_class = FP_IMAGE_DEVICE_GET_CLASS (dev);
+      uint16_t width = (data[51] << 8) | data[50];
+      uint16_t height = (data[53] << 8) | data[52];
+
+      self->area_sensor = !(data[49] & 0x80);
+
+      switch (width)
+        {
+        case 256:
+          fp_dbg ("Sensor type : TCS1x, width x height: %hu x %hu", width, height); /* 360x256 --- 270x192 must be set */
+          BUG_ON (height != 360);
+          img_class->img_width = 192;
+          img_class->img_height = 270;
+          break;
+
+        case 208:
+          fp_dbg ("Sensor type : TCS2, width x height: %hu x %hu", width, height); /* 288x208 --- 216x156 must be set */
+          BUG_ON (height != 288);
+          img_class->img_width = 156;
+          img_class->img_height = 216;
+          break;
+
+        case 248:
+          fp_dbg ("Sensor type : TCS3, width x height: %hu x %hu", width, height); /* 360x248 --- 270x186 must be set */
+          BUG_ON (height != 360);
+          img_class->img_width = 186;
+          img_class->img_height = 270;
+          break;
+
+        case 192:
+          fp_dbg ("Sensor type : TCS4x, width x height: %hu x %hu", width, height); /* 512x192 --- 384x144 must be set */
+          BUG_ON (height != 512);
+          img_class->img_width = 144;
+          img_class->img_height = 384;
+          break;
+
+        case 144:
+          fp_dbg ("Sensor type : TCS5x, width x height: %hu x %hu", width, height); /* 512x144 --- 384x108 must be set */
+          BUG_ON (height != 512);
+          img_class->img_width = 108;
+          img_class->img_height = 384;
+          break;
+
+        default:
+          fp_dbg ("Sensor type : Unknown");
+
+          fpi_ssm_mark_failed (transfer->ssm,
+                               fpi_device_error_new_msg (FP_DEVICE_ERROR_PROTO,
+                                                         "Unknown sensor type (reported size %dx%d)",
+                                                         width, height));
+
+          return;
+        }
+
+      self->expected_image_size = img_class->img_width * img_class->img_height;
+      self->image_bits = g_malloc0 (self->expected_image_size * 2);
+    }
+
+  fpi_ssm_next_state (transfer->ssm);
 }
 
 static void
@@ -616,7 +710,6 @@ dev_deactivate (FpImageDevice *dev)
 static void
 dev_init (FpImageDevice *dev)
 {
-  FpiDeviceUpektcImg *self = FPI_DEVICE_UPEKTC_IMG (dev);
   GError *error = NULL;
 
   /* TODO check that device has endpoints we're using */
@@ -627,7 +720,6 @@ dev_init (FpImageDevice *dev)
       return;
     }
 
-  self->image_bits = g_malloc0 (IMAGE_SIZE * 2);
   fpi_image_device_open_complete (dev, NULL);
 }
 
@@ -687,6 +779,6 @@ fpi_device_upektc_img_class_init (FpiDeviceUpektcImgClass *klass)
 
   img_class->bz3_threshold = 20;
 
-  img_class->img_width = IMAGE_WIDTH;
-  img_class->img_height = IMAGE_HEIGHT;
+  img_class->img_width = -1;
+  img_class->img_height = -1;
 }

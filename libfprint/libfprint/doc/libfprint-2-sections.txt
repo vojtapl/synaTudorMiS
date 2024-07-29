@@ -20,9 +20,11 @@ FP_TYPE_DEVICE
 FP_DEVICE_RETRY
 FP_DEVICE_ERROR
 FpDeviceType
+FpDeviceFeature
 FpScanType
 FpDeviceRetry
 FpDeviceError
+FpFingerStatusFlags
 fp_device_retry_quark
 fp_device_error_quark
 FpEnrollProgress
@@ -32,9 +34,13 @@ fp_device_get_device_id
 fp_device_get_name
 fp_device_get_scan_type
 fp_device_get_nr_enroll_stages
+fp_device_get_finger_status
+fp_device_get_features
+fp_device_has_feature
 fp_device_has_storage
 fp_device_supports_identify
 fp_device_supports_capture
+fp_device_is_open
 fp_device_open
 fp_device_close
 fp_device_enroll
@@ -43,6 +49,9 @@ fp_device_identify
 fp_device_capture
 fp_device_delete_print
 fp_device_list_prints
+fp_device_clear_storage
+fp_device_suspend
+fp_device_resume
 fp_device_open_finish
 fp_device_close_finish
 fp_device_enroll_finish
@@ -51,6 +60,9 @@ fp_device_identify_finish
 fp_device_capture_finish
 fp_device_delete_print_finish
 fp_device_list_prints_finish
+fp_device_clear_storage_finish
+fp_device_suspend_finish
+fp_device_resume_finish
 fp_device_open_sync
 fp_device_close_sync
 fp_device_enroll_sync
@@ -59,6 +71,9 @@ fp_device_identify_sync
 fp_device_capture_sync
 fp_device_delete_print_sync
 fp_device_list_prints_sync
+fp_device_clear_storage_sync
+fp_device_suspend_sync
+fp_device_resume_sync
 FpDevice
 </SECTION>
 
@@ -130,7 +145,9 @@ FpDeviceClass
 FpTimeoutFunc
 FpiDeviceAction
 FpIdEntry
+FpiDeviceUdevSubtypeFlags
 fpi_device_get_usb_device
+fpi_device_get_udev_data
 fpi_device_get_virtual_env
 fpi_device_get_current_action
 fpi_device_retry_new
@@ -148,6 +165,12 @@ fpi_device_action_is_cancelled
 fpi_device_add_timeout
 fpi_device_set_nr_enroll_stages
 fpi_device_set_scan_type
+fpi_device_update_features
+fpi_device_critical_enter
+fpi_device_critical_leave
+fpi_device_remove
+fpi_device_report_finger_status
+fpi_device_report_finger_status_changes
 fpi_device_action_error
 fpi_device_probe_complete
 fpi_device_open_complete
@@ -156,10 +179,15 @@ fpi_device_enroll_complete
 fpi_device_verify_complete
 fpi_device_identify_complete
 fpi_device_capture_complete
+fpi_device_clear_storage_complete
 fpi_device_delete_complete
+fpi_device_list_complete
+fpi_device_suspend_complete
+fpi_device_resume_complete
 fpi_device_enroll_progress
 fpi_device_verify_report
 fpi_device_identify_report
+fpi_device_class_auto_initialize_features
 </SECTION>
 
 <SECTION>
@@ -184,6 +212,7 @@ fpi_image_device_deactivate_complete
 fpi_image_device_report_finger_status
 fpi_image_device_image_captured
 fpi_image_device_retry_scan
+fpi_image_device_set_bz3_threshold
 </SECTION>
 
 <SECTION>
@@ -227,11 +256,15 @@ fpi_ssm_mark_completed
 fpi_ssm_mark_failed
 fpi_ssm_set_data
 fpi_ssm_get_data
+fpi_ssm_get_device
 fpi_ssm_get_error
 fpi_ssm_dup_error
 fpi_ssm_get_cur_state
-fpi_ssm_next_state_timeout_cb
+fpi_ssm_silence_debug
+fpi_ssm_spi_transfer_cb
+fpi_ssm_spi_transfer_with_weak_pointer_cb
 fpi_ssm_usb_transfer_cb
+fpi_ssm_usb_transfer_with_weak_pointer_cb
 FpiSsm
 </SECTION>
 
@@ -258,3 +291,20 @@ FPI_TYPE_USB_TRANSFER
 fpi_usb_transfer_get_type
 </SECTION>
 
+<SECTION>
+<FILE>fpi-spi-transfer</FILE>
+FpiSpiTransferCallback
+FpiSpiTransfer
+fpi_spi_transfer_new
+fpi_spi_transfer_ref
+fpi_spi_transfer_unref
+fpi_spi_transfer_write
+fpi_spi_transfer_write_full
+fpi_spi_transfer_read
+fpi_spi_transfer_read_full
+fpi_spi_transfer_submit
+fpi_spi_transfer_submit_sync
+<SUBSECTION Standard>
+FPI_TYPE_SPI_TRANSFER
+fpi_spi_transfer_get_type
+</SECTION>

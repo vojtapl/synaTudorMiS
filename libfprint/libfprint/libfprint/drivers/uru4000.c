@@ -131,6 +131,7 @@ struct _FpiDeviceUru4000
   void                           *img_data;
   int                             img_data_actual_length;
   uint16_t                        img_lines_done, img_block;
+  GRand                          *rand;
   uint32_t                        img_enc_seed;
 
   irq_cb_fn                       irq_cb;
@@ -316,6 +317,7 @@ irq_handler (FpiUsbTransfer *transfer,
       if (urudev->irqs_stopped_cb)
         urudev->irqs_stopped_cb (imgdev);
       urudev->irqs_stopped_cb = NULL;
+      g_clear_error (&error);
       return;
     }
   else if (error)
@@ -359,9 +361,9 @@ start_irq_handler (FpImageDevice *dev)
   transfer = fpi_usb_transfer_new (FP_DEVICE (dev));
   transfer->ssm = NULL;
   transfer->short_is_error = TRUE;
-  fpi_usb_transfer_fill_bulk (transfer,
-                              EP_INTR,
-                              IRQ_LENGTH);
+  fpi_usb_transfer_fill_interrupt (transfer,
+                                   EP_INTR,
+                                   IRQ_LENGTH);
   fpi_usb_transfer_submit (transfer, 0, self->irq_cancellable, irq_handler, NULL);
 }
 
@@ -397,7 +399,7 @@ finger_presence_irq_cb (FpImageDevice *dev,
     fpi_image_device_report_finger_status (dev, TRUE);
   else if (type == IRQDATA_FINGER_OFF)
     fpi_image_device_report_finger_status (dev, FALSE);
-  else
+  else if (type != IRQDATA_SCANPWR_ON)
     fp_warn ("ignoring unexpected interrupt %04x", type);
 }
 
@@ -550,7 +552,7 @@ image_transfer_cb (FpiUsbTransfer *transfer, FpDevice *dev,
     }
   else
     {
-      self->img_data = g_memdup (transfer->buffer, sizeof (struct uru4k_image));
+      self->img_data = g_memdup2 (transfer->buffer, sizeof (struct uru4k_image));
       self->img_data_actual_length = transfer->actual_length;
       fpi_ssm_next_state (ssm);
     }
@@ -722,7 +724,8 @@ imaging_run_state (FpiSsm *ssm, FpDevice *_dev)
               fp_dbg ("changing encryption keys.");
               img->block_info[self->img_block].flags &= ~BLOCKF_CHANGE_KEY;
               img->key_number++;
-              self->img_enc_seed = rand ();
+              self->img_enc_seed = g_rand_int_range (self->rand, 0, RAND_MAX);
+              fp_dbg ("New image encryption seed: %d", self->img_enc_seed);
               fpi_ssm_jump_to_state (ssm, IMAGING_SEND_INDEX);
               return;
             }
@@ -865,7 +868,7 @@ rebootpwr_run_state (FpiSsm *ssm, FpDevice *_dev)
         }
       else
         {
-          fpi_ssm_jump_to_state_delayed (ssm, 10, REBOOTPWR_GET_HWSTAT, NULL);
+          fpi_ssm_jump_to_state_delayed (ssm, 10, REBOOTPWR_GET_HWSTAT);
         }
       break;
     }
@@ -947,11 +950,11 @@ powerup_run_state (FpiSsm *ssm, FpDevice *_dev)
         }
       else if (!self->profile->auth_cr)
         {
-          fpi_ssm_jump_to_state_delayed (ssm, POWERUP_SET_HWSTAT, 10, NULL);
+          fpi_ssm_jump_to_state_delayed (ssm, POWERUP_SET_HWSTAT, 10);
         }
       else
         {
-          fpi_ssm_next_state_delayed (ssm, 10, NULL);
+          fpi_ssm_next_state_delayed (ssm, 10);
         }
       break;
 
@@ -1219,7 +1222,8 @@ execute_state_change (FpImageDevice *dev)
 
       ssm = fpi_ssm_new (FP_DEVICE (dev), imaging_run_state,
                          IMAGING_NUM_STATES);
-      self->img_enc_seed = rand ();
+      self->img_enc_seed = g_rand_int_range (self->rand, 0, RAND_MAX);
+      fp_dbg ("Image encryption seed: %d", self->img_enc_seed);
       self->img_transfer = fpi_usb_transfer_new (FP_DEVICE (dev));
       self->img_transfer->ssm = ssm;
       self->img_transfer->short_is_error = FALSE;
@@ -1355,6 +1359,11 @@ dev_init (FpImageDevice *dev)
 
   self = FPI_DEVICE_URU4000 (dev);
 
+  g_clear_pointer (&self->rand, g_rand_free);
+  self->rand = g_rand_new ();
+  if (g_strcmp0 (g_getenv ("FP_DEVICE_EMULATION"), "1") == 0)
+    g_rand_set_seed (self->rand, 0xFACADE);
+
   driver_data = fpi_device_get_driver_data (FP_DEVICE (dev));
   self->profile = &uru4k_dev_info[driver_data];
   self->interface = g_usb_interface_get_number (iface);
@@ -1405,8 +1414,12 @@ dev_deinit (FpImageDevice *dev)
     SECITEM_FreeItem (self->param, PR_TRUE);
   if (self->slot)
     PK11_FreeSlot (self->slot);
+
+  NSS_Shutdown ();
+
   g_usb_device_release_interface (fpi_device_get_usb_device (FP_DEVICE (dev)),
                                   self->interface, 0, &error);
+  g_clear_pointer (&self->rand, g_rand_free);
   fpi_image_device_close_complete (dev, error);
 }
 

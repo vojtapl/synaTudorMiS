@@ -41,30 +41,30 @@ struct usb_action
 };
 
 #define SEND(ENDPOINT, COMMAND) \
-  { \
-    .type = ACTION_SEND, \
-    .endpoint = ENDPOINT, \
-    .name = #COMMAND, \
-    .size = sizeof (COMMAND), \
-    .data = COMMAND \
-  },
+        { \
+          .type = ACTION_SEND, \
+          .endpoint = ENDPOINT, \
+          .name = #COMMAND, \
+          .size = sizeof (COMMAND), \
+          .data = COMMAND \
+        },
 
 #define RECV(ENDPOINT, SIZE) \
-  { \
-    .type = ACTION_RECEIVE, \
-    .endpoint = ENDPOINT, \
-    .size = SIZE, \
-    .data = NULL \
-  },
+        { \
+          .type = ACTION_RECEIVE, \
+          .endpoint = ENDPOINT, \
+          .size = SIZE, \
+          .data = NULL \
+        },
 
 #define RECV_CHECK(ENDPOINT, SIZE, EXPECTED) \
-  { \
-    .type = ACTION_RECEIVE, \
-    .endpoint = ENDPOINT, \
-    .size = SIZE, \
-    .data = EXPECTED, \
-    .correct_reply_size = sizeof (EXPECTED) \
-  },
+        { \
+          .type = ACTION_RECEIVE, \
+          .endpoint = ENDPOINT, \
+          .size = SIZE, \
+          .data = EXPECTED, \
+          .correct_reply_size = sizeof (EXPECTED) \
+        },
 
 struct usbexchange_data
 {
@@ -195,6 +195,7 @@ usb_exchange_async (FpiSsm                  *ssm,
 {
   FpiSsm *subsm = fpi_ssm_new_full (FP_DEVICE (data->device),
                                     usbexchange_loop,
+                                    data->stepcount,
                                     data->stepcount,
                                     exchange_name);
 
@@ -705,7 +706,7 @@ activate_loop (FpiSsm *ssm, FpDevice *_dev)
       break;
 
     case DEV_ACTIVATE_DATA_COMPLETE:
-      fpi_ssm_next_state_delayed (ssm, 1, NULL);
+      fpi_ssm_next_state_delayed (ssm, 1);
       break;
 
     case DEV_ACTIVATE_PREPARE_NEXT_CAPTURE:

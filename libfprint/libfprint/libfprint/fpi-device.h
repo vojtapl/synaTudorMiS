@@ -25,6 +25,18 @@
 #include "fpi-print.h"
 
 /**
+ * FpiDeviceUdevSubtypeFlags:
+ * @FPI_DEVICE_UDEV_SUBTYPE_SPIDEV: The device requires an spidev node
+ * @FPI_DEVICE_UDEV_SUBTYPE_HIDRAW: The device requires a hidraw node
+ *
+ * Bitfield of required hardware resources for a udev-backed device.
+ */
+typedef enum {
+  FPI_DEVICE_UDEV_SUBTYPE_SPIDEV = 1 << 0,
+  FPI_DEVICE_UDEV_SUBTYPE_HIDRAW = 1 << 1,
+} FpiDeviceUdevSubtypeFlags;
+
+/**
  * FpIdEntry:
  *
  * An entry in the table of supported hardware. For USB devices, the product ID
@@ -43,6 +55,16 @@ struct _FpIdEntry
       guint vid;
     };
     const gchar *virtual_envvar;
+    struct
+    {
+      FpiDeviceUdevSubtypeFlags udev_types;
+      const gchar              *spi_acpi_id;
+      struct
+      {
+        guint pid;
+        guint vid;
+      } hid_id;
+    };
   };
   guint64 driver_data;
 };
@@ -54,10 +76,16 @@ struct _FpIdEntry
  * @full_name: Human readable description of the driver
  * @type: The type of driver
  * @id_table: The table of IDs to bind the driver to
+ * @features: The features the device supports, it can be initialized using
+ *   fpi_device_class_auto_initialize_features() on @class_init.
  * @nr_enroll_stages: The number of enroll stages supported devices need; use
  *   fpi_device_set_nr_enroll_stages() from @probe if this is dynamic.
  * @scan_type: The scan type of supported devices; use
  *   fpi_device_set_scan_type() from @probe if this is dynamic.
+ * @temp_hot_seconds: Assumed time in seconds for the device to become too hot
+ *   after being mostly cold. Set to -1 if the device can be always-on.
+ * @temp_cold_seconds: Assumed time in seconds for the device to be mostly cold
+ *   after having been too hot to operate.
  * @usb_discover: Class method to check whether a USB device is supported by
  *  the driver. Should return 0 if the device is unsupported and a positive
  *  score otherwise. The default score is 50 and the driver with the highest
@@ -77,8 +105,13 @@ struct _FpIdEntry
  * @capture: Start a capture operation
  * @list: List prints stored on the device
  * @delete: Delete a print from the device
+ * @clear_storage: Delete all prints from the device
  * @cancel: Called on cancellation, this is a convenience to not need to handle
  *   the #GCancellable directly by using fpi_device_get_cancellable().
+ * @suspend: Called when an interactive action is running (ENROLL, VERIFY,
+ *    IDENTIFY or CAPTURE) and the system is about to go into suspend.
+ * @resume: Called to resume an ongoing interactive action after the system has
+ *    resumed from suspend.
  *
  * NOTE: If your driver is image based, then you should subclass #FpImageDevice
  * instead. #FpImageDevice based drivers use a different way of interacting
@@ -97,6 +130,9 @@ struct _FpIdEntry
  * operation (i.e. any operation that requires capturing). It is entirely fine
  * to ignore cancellation requests for short operations (e.g. open/close).
  *
+ * Note that @cancel, @suspend and @resume will not be called while the device
+ * is within a fpi_device_critical_enter()/fpi_device_critical_leave() block.
+ *
  * This API is solely intended for drivers. It is purely internal and neither
  * API nor ABI stable.
  */
@@ -111,10 +147,15 @@ struct _FpDeviceClass
   const gchar     *full_name;
   FpDeviceType     type;
   const FpIdEntry *id_table;
+  FpDeviceFeature  features;
 
   /* Defaults for device properties */
   gint       nr_enroll_stages;
   FpScanType scan_type;
+
+  /* Simple device temperature model constants */
+  gint32 temp_hot_seconds;
+  gint32 temp_cold_seconds;
 
   /* Callbacks */
   gint (*usb_discover) (GUsbDevice *usb_device);
@@ -127,9 +168,14 @@ struct _FpDeviceClass
   void (*capture)  (FpDevice *device);
   void (*list)     (FpDevice *device);
   void (*delete)   (FpDevice * device);
+  void (*clear_storage)  (FpDevice * device);
 
   void (*cancel)   (FpDevice *device);
+  void (*suspend)  (FpDevice *device);
+  void (*resume)   (FpDevice *device);
 };
+
+void fpi_device_class_auto_initialize_features (FpDeviceClass *device_class);
 
 /**
  * FpTimeoutFunc:
@@ -153,6 +199,7 @@ typedef void (*FpTimeoutFunc) (FpDevice *device,
  * @FPI_DEVICE_ACTION_CAPTURE: Device is currently capturing an image.
  * @FPI_DEVICE_ACTION_LIST: Device stored prints are being queried.
  * @FPI_DEVICE_ACTION_DELETE: Device stored print is being deleted.
+ * @FPI_DEVICE_ACTION_CLEAR_STORAGE: Device stored prints are being deleted.
  *
  * Current active action of the device. A driver can retrieve the action.
  */
@@ -167,10 +214,13 @@ typedef enum {
   FPI_DEVICE_ACTION_CAPTURE,
   FPI_DEVICE_ACTION_LIST,
   FPI_DEVICE_ACTION_DELETE,
+  FPI_DEVICE_ACTION_CLEAR_STORAGE,
 } FpiDeviceAction;
 
 GUsbDevice  *fpi_device_get_usb_device (FpDevice *device);
 const gchar *fpi_device_get_virtual_env (FpDevice *device);
+gpointer     fpi_device_get_udev_data (FpDevice                 *device,
+                                       FpiDeviceUdevSubtypeFlags subtype);
 //const gchar *fpi_device_get_spi_dev (FpDevice *device);
 
 
@@ -216,8 +266,15 @@ void fpi_device_set_nr_enroll_stages (FpDevice *device,
 void fpi_device_set_scan_type (FpDevice  *device,
                                FpScanType scan_type);
 
+void fpi_device_update_features (FpDevice       *device,
+                                 FpDeviceFeature update,
+                                 FpDeviceFeature value);
+
 void fpi_device_action_error (FpDevice *device,
                               GError   *error);
+
+void fpi_device_critical_enter (FpDevice *device);
+void fpi_device_critical_leave (FpDevice *device);
 
 void fpi_device_probe_complete (FpDevice    *device,
                                 const gchar *device_id,
@@ -242,6 +299,12 @@ void fpi_device_delete_complete (FpDevice *device,
 void fpi_device_list_complete (FpDevice  *device,
                                GPtrArray *prints,
                                GError    *error);
+void fpi_device_clear_storage_complete (FpDevice *device,
+                                        GError   *error);
+void fpi_device_suspend_complete (FpDevice *device,
+                                  GError   *error);
+void fpi_device_resume_complete (FpDevice *device,
+                                 GError   *error);
 
 void fpi_device_enroll_progress (FpDevice *device,
                                  gint      completed_stages,

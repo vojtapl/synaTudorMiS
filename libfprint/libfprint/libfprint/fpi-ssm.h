@@ -60,10 +60,11 @@ typedef void (*FpiSsmHandlerCallback)(FpiSsm   *ssm,
 
 /* for library and drivers */
 #define fpi_ssm_new(dev, handler, nr_states) \
-  fpi_ssm_new_full (dev, handler, nr_states, #nr_states)
+        fpi_ssm_new_full (dev, handler, nr_states, nr_states, #nr_states)
 FpiSsm *fpi_ssm_new_full (FpDevice             *dev,
                           FpiSsmHandlerCallback handler,
                           int                   nr_states,
+                          int                   start_cleanup,
                           const char           *machine_name);
 void fpi_ssm_free (FpiSsm *machine);
 void fpi_ssm_start (FpiSsm                 *ssm,
@@ -75,27 +76,27 @@ void fpi_ssm_start_subsm (FpiSsm *parent,
 void fpi_ssm_next_state (FpiSsm *machine);
 void fpi_ssm_jump_to_state (FpiSsm *machine,
                             int     state);
-void fpi_ssm_next_state_delayed (FpiSsm       *machine,
-                                 int           delay,
-                                 GCancellable *cancellable);
-void fpi_ssm_jump_to_state_delayed (FpiSsm       *machine,
-                                    int           state,
-                                    int           delay,
-                                    GCancellable *cancellable);
+void fpi_ssm_next_state_delayed (FpiSsm *machine,
+                                 int     delay);
+void fpi_ssm_jump_to_state_delayed (FpiSsm *machine,
+                                    int     state,
+                                    int     delay);
 void fpi_ssm_cancel_delayed_state_change (FpiSsm *machine);
 void fpi_ssm_mark_completed (FpiSsm *machine);
-void fpi_ssm_mark_completed_delayed (FpiSsm       *machine,
-                                     int           delay,
-                                     GCancellable *cancellable);
+void fpi_ssm_mark_completed_delayed (FpiSsm *machine,
+                                     int     delay);
 void fpi_ssm_mark_failed (FpiSsm *machine,
                           GError *error);
 void fpi_ssm_set_data (FpiSsm        *machine,
                        gpointer       ssm_data,
                        GDestroyNotify ssm_data_destroy);
 gpointer fpi_ssm_get_data (FpiSsm *machine);
+FpDevice * fpi_ssm_get_device (FpiSsm *machine);
 GError * fpi_ssm_get_error (FpiSsm *machine);
 GError * fpi_ssm_dup_error (FpiSsm *machine);
 int fpi_ssm_get_cur_state (FpiSsm *machine);
+
+void fpi_ssm_silence_debug (FpiSsm *machine);
 
 /* Callbacks to be used by the driver instead of implementing their own
  * logic.
@@ -107,6 +108,17 @@ void fpi_ssm_usb_transfer_cb (FpiUsbTransfer *transfer,
                               gpointer        unused_data,
                               GError         *error);
 void fpi_ssm_usb_transfer_with_weak_pointer_cb (FpiUsbTransfer *transfer,
+                                                FpDevice       *device,
+                                                gpointer        weak_ptr,
+                                                GError         *error);
+
+typedef struct _FpiSpiTransfer FpiSpiTransfer;
+
+void fpi_ssm_spi_transfer_cb (FpiSpiTransfer *transfer,
+                              FpDevice       *device,
+                              gpointer        unused_data,
+                              GError         *error);
+void fpi_ssm_spi_transfer_with_weak_pointer_cb (FpiSpiTransfer *transfer,
                                                 FpDevice       *device,
                                                 gpointer        weak_ptr,
                                                 GError         *error);

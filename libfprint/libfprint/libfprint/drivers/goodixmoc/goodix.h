@@ -35,6 +35,8 @@ typedef enum {
 typedef enum {
   FP_INIT_VERSION = 0,
   FP_INIT_CONFIG,
+  FP_INIT_TEMPLATE_LIST,
+  FP_INIT_RESET_DEVICE,
   FP_INIT_NUM_STATES,
 } FpInitState;
 
@@ -42,7 +44,6 @@ typedef enum {
 typedef enum {
   FP_ENROLL_PWR_BTN_SHIELD_ON = 0,
   FP_ENROLL_ENUM,
-  FP_ENROLL_IDENTIFY,
   FP_ENROLL_CREATE,
   FP_ENROLL_CAPTURE,
   FP_ENROLL_UPDATE,
