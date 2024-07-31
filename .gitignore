@@ -1,1 +1,9 @@
 **/__pycache__
+**/rward
+**/testing_pairing_data
+**/_build
+**/build
+**/tudor.egg-info
+**/builddir
+**/compile_commands.json
+**/.cache
