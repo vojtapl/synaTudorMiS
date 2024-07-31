@@ -1,10 +1,11 @@
 import struct
 import logging
 import tudor
+import cryptography.hazmat.primitives.serialization as ser
 from .sensor import *
 from .event import *
 from .windows_pairing_data import WINBIO_SAMPLE_SID
-import cryptography.hazmat.primitives.serialization as ser
+from .bmkt import *
 
 # per vfmUtilAuthImageQuality
 IMAGE_QUALITY_THRESHOLD = 50
@@ -47,8 +48,9 @@ SBL_RECOVERY_HASHES = [0xB63DEB5F, 0x8ABDEFD6, 0x15595CEA, 0x9ACC5A48, 0x59A1E20
 EV_FINGER_DOWN = 1
 EV_FINGER_UP = 2
 EV_FRAME_READY = 24
-STATUS_SMT_LIKE_PROCESSING = 0x6EA
 
+STATUS_SMT_LIKE_PROCESSING = 0x6EA
+STATUS_OBJ_DOES_NOT_EXIST = 0x683
 STATUS_SUCCESS = [0, 0x412, 0x5CC]
 STATUS_MATCH_FAILED = 0x509
 
@@ -63,7 +65,7 @@ class SensorFrameCapturer:
         self.sensor = sensor
 
     # =========================================================================
-    def auth(self, tuid=None, user_id=WINBIO_SAMPLE_SID, sub_id=None) -> bool:
+    def auth(self, tuid_list:list[bytes]=[], user_id=WINBIO_SAMPLE_SID, sub_id=None) -> bool:
         # TODO: fix WINBIO_SAMPLE_SID
         self.capture_image(capture_flags=7)
         _, image_quality = self.mis_get_auth_image_metrics(
@@ -83,12 +85,12 @@ class SensorFrameCapturer:
         # NOTE:
         # aux_match mentioned in original code but seems not implemented
         # if ((phSensor->chachedCnt == 0) || ((pMatchParam->matchingScore & 3) != 3)) { aux_match }
-        match_tuid, match_user_id, match_sub_id = self.mis_identify_match([], b"")
+        match_tuid, match_user_id, match_sub_id = self.mis_identify_match(tuid_list, b'')
         if match_tuid is None or match_user_id is None or match_sub_id is None:
             return False
 
         # check for match restrictions if given
-        if tuid is not None and tuid != match_tuid:
+        if tuid_list is not None and match_tuid not in tuid_list:
             return False
         if user_id is not None and user_id != match_user_id:
             return False
@@ -387,7 +389,8 @@ class SensorFrameCapturer:
         resp = self.sensor.comm.send_command(msg, RECV_LEN, check_response=False)
 
         (status,) = struct.unpack("<H", resp[:2])
-        if status == STATUS_MATCH_FAILED:
+        # match failed given on indentify, obj does not exists given on verify
+        if status == STATUS_MATCH_FAILED or status == STATUS_OBJ_DOES_NOT_EXIST:
             logging.info("No match.")
             return None, None, None
         if status not in STATUS_SUCCESS:
@@ -1281,3 +1284,92 @@ class SensorFrameCapturer:
         sensor_cert = SensorCertificate.frombytes(sensor_cert_bytes)
 
         return SensorPairingData(private_key, host_cert, sensor_cert)
+
+    def bmkt_send_msg(self, msg_id, seq_num=0, payload=b''):
+        # A testing funciton for sending bmkt messages.
+        RESP_LEN = 0x30
+        header_id = BMKT_MESSAGE_HEADER_ID
+        payload_len = len(payload)
+
+
+        msg = struct.pack(
+            "<B4B",
+            VCSFW_CMD_ACE,
+            header_id,
+            seq_num,
+            msg_id,
+            payload_len,
+        )
+        msg += payload
+        resp = self.sensor.comm.send_command(msg, RESP_LEN)
+
+        (
+            status,
+            header_id,
+            seq_num_recv,
+            msg_id_recv,
+            payload_len_recv,
+        ) = struct.unpack("<H4B", resp[:6])
+        payload = resp[6:]
+
+        print('received bmkt message:')
+        print(f'\tstatus: {status}')
+        print(f'\theader_id: {header_id}')
+        print(f'\tseq_num_recv: {seq_num_recv}')
+        print(f'\tmsg_id_recv: {msg_id_recv} aka {bmkt_resp_get_str(msg_id_recv)}')
+        print(f'\tpayload_len: {payload_len_recv}')
+        print(f'\tpayload: {payload}')
+        return (seq_num_recv, payload)
+
+    def bmkt_fps_init(self):
+        seq_num_recv, payload = self.bmkt_send_msg(BMKT_CMD_FPS_INIT)
+        if len(payload) != 0:
+            print(f'Init ok - finger on sensor: {payload.hex()}')
+
+    def bmkt_power_down_notify(self):
+        self.bmkt_send_msg(BMKT_CMD_POWER_DOWN_NOTIFY)
+
+    def bmkt_enroll_user(self):
+        user_id = b'\01'*32
+        finger = bytes(1)
+        payload = bytes(0) + finger + user_id
+
+        seq_num_recv, payload = self.bmkt_send_msg(BMKT_CMD_ENROLL_USER, 0, payload)
+
+    def bmkt_cancel(self):
+        seq_num_recv, payload = self.bmkt_send_msg(BMKT_CMD_CANCEL_OP)
+
+
+    def bmkt_continuous_image_capture(self):
+        seq_num_recv, payload = self.bmkt_send_msg(BMKT_CMD_CONTINUOUS_IMAGE_CAPTURE)
+
+    def bmkt_continuous_image_capture_stop(self):
+        seq_num_recv, payload = self.bmkt_send_msg(BMKT_CMD_CONTINUOUS_IMAGE_CAPTURE_STOP)
+
+    def bmkt_get_security_level(self):
+        seq_num_recv, payload = self.bmkt_send_msg(BMKT_CMD_GET_SECURITY_LEVEL)
+
+    def bmkt_id_user(self):
+        seq_num_recv, payload = self.bmkt_send_msg(BMKT_CMD_ID_USER)
+
+    def bmkt_get_template_records(self):
+        seq_num_recv, payload = self.bmkt_send_msg(BMKT_CMD_GET_TEMPLATE_RECORDS)
+
+    def bmkt_get_enrolled_fingers(self):
+        seq_num_recv, payload = self.bmkt_send_msg(BMKT_CMD_GET_ENROLLED_FINGERS)
+
+    def bmkt_get_database_capacity(self):
+        seq_num_recv, payload = self.bmkt_send_msg(BMKT_CMD_GET_DATABASE_CAPACITY)
+
+    def bmkt_repeat_last_response(self):
+        seq_num_recv, payload = self.bmkt_send_msg(BMKT_CMD_REPEAT_LAST_RSP)
+
+    def bmkt_get_version(self):
+        seq_num_recv, payload = self.bmkt_send_msg(BMKT_CMD_GET_VERSION)
+
+    def bmkt_sensor_status(self):
+        seq_num_recv, payload = self.bmkt_send_msg(BMKT_CMD_SENSOR_STATUS)
+
+    def bmkt_get_final_result(self):
+        seq_num_recv, payload = self.bmkt_send_msg(BMKT_CMD_GET_FINAL_RESULT)
+d

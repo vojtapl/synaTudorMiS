@@ -159,7 +159,7 @@ class CommunicationInterface:
     def reset(self):
         raise NotImplementedError()
 
-    def end_command(
+    def send_command(
         self,
         cmd: bytes,
         resp_size: int,
@@ -288,11 +288,11 @@ class LogCommunicationProxy(CommunicationInterface):
         logging.log(LOG_COMM, "---------------------- RESET ---------------------")
         self.proxied.reset()
 
-    def send_command(self, cmd, resp_size, timeout=2000, raw=False):
+    def send_command(self, cmd, resp_size, timeout=2000, raw=False, check_response=True):
         Command.print(cmd[0])
         if raw:
             logging.log(LOG_COMM, "-> RAW REQ     | 0x%s" % cmd.hex())
-            resp = self.proxied.send_command(cmd, resp_size, timeout, raw)
+            resp = self.proxied.send_command(cmd, resp_size, timeout, raw, check_response)
             logging.log(LOG_COMM, "<- RAW RESP    | 0x%s" % resp.hex())
             return resp
         else:
@@ -301,7 +301,7 @@ class LogCommunicationProxy(CommunicationInterface):
                 "-> cmd 0x%02x      | %s"
                 % (struct.unpack("<B", cmd[:1])[0], cmd.hex()),
             )
-            resp = self.proxied.send_command(cmd, resp_size, timeout, raw)
+            resp = self.proxied.send_command(cmd, resp_size, timeout, raw, check_response)
             logging.log(
                 LOG_COMM,
                 "<- status 0x%04x | %s"

@@ -18,6 +18,7 @@ The fingerprint reader in my laptop (06CB:00FF) does not seem to support raw fra
 - 06CB:00FF (tested)
 - 06CB:0124
 - 06CB:0169 (is in the newer driver - the one currently not being looked into)
+- possibly others from non-HP vendors
 
 
 ### What works:

@@ -1,0 +1,14 @@
+-bmkt_fps_init msg:
+   0: ACE_CMD_ID=167
+   1: header_id
+   2: seq_num
+   3: id
+   4: payload_len
+   5-: payload
+- resp:
+   0-1: status
+   2: header_id - should match 0xfe
+   3: seq_num
+   4: id
+   5: payload_len
+   6-: payload
