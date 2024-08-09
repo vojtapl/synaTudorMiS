@@ -1,0 +1,223 @@
+!Big endian!
+
+- Client Hello
+   0: cmd_id = 0x44
+   === Record header ===
+   1-4 content_type: 16=handshake
+   5: version_major: 03
+   6: version_minor: 03
+   7-8: length 00 41
+   === Handshake header ===
+   9: msg_type = 01
+   10-12: client_hello_length 00 00 3d
+   === Client version ===
+   13: ver_major: 03
+   14: ver_minor: 03
+   === Client random ===
+   15-18: current_time: 00 00 00 00
+   19-46: random (of size 28)
+      b1 54 a0 10 e8 34 bc 29 a3 bf 24 1d 4e c1 d8 58
+      f7 82 1f c4 5e b9 23 ce 01 fe 06 55
+   === session id ===
+   47-48: session_id_len = 7
+   49-65: session_id: 00 00 00 00 00 00 00
+   === Cipher suites ===
+   66-67: suites_total_len
+   68-: suites
+      0-1: suite_id: c0 2e
+   === Compression methods ===
+   -:  compr_methods = 00
+   === Extensions ===
+   -: extensions_len
+   -: extensions:
+      0-1: id 00 0a
+      2-3: len: 00 04
+      4-: data:
+         00 02 00 17
+
+      0-1: id 00 0b
+      2-3: len 00 02
+      4-: data 01 00
+
+   HandshakeMessage(
+      type=0x01
+      content=ClientHello(ver=ProtocolVersion(3.3)
+      rand=TlsRandom(time=1722593070 rbytes=eb9b30b1aee8d86c51aed680f931e1b2e480ce33322f46b8cf274c01)
+      ses_id=SessionId(data='00000000000000')
+      cipher_suites=[
+         CipherSuiteID(id=0xc005 name=TlsEccAes256CbcSha1CipherSuite)
+         CipherSuiteID(id=0xc02e name=TlsEccAes256GcmSha384CipherSuite)
+      ]
+      compr_methods=[]
+      extensions=[
+         supported_groups(curves=[23])
+         ec_point_formats(formats=[0])
+      ])
+   )
+
+- Certificate
+   0: cmd_id = 44
+   === Record header ===
+   1-4: content_type: 16=handshake
+   5: version_major 03
+   6: version_minor: 03
+   7-8: length 02 2b
+   === Handshake header ===
+   9: msg_type = 0b
+   10-12: msg_len 00 01 98
+   13-15: cert_len1: 00 01 90
+   16-17: cert_len2: 00 01 90
+   18-19: garbage: 00 00
+   20-: Certificate
+      3f 5f 17 00 3d f7 e9 67 c0 d8 52 6a ea 3e 08 0b
+      10 32 c1 7d 90 d3 9e 50 44 44 49 20 bb ad 14 e0
+      c2 db f9 a8 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 42 8d 94 68 1d 09 a6 7a
+      a1 b6 a1 86 3d 25 55 c8 7e a2 fe 18 18 38 fd 28
+      c8 c9 a6 d5 b0 21 c6 ee 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 02 20 00
+      4d 63 1a 68 a5 8d 4c ff 6f d2 ef 97 78 09 e8 2f
+      0f 1d 61 b1 e2 e9 f7 ba 47 7b 6f df b7 d4 05 6c
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+- Certificate
+   0: cmd_id = 44
+   === Record header ===
+   1-4: content_type: 16=handshake
+   5: version_major 03
+   6: version_minor: 03
+   7-8: length 02 2b
+   === Handshake header ===
+   9: msg_type = 0b
+   10-12: msg_len 00 01 98
+   13-15: cert_len1: 00 01 90
+   16-17: cert_len2: 00 01 90
+   18-19: garbage: 00 00
+   20-: Certificate
+      3f 5f 17 00 3d f7 e9 67 c0 d8 52 6a ea 3e 08 0b
+
+- Certificate
+   0: cmd_id = 44
+   === Record header ===
+   1-4: content_type: 16=handshake
+   5: version_major 03
+   6: version_minor: 03
+   7-8: length 02 2b
+   === Handshake header ===
+   9: msg_type = 0b
+   10-12: msg_len 00 01 98
+   13-15: cert_len1: 00 01 90
+   16-17: cert_len2: 00 01 90
+   18-19: garbage: 00 00
+   20-: Certificate
+      3f 5f 17 00 3d f7 e9 67 c0 d8 52 6a ea 3e 08 0b
+      10 32 c1 7d 90 d3 9e 50 44 44 49 20 bb ad 14 e0
+      c2 db f9 a8 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 42 8d 94 68 1d 09 a6 7a
+      a1 b6 a1 86 3d 25 55 c8 7e a2 fe 18 18 38 fd 28
+      c8 c9 a6 d5 b0 21 c6 ee 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 02 20 00
+      4d 63 1a 68 a5 8d 4c ff 6f d2 ef 97 78 09 e8 2f
+      0f 1d 61 b1 e2 e9 f7 ba 47 7b 6f df b7 d4 05 6c
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+      00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+
+
+HandshakeMessage(type=0x0b content=Certificate(cert=TlsCertificate(data=3f5f17003df7e967c0d8526aea3e080b1032c17d90d39e5044444920bbad14e0c2dbf9a8000000000000000000000000000000000000000000000000000000000000000000000000428d94681d09a67aa1b6a1863d2555c87ea2fe181838fd28c8c9a6d5b021c6ee000000000000000000000000000000000000000000000000000000000000000000000000000220004d631a68a58d4cff6fd2ef977809e82f0f1d61b1e2e9f7ba477b6fdfb7d4056c0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000)))
+HandshakeMessage(type=0x10 content=ClientKeyExchange(data=04e6710208a993d4528506cd85268e5bf520a764a6297bd7bad4b93bae9c941d490f775142b479dd998849765ce735067467296e25959afa1f048088fd78ee0814))
+HandshakeMessage(type=0x0f content=CertificateVerify(signed_hash=3046022100e7a8e5783aacdf11d5b88708dea78782772b30decbb9bb4e3c4cd94c38db7f6f022100a94e6b8ac671a10f53122e4ce7e207ea23fcf33045249d747fd21e47bdf8c85f))
+ChangeCipherSpec()
+HandshakeMessage(type=0x14 content=Finished(verify_data=6535b0a8a57aad679c85255c))
+
+0: cmd_id=44
+=== Record header ===
+1-4: content_type: 16=handshake
+5: version_major 03
+6: version_minor: 03
+7-8: length 02 2b
+=== Handshake header ===
+9: msg_type = 0b
+10-12: msg_len 00 01 98
+13-15: cert_len1: 00 01 90
+16-17: cert_len2: 00 01 90
+18-19: garbage: 00 00
+20-: Certificate
+   3f 5f 17 00 3d f7 e9 67 c0 d8 52 6a ea 3e 08 0b 10 32 c1 7d 90 d3 9e 50 44 44 49 20 bb ad 14 e0 c2 db f9 a8 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 42 8d 94 68 1d 09 a6 7a a1 b6 a1 86 3d 25 55 c8 7e a2 fe 18 18 38 fd 28 c8 c9 a6 d5 b0 21 c6 ee 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02 20 00 4d 63 1a 68 a5 8d 4c ff 6f d2 ef 97 78 09 e8 2f 0f 1d 61 b1 e2 e9 f7 ba 47 7b 6f df b7 d4 05 6c 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+=== Handshake header ===
+?: msg_type = 10
+?+1-: 10 00 00 41
+data: 04 e6 71 02 08 a9 93 d4 52 85 06 cd 85 26 8e 5b f5 20 a7 64 a6 29 7b d7 ba d4 b9 3b ae 9c 94 1d 49 0f 77 51 42 b4 79 dd 99 88 49 76 5c e7 35 06 74 67 29 6e 25 95 9a fa 1f 04 80 88 fd 78 ee 08 14
+=== Handshake header ===
+?: msg_type = 0f
+?+1-: 00 00 48
+?-: 30 46 02 21 00 e7 a8 e5 78 3a ac df 11 d5 b8 87 08 de a7 87 82 77 2b 30 de cb b9 bb 4e 3c 4c d9 4c 38 db 7f 6f 02 21 00 a9 4e 6b 8a c6 71 a1 0f 53 12 2e 4c e7 e2 07 ea 23 fc f3 30 45 24 9d 74 7f d2 1e 47 bd f8 c8 5f
+=== Handshake header ===
+?: msg_type = 14
+?+1-: 03 03 00 01 01 16 03 03 00 28 6a 5b 63 0f 7e 19 69 61 7c 00 b3 ea 30 5e df 26 6a 46 fb 4f 8b cf 19 13 45 08 65 c3 d6 5c 6d 3e 30 d5 7a 83 e8 32 fb af
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+16
+03
+03
+
+00 3d
+
+02 00 00 2d 03 83 00 00 66 66 9c c9 ac db 2a 45 b8 a3 f6 bb 91 df 68 23 69 5a 88 aa 33 91 3b 8c 27 a1 6a 46 f0 15 07 54 4c 53 9c c9 ac db c0 2e 00 0d 00 00 04 01 40 00 00 0e 00 00 00

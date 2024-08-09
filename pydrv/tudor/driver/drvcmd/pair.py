@@ -42,7 +42,7 @@ class CmdLoadPairdata(Command):
                 return
 
         ctx.pairing_data = tudor.sensor.SensorPairingData.load_windows_sample()
-        print("Successfully loaded pairing data")
+        print("Successfully loaded sample pairing data")
 
 
 @cmd("save_pdata")

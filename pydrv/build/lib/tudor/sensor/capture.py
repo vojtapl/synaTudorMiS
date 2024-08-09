@@ -247,6 +247,27 @@ class SensorFrameCapturer:
         )
         return resp in STATUS_SUCCESS
 
+    def mis_enroll_start(self, nonce_buffer_size=0):
+        # based on misEnrollStart
+        # TODO: what is nonce buffer for?
+
+        SEND_LEN = 13
+        resp_len = 6 + nonce_buffer_size
+        send_nonce_buffer = int(nonce_buffer_size != 0)
+
+        logging.log(tudor.LOG_COMM, "Sending enroll start")
+        msg = struct.pack("<BIII", 0x96, 1, send_nonce_buffer, nonce_buffer_size)
+        resp = self.sensor.comm.send_command(msg, resp_len)
+        (nonce_buffer_size,) = struct.unpack("<xxI", resp[:6])
+
+        nonce_buffer = resp[6:]
+        logging.info(
+            tudor.LOG_INFO,
+            f"<- received nonce buffer with size: {nonce_buffer_size}, data: {nonce_buffer}",
+        )
+        assert len(nonce_buffer) == nonce_buffer_size
+        return nonce_buffer
+
     def mis_enroll_add_image(self):
         # based on mimic misEnrollAddImage
         logging.log(tudor.LOG_COMM, "-> sending enroll add image")
@@ -341,27 +362,6 @@ class SensorFrameCapturer:
         logging.log(tudor.LOG_COMM, "-> sending enroll finish / commit")
         self.sensor.comm.send_command(struct.pack("<BI", 0x96, 4), 2)
 
-    def mis_enroll_start(self, nonce_buffer_size=0):
-        # based on misEnrollStart
-        # TODO: what is nonce buffer for?
-
-        SEND_LEN = 13
-        resp_len = 6 + nonce_buffer_size
-        send_nonce_buffer = int(nonce_buffer_size != 0)
-
-        logging.log(tudor.LOG_COMM, "Sending enroll start")
-        msg = struct.pack("<BIII", 0x96, 1, send_nonce_buffer, nonce_buffer_size)
-        resp = self.sensor.comm.send_command(msg, resp_len)
-        (nonce_buffer_size,) = struct.unpack("<xxI", resp[:6])
-
-        nonce_buffer = resp[6:]
-        logging.info(
-            tudor.LOG_INFO,
-            f"<- received nonce buffer with size: {nonce_buffer_size}, data: {nonce_buffer}",
-        )
-        assert len(nonce_buffer) == nonce_buffer_size
-        return nonce_buffer
-
     def mis_identify_match(self, tuid_list: list[bytes], data_2: bytes):
         # based on misIdentifyMatchCmd
         # in it it is used without arguments -> yields any match
@@ -390,7 +390,7 @@ class SensorFrameCapturer:
 
         (status,) = struct.unpack("<H", resp[:2])
         # match failed given on indentify, obj does not exists given on verify
-        if status == STATUS_MATCH_FAILED or status == STATUS_OBJ_DOES_NOT_EXIST:
+        if status in (STATUS_MATCH_FAILED, STATUS_OBJ_DOES_NOT_EXIST):
             logging.info("No match.")
             return None, None, None
         if status not in STATUS_SUCCESS:
@@ -1372,4 +1372,3 @@ class SensorFrameCapturer:
 
     def bmkt_get_final_result(self):
         seq_num_recv, payload = self.bmkt_send_msg(BMKT_CMD_GET_FINAL_RESULT)
-d

@@ -64,6 +64,11 @@
 #define SENSOR_FW_CMD_HEADER_LEN 1
 #define SENSOR_FW_REPLY_HEADER_LEN 2
 
+#define ENROLL_SUBCMD_START 1
+#define ENROLL_SUBCMD_ADD_IMAGE 2
+#define ENROLL_SUBCMD_COMMIT 3
+#define ENROLL_SUBCMD_FINISH 4
+
 /* Response statuses ========================================================*/
 
 /* here are known response names; in original code others are considered
@@ -81,6 +86,7 @@
 #define RESPONSE_OK_3 0x5CC
 #define VCS_RESULT_DB_FULL 0x680
 #define VCS_RESULT_GEN_OBJECT_DOESNT_EXIST_2 0x683
+/*this name is deduced*/
 #define RESPONSE_PROCESSING_FRAME 0x6EA
 #define UNKNOWN_RESPONSE_ON_WHICH_SEND_AGAIN 0x48c
 
@@ -93,8 +99,11 @@
 #define USB_ASYNC_MESSAGE_PENDING 0x4
 #define USB_INTERRUPT_DATA_SIZE 7
 #define MAX_TRANSFER_LEN 263 + 1 /* SPI Header */ + 2 /* VCSFW header */
+#define USB_TRANSFER_WAIT_TIMEOUT_MS 1000
 
 /* Response structs =========================================================*/
+
+typedef guint8 tuid[16];
 
 typedef struct {
    guint32 fw_build_time;
@@ -121,6 +130,55 @@ typedef struct {
    guint8 provision_state;
 } get_version_t;
 
+typedef struct {
+   guint16 progress;
+   guint32 quality;
+   guint32 redundant;
+   guint32 rejected;
+   guint32 template_cnt;
+   guint16 enroll_quality;
+   guint32 status;
+   guint32 smt_like_has_fixed_pattern;
+   tuid tuid;
+
+} enroll_add_image_t;
+
 /* Functions ================================================================*/
-gboolean send_cmd_get_version(FpiDeviceSynapticsMoc *self, get_version_t *resp,
-                              GError *error);
+gboolean send_get_version(FpiDeviceSynapticsMoc *self, get_version_t *resp,
+                          GError *error);
+
+gboolean send_frame_acq(FpiDeviceSynapticsMoc *self, guint8 frame_flags,
+                        GError *error);
+
+gboolean send_frame_finish(FpiDeviceSynapticsMoc *self, GError *error);
+
+gboolean send_enroll_start(FpiDeviceSynapticsMoc *self, GError *error);
+
+gboolean send_enroll_add_image(FpiDeviceSynapticsMoc *self,
+                               enroll_add_image_t *resp, GError *error);
+
+gboolean send_enroll_commit(FpiDeviceSynapticsMoc *self,
+                            guint8 *enroll_commit_data,
+                            gsize enroll_commit_data_size, GError *error);
+
+gboolean send_enroll_finish(FpiDeviceSynapticsMoc *self, GError *error);
+
+gboolean send_identify_match(FpiDeviceSynapticsMoc *self, tuid *tuid_list,
+                             gsize tuid_list_size, GError *error);
+
+gboolean send_get_image_metrics(FpiDeviceSynapticsMoc *self, guint32 type,
+                                guint32 *recv_value, GError *error);
+
+gboolean send_event_config(FpiDeviceSynapticsMoc *self, guint32 event_mask,
+                           GError *error);
+
+gboolean send_event_read(FpiDeviceSynapticsMoc *self, guint8 *event_buffer,
+                         gsize event_buffer_size, gint *num_events,
+                         GError *error);
+
+gboolean synaptics_secure_connect(FpiDeviceSynapticsMoc *self,
+                                  guint8 *send_data, gsize send_len,
+                                  guint8 **recv_data, gsize *recv_len,
+                                  gboolean check_status);
+
+gboolean send_reset(FpiDeviceSynapticsMoc *self, GError *error);

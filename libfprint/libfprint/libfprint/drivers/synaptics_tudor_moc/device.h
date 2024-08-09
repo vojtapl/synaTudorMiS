@@ -3,10 +3,23 @@
 #include "fpi-device.h"
 #include "fpi-ssm.h"
 #include <glib.h>
-#include <stdint.h>
+#include <gnutls/crypto.h>
+#include <gnutls/gnutls.h>
 
 G_DECLARE_FINAL_TYPE(FpiDeviceSynapticsMoc, fpi_device_synaptics_moc, FPI,
                      DEVICE_SYNAPTICS_MOC, FpDevice)
+
+#define CERTIFICATE_KEY_SIZE 68
+
+typedef enum {
+   TLS_HANDSHAKE_PREPARE = 0,
+   TLS_HANDSHAKE_START,
+   TLS_HANDSHAKE_END,
+
+   TLS_HANDSHAKE_ALERT,
+   TLS_HANDSHAKE_FAILED,
+   TLS_HANDSHAKE_FINISHED,
+} tls_handshake_state_t;
 
 typedef struct {
    guint16 status;
@@ -26,6 +39,69 @@ typedef struct {
    msg_send_t send;
    msg_resp_t resp;
 } transmission_ssm_data;
+
+typedef struct {
+   // TODO: differentiate / add supported things
+   gboolean established;
+   guint8 *session_id;
+   guint8 session_id_len;
+
+   tls_handshake_state_t handshake_state;
+
+   guint8 version_major;
+   guint8 version_minor;
+
+   guint32 server_timestamp;
+
+   guint16 ciphersuit;
+   guint8 compression_method;
+
+   guint8 client_random[32]; // note: the first 4 bytes are time
+   guint8 server_random[32]; // note: the first 4 bytes are time
+   guint8 derive_input[32 * 2];
+   gnutls_datum_t master_secret;
+   gnutls_datum_t encryption_key;
+   gnutls_datum_t decryption_key;
+   gnutls_datum_t encryption_iv;
+   gnutls_datum_t decryption_iv;
+   guint tag_size;
+
+   guint64 encrypt_seq_num;
+   guint64 decrypt_seq_num;
+
+   gnutls_cipher_algorithm_t cipher_alg;
+   gboolean remote_sends_encrypted;
+
+   // for hashing
+   guint8 *sent_data;
+   gsize sent_data_size;
+   gsize sent_data_alloc_size;
+} tls_t;
+
+typedef struct {
+   guint16 magic;
+   guint16 curve;
+   guint8 pubkey_x[CERTIFICATE_KEY_SIZE];
+   guint8 pubkey_y[CERTIFICATE_KEY_SIZE];
+   guint8 cert_type;
+   guint16 sign_size;
+   guint8 *sign_data;
+} sensor_cert_t;
+
+typedef struct {
+   gboolean present;
+
+   sensor_cert_t host_cert;
+   sensor_cert_t sensor_cert;
+
+   guint8 *sensor_cert_bytes;
+   gsize sensor_cert_bytes_len;
+
+   guint8 *host_cert_bytes;
+   gsize host_cert_bytes_len;
+
+   gnutls_privkey_t private_key;
+} pairing_data_t;
 
 struct _FpiDeviceSynapticsMoc {
    FpDevice parent;
@@ -51,6 +127,16 @@ struct _FpiDeviceSynapticsMoc {
    gint enroll_stage;
    gboolean finger_on_sensor;
    GPtrArray *list_result;
+
+   // TLS session things
+   tls_t tls;
+
+   pairing_data_t pairing_data;
+
+   // FIXME: init these to zero somewhere
+   guint16 event_seq_num;      // current host event sequence number
+   guint16 num_pending_events; // number of pending events which are unread
+   gboolean event_read_in_legacy_mode;
 
    // struct syna_enroll_resp_data enroll_resp_data;
    // syna_state_t state;

@@ -228,6 +228,8 @@ class USBCommunication(CommunicationInterface):
         Command.print(cmd[0])
 
         wcmd = self.tls_session.wrap(cmd) if self.tls_session is not None else cmd
+        print(f"--> first: {wcmd[0]}")
+        print(f'raw wreq: 0x{wcmd.hex()}')
         self.cmd_ep.write(wcmd, timeout)
 
         # Receive wrapped resonse
@@ -235,6 +237,7 @@ class USBCommunication(CommunicationInterface):
             resp_size += 0x45
         buf = array.array("B", [0 for _ in range(resp_size)])
         wresp = bytes(buf[: self.resp_ep.read(buf, timeout)])
+        print(f'raw wresp: 0x{wresp.hex()}')
 
         # Unwrap and parse response
         resp = self.tls_session.unwrap(wresp) if self.tls_session is not None else wresp

@@ -7,6 +7,8 @@
 #include "device.h"
 #include "drivers_api.h"
 #include "synaptics_moc.h"
+#include "tls.c"
+#include "tls.h"
 
 G_DEFINE_TYPE(FpiDeviceSynapticsMoc, fpi_device_synaptics_moc, FP_TYPE_DEVICE)
 
@@ -23,12 +25,6 @@ static const FpIdEntry id_table[] = {
     // { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x0169, },
     {.vid = 0, .pid = 0, .driver_data = 0}, /* terminating entry */
 };
-
-// ----------------------------------------------------------------------------
-
-// ----------------------------------------------------------------------------
-
-// ----------------------------------------------------------------------------
 
 // open -----------------------------------------------------------------------
 
@@ -57,6 +53,7 @@ static void fp_init_ssm_done(FpiSsm *ssm, FpDevice *dev, GError *error)
 
 static void synaptics_moc_open(FpDevice *device)
 {
+   fp_dbg("--- open start ---");
    FpiDeviceSynapticsMoc *self = FPI_DEVICE_SYNAPTICS_MOC(device);
    GError *error = NULL;
 
@@ -70,10 +67,33 @@ static void synaptics_moc_open(FpDevice *device)
       goto error;
    }
 
-   get_version_t version_data;
-   send_cmd_get_version(self, &version_data, error);
+   g_usb_device_reset(fpi_device_get_usb_device(device), &error);
+
+   get_version_t version_data = {0};
+   if (!send_get_version(self, &version_data, error)) {
+      goto error;
+   }
+   // send_test(self, error);
+
+   gboolean in_bootloader_mode =
+       version_data.product_id == 'B' || version_data.product_id == 'C';
+   g_assert(!in_bootloader_mode);
+
+   guint8 provision_state = version_data.provision_state & 0xF;
+   gboolean is_provisioned = provision_state == PROVISION_STATE_PROVISIONED;
+   if (is_provisioned) {
+      if (!self->pairing_data.present) {
+         fp_err("No present pairing_data - need to pair / read from storage!");
+         g_critical("\t-> Not implemented");
+         g_assert(FALSE);
+      }
+
+      // TODO: verify sensor certificate
+   }
 
    g_assert(!self->task_ssm);
+
+   establish_tls_session(self, error);
 
    // self->task_ssm = fpi_ssm_new(device, fp_init_ssm_run_state,
    // INIT_NUM_STATES); fpi_ssm_start(self->task_ssm, fp_init_ssm_done);
@@ -103,7 +123,7 @@ static void fp_close_ssm_done(FpiSsm *ssm, FpDevice *dev, GError *error)
 
 static void synaptics_moc_close(FpDevice *device)
 {
-   // close the device again
+   fp_dbg("--- close start ---");
 }
 
 // enroll ---------------------------------------------------------------------
@@ -126,7 +146,11 @@ static void fp_enroll_ssm_done(FpiSsm *ssm, FpDevice *dev, GError *error)
    self->task_ssm = NULL;
 }
 
-static void synaptics_moc_enroll(FpDevice *device) {}
+static void synaptics_moc_enroll(FpDevice *device)
+{
+
+   fp_dbg("--- enroll start ---");
+}
 
 // verify ---------------------------------------------------------------------
 
@@ -148,7 +172,7 @@ static void fp_verify_ssm_done(FpiSsm *ssm, FpDevice *dev, GError *error)
 
 static void synaptics_moc_verify(FpDevice *device)
 {
-   // starts a verify operation
+   fp_dbg("--- verify start ---");
 }
 
 // identify -------------------------------------------------------------------
@@ -171,7 +195,8 @@ static void fp_identify_ssm_done(FpiSsm *ssm, FpDevice *dev, GError *error)
 
 static void synaptics_moc_identify(FpDevice *device)
 {
-   // starts an identify operation
+
+   fp_dbg("--- identify start ---");
 }
 
 // capture --------------------------------------------------------------------
@@ -183,6 +208,8 @@ static void fp_capture_ssm_run_state(FpiSsm *ssm, FpDevice *device)
 
 static void fp_capture_ssm_done(FpiSsm *ssm, FpDevice *dev, GError *error)
 {
+   fp_dbg("--- capture start ---");
+
    FpiDeviceSynapticsMoc *self = FPI_DEVICE_SYNAPTICS_MOC(dev);
    fp_info("capture complete!");
    if (fpi_ssm_get_error(self->task_ssm)) {
@@ -217,7 +244,7 @@ static void fp_list_ssm_done(FpiSsm *ssm, FpDevice *dev, GError *error)
 
 static void synaptics_moc_list(FpDevice *device)
 {
-   // lists fingerprints
+   fp_dbg("--- list start ---");
 }
 
 // delete_print ---------------------------------------------------------------
@@ -240,7 +267,7 @@ static void fp_delete_print_ssm_done(FpiSsm *ssm, FpDevice *dev, GError *error)
 
 static void synaptics_moc_delete_print(FpDevice *device)
 {
-   // delete fingerprint
+   fp_dbg("--- delete start ---");
 }
 
 // clear_storage --------------------------------------------------------------
@@ -263,7 +290,7 @@ static void fp_clear_storage_ssm_done(FpiSsm *ssm, FpDevice *dev, GError *error)
 
 static void synaptics_moc_clear_storage(FpDevice *device)
 {
-   // delete all fingerprints
+   fp_dbg("--- clear_storage start ---");
 }
 
 // cancel ---------------------------------------------------------------------
@@ -283,19 +310,31 @@ static void fp_cancel_ssm_done(FpiSsm *ssm, FpDevice *dev, GError *error)
    self->task_ssm = NULL;
 }
 
-static void synaptics_moc_cancel(FpDevice *device) {}
+static void synaptics_moc_cancel(FpDevice *device)
+{
+   fp_dbg("--- cancel start ---");
+}
 
 // suspend --------------------------------------------------------------------
 
-static void synaptics_moc_suspend(FpDevice *device) {}
+static void synaptics_moc_suspend(FpDevice *device)
+{
+   fp_dbg("--- suspend start ---");
+}
 
 // resume ---------------------------------------------------------------------
 
-static void synaptics_moc_resume(FpDevice *device) {}
+static void synaptics_moc_resume(FpDevice *device)
+{
+   fp_dbg("--- resume start ---");
+}
 
 // ----------------------------------------------------------------------------
 
-static void fpi_device_synaptics_moc_init(FpiDeviceSynapticsMoc *self) {}
+static void fpi_device_synaptics_moc_init(FpiDeviceSynapticsMoc *self)
+{
+   fp_dbg("--- init start ---");
+}
 
 static void
 fpi_device_synaptics_moc_class_init(FpiDeviceSynapticsMocClass *klass)

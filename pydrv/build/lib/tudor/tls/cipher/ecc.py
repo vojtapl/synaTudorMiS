@@ -97,6 +97,13 @@ class TlsEcdhKeyExchangeAlgorithm(TlsCipherSuite):
         )
 
         # Send certificate verify data
+        # print(f"test: {self.handshake_proto.test.hex()}")
+        print(f'hash size: {len(self.handshake_proto.msg_digest.digest())}')
+        print(f'signature size: {len(
+                    self.remote_key.priv_key.sign(
+                        self.handshake_proto.msg_digest.digest(),
+                        ecc.ECDSA(utils.Prehashed(hashes.SHA256())),
+                    ))}')
         self.handshake_proto.send(
             data.TlsHandshakeMessage(
                 data.TlsHandshakeCertificateVerify(
@@ -107,11 +114,15 @@ class TlsEcdhKeyExchangeAlgorithm(TlsCipherSuite):
                 )
             )
         )
+        print("eph priv key:", eph_priv_key.private_numbers().private_value)
+        print("pub key:", self.remote_key.remote_cert.pub_key.public_numbers())
 
         # Calculate premaster secret
         self.premaster_secret = eph_priv_key.exchange(
             ecc.ECDH(), self.remote_key.remote_cert.pub_key
         )
+
+        print("premaster secret:", self.premaster_secret.hex())
 
     def create_encryption_algo(self) -> TlsEncryptionAlgorithm:
         raise NotImplementedError()
@@ -174,6 +185,7 @@ class TlsEccRemoteKey(TlsRemoteKey):
         self.remote_cert = remote_cert
 
         self.cipher_suites = [
-            TlsEccAes256CbcSha1CipherSuite(self),
+            # seems not to work
+            # TlsEccAes256CbcSha1CipherSuite(self),
             TlsEccAes256GcmSha384CipherSuite(self),
         ]

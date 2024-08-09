@@ -92,7 +92,7 @@ requests:
             1-4: ????
             5-8: number of frames
             9-0xa: ???? (always 1)
-            0xb: ???? 
+            0xb: ????
             0xc: ???? (always 8)
             0xd: ????
             0xe: ????
@@ -114,7 +114,7 @@ requests:
             2-13: ????
             14-31: dimensions
                 0-1: pixel bits
-                2-3: width 
+                2-3: width
                 4-5: frame header size
                 6-7: x offset
                 8-9: x size
@@ -173,7 +173,7 @@ requests:
 responses:
     base structure:
         0-1: status
-    
+
     success: 0, 0x412, 0x5cc
     specific error code:
         0x401 -> 0xd1
@@ -197,6 +197,14 @@ TLS 1.2 layer: sess "tls data" command
 -> TLS_PSK_WITH_AES_256_CBC_SHA (unusable!)
 -> TLS_PSK_WITH_AES_128_GCM_SHA256 (unusable!)
 -> extensions: ??? (TODO)
+- Used (with assigned funcitons)
+   0xC005
+   0xC02E
+- Unused (no assigned funcitons)
+   0x3D00
+   0x8D00
+   0xA800
+
 
 certificate:
 0-1: magic (3f5f)

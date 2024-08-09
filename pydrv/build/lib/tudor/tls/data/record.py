@@ -126,6 +126,7 @@ class TlsCompressed(TlsData):
         self.proto_ver.write(stream)
         stream.write_int(2, len(self.fragment))
         stream.write(self.fragment)
+        print(f'--> writing fragmet: type_id: {self.content_type.type_id}, frag_len: {len(self.fragment)}')
 
 
 class TlsCiphertext(TlsData):

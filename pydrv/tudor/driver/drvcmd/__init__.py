@@ -13,3 +13,4 @@ from .event import *
 from .capture import *
 from .storage import *
 from .bmkt import *
+from .test import *

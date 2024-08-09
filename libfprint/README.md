@@ -3,3 +3,4 @@ This folder will hopefully contain a patched version of libfprint, which works w
 
 # To-do:
 - choose a naming scheme
+- what not to leave for completeness

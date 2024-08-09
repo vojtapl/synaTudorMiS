@@ -179,6 +179,10 @@ class TlsAEADEncryptionAlgorithm(TlsEncryptionAlgorithm):
         self.decr_iv = kstream.read(iv_size)
 
     def encrypt(self, compr: data.TlsCompressed) -> data.TlsCiphertext:
+        print(f'encrypting msg type: {compr.content_type}')
+        print(f'encrypting msg ver: {compr.proto_ver}')
+        print(f'encrypting msg: {compr.fragment.hex()}')
+
         ostream = data.TlsDataWriteStream()
 
         # Create random nonce & add it to output
@@ -191,6 +195,7 @@ class TlsAEADEncryptionAlgorithm(TlsEncryptionAlgorithm):
         encr = cipher.Cipher(
             self.encr_algo(self.encr_key), self.encr_mode(self.encr_iv + nonce)
         ).encryptor()
+        print(f'Auth add data: {cdata.data[:5].hex()}')
         encr.authenticate_additional_data(
             self.encr_seq_num.to_bytes(8, "big") + cdata.data[:5]
         )
@@ -199,6 +204,7 @@ class TlsAEADEncryptionAlgorithm(TlsEncryptionAlgorithm):
         ostream.write(encr.update(compr.fragment) + encr.finalize())
         ostream.write(encr.tag[: self.tag_size])
 
+        print(f'encrypted msg: {ostream.data.hex()}')
         self.encr_seq_num += 1
         return data.TlsCiphertext(compr.content_type, compr.proto_ver, ostream.data)
 

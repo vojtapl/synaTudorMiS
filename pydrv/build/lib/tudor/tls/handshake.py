@@ -23,6 +23,7 @@ class TlsHandshakeProtocol:
 
         self.phase = TlsHandshakePhase.IDLE
         self.msg_digest = hashlib.sha256()
+        self.test = b""
 
         self.cipher_suites = []
         self.compression_methods = (
@@ -93,6 +94,9 @@ class TlsHandshakeProtocol:
             stream = data.TlsDataWriteStream()
             msg.write(stream)
             self.msg_digest.update(stream.data)
+            self.test += stream.data
+            print(f"self.test = {self.test.hex()}")
+            print(f"self.test hash = {hashlib.sha256(self.test).digest().hex()}")
 
         # Pass to record layer
         self.record_layer.send(msg)
@@ -106,6 +110,9 @@ class TlsHandshakeProtocol:
             stream = data.TlsDataWriteStream()
             msg.write(stream)
             self.msg_digest.update(stream.data)
+            self.test += stream.data
+            print(f"self.test = {self.test.hex()}")
+            print(f"self.test hash = {hashlib.sha256(self.test).digest().hex()}")
 
         msg = msg.content
 
