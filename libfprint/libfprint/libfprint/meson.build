@@ -139,8 +139,8 @@ driver_sources = {
         [ 'drivers/virtual-device-storage.c' ],
     'synaptics' :
         [ 'drivers/synaptics/synaptics.c', 'drivers/synaptics/bmkt_message.c' ],
-    'synaptics_moc' :
-        [ 'drivers/synaptics_tudor_moc/synaptics_moc.c' ],
+    'syna_tudor_moc' :
+        [ 'drivers/syna_tudor_moc/syna_tudor_moc.c' ],
     'goodixmoc' :
         [ 'drivers/goodixmoc/goodix.c', 'drivers/goodixmoc/goodix_proto.c' ],
     'fpcmoc' :
