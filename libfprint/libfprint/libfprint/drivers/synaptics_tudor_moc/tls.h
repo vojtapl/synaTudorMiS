@@ -66,6 +66,7 @@ typedef enum {
    TLS_ALERT_DESC_USER_CANCELED = 90,
    TLS_ALERT_DESC_NO_RENEGOTIATION = 100,
    TLS_ALERT_DESC_UNSUPPORTED_EXTENSION = 110,
+   TLS_ALERT_DESC_CLOSE_NOTIFY2 = 166,
 } tls_alert_description_t;
 
 typedef enum {
@@ -74,6 +75,28 @@ typedef enum {
    RECORD_TYPE_HANDSHAKE = 0x16,
    RECORD_TYPE_APPLICATION_DATA = 0x17,
 } record_type_t;
+
+typedef enum {
+   HS_CLIENT_HELLO = 0x01,
+   HS_SERVER_HELLO = 0x02,
+   HS_CERTIFICATE = 0x0B,
+   HS_SERVER_KEY_EXCHANGE = 0x0C,
+   HS_CERTIFICATE_REQUEST = 0x0D,
+   HS_SERVER_HELLO_DONE = 0x0E,
+   HS_CERTIFICATE_VERIFY = 0x0F,
+   HS_CLIENT_KEY_EXCHANGE = 0x10,
+   HS_FINISHED = 0x14
+} handshake_msg_type_t;
+
+typedef enum {
+   TLS_CERT_TYPE_RSA_SIGN = 1,
+   TLS_CERT_TYPE_DSS_SIGN = 2,
+   TLS_CERT_TYPE_RSA_FIXED_DH = 3,
+   TLS_CERT_TYPE_DSS_FIXED_DH = 4,
+   TLS_CERT_TYPE_ECDSA_SIGN = 64,
+   TLS_CERT_TYPE_RSA_FIXED_ECDH = 65,
+   TLS_CERT_TYPE_ECDSA_FIXED_ECDH = 66,
+} tls_certificate_type_t;
 
 typedef struct {
    guint16 id;
@@ -100,28 +123,6 @@ typedef struct {
    guint extension_cnt;
 } hello_t;
 
-typedef enum {
-   HS_CLIENT_HELLO = 0x01,
-   HS_SERVER_HELLO = 0x02,
-   HS_CERTIFICATE = 0x0B,
-   HS_SERVER_KEY_EXCHANGE = 0x0C,
-   HS_CERTIFICATE_REQUEST = 0x0D,
-   HS_SERVER_HELLO_DONE = 0x0E,
-   HS_CERTIFICATE_VERIFY = 0xF,
-   HS_CLIENT_KEY_EXCHANGE = 0x10,
-   HS_FINISHED = 0x14
-} handshake_msg_type_t;
-
-typedef enum {
-   TLS_CERT_TYPE_RSA_SIGN = 1,
-   TLS_CERT_TYPE_DSS_SIGN = 2,
-   TLS_CERT_TYPE_RSA_FIXED_DH = 3,
-   TLS_CERT_TYPE_DSS_FIXED_DH = 4,
-   TLS_CERT_TYPE_ECDSA_SIGN = 64,
-   TLS_CERT_TYPE_RSA_FIXED_ECDH = 65,
-   TLS_CERT_TYPE_ECDSA_FIXED_ECDH = 66,
-} tls_certificate_type_t;
-
 typedef struct {
    guint8 type;
    guint8 version_major;
@@ -132,4 +133,18 @@ typedef struct {
 
 gboolean establish_tls_session(FpiDeviceSynapticsMoc *self, GError *error);
 
-gboolean tls_close_sesion(FpiDeviceSynapticsMoc *self, GError *error);
+gboolean tls_close_session(FpiDeviceSynapticsMoc *self, GError *error);
+
+gboolean tls_wrap(FpiDeviceSynapticsMoc *self, guint8 *ptext, gsize ptext_size,
+                  guint8 **ctext, gsize *ctext_size);
+
+gboolean tls_unwrap(FpiDeviceSynapticsMoc *self, guint8 *ctext,
+                    gsize ctext_size, guint8 **ptext, gsize *ptext_size);
+
+gboolean get_remote_tls_status(FpiDeviceSynapticsMoc *self, gboolean *status,
+                               GError *error);
+
+gboolean verify_sensor_certificate(FpiDeviceSynapticsMoc *self,
+                                   gnutls_pubkey_t sensor_pubkey);
+
+gboolean load_sample_pairing_data(FpiDeviceSynapticsMoc *self);

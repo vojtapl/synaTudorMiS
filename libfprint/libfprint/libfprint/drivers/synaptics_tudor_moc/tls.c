@@ -8,14 +8,17 @@
 #include "fpi-byte-reader.h"
 #include "fpi-byte-writer.h"
 #include "fpi-usb-transfer.h"
-#include "gnutls/abstract.h"
 #include "sample_pairing_data.h"
 #include "tls.h"
+#include "utils.h"
 #include <gio/gio.h>
 #include <glib.h>
+#include <gnutls/abstract.h>
 #include <gnutls/crypto.h>
 #include <gnutls/gnutls.h>
 #include <stdio.h>
+
+// #define TLS_DEBUG
 
 #define GNUTLS_CHECK(func_call)                                                \
    do {                                                                        \
@@ -23,23 +26,6 @@
       if (gnutls_ret != GNUTLS_E_SUCCESS) {                                    \
          fp_err("GnuTLS error in " #func_call ": %s",                          \
                 gnutls_strerror(gnutls_ret));                                  \
-         ret = FALSE;                                                          \
-         goto error;                                                           \
-      }                                                                        \
-   } while (0)
-#define BOOL_CHECK(func_call)                                                  \
-   do {                                                                        \
-      gboolean func_ret = (func_call);                                         \
-      if (!func_ret) {                                                         \
-         fp_err("Error in " #func_call);                                       \
-         ret = FALSE;                                                          \
-         goto error;                                                           \
-      }                                                                        \
-   } while (0)
-#define WRITTEN_CHECK(condition)                                               \
-   do {                                                                        \
-      if (!(condition)) {                                                      \
-         fp_err("Writing error occurred in %s", __FUNCTION__);                 \
          ret = FALSE;                                                          \
          goto error;                                                           \
       }                                                                        \
@@ -59,57 +45,87 @@ static extension_t ec_point_formats = {
 
 /*===========================================================================*/
 
-static void reverse_array(guint8 *arr, gsize size)
+static void
+event_mask_to_event_buffer(guint32 event_mask,
+                           sensor_event_type_t event_buffer[NUM_EVENTS])
 {
-   gint start = 0;
-   gint end = size - 1;
-   gint temp;
-
-   while (start < end) {
-      // Swap the elements at start and end
-      temp = arr[start];
-      arr[start] = arr[end];
-      arr[end] = temp;
-
-      // Move towards the middle
-      start++;
-      end--;
+   guint event_num = 0;
+   if ((event_mask & NO_EVENTS) != 0) {
+      event_buffer[event_num++] = NO_EVENTS;
+   } else if ((event_mask & NO_EVENTS) != 0) {
+      event_buffer[event_num++] = NO_EVENTS;
+   } else if ((event_mask & EV_FINGER_DOWN) != 0) {
+      event_buffer[event_num++] = EV_FINGER_DOWN;
+   } else if ((event_mask & EV_FINGER_UP) != 0) {
+      event_buffer[event_num++] = EV_FINGER_UP;
+   } else if ((event_mask & EV_3) != 0) {
+      event_buffer[event_num++] = EV_3;
+   } else if ((event_mask & EV_4) != 0) {
+      event_buffer[event_num++] = EV_4;
+   } else if ((event_mask & EV_5) != 0) {
+      event_buffer[event_num++] = EV_5;
+   } else if ((event_mask & EV_6) != 0) {
+      event_buffer[event_num++] = EV_6;
+   } else if ((event_mask & EV_7) != 0) {
+      event_buffer[event_num++] = EV_7;
+   } else if ((event_mask & EV_8) != 0) {
+      event_buffer[event_num++] = EV_8;
+   } else if ((event_mask & EV_9) != 0) {
+      event_buffer[event_num++] = EV_9;
+   } else if ((event_mask & EV_FRAME_READY) != 0) {
+      event_buffer[event_num++] = EV_FRAME_READY;
    }
 }
 
-static void print_array(const guint8 *arr, const gint size)
+static gboolean write_record_header(FpiByteWriter *writer,
+                                    const record_t *record)
 {
-   for (int i = 0; i < size; i++) {
-      printf("%02x", arr[i]);
-   }
-   printf("\n"); // Print a newline at the end
+   gboolean written = TRUE;
+
+   written &= fpi_byte_writer_put_uint8(writer, record->type);
+   written &= fpi_byte_writer_put_uint8(writer, record->version_major);
+   written &= fpi_byte_writer_put_uint8(writer, record->version_minor);
+
+   return written;
 }
 
-static guint count_trailing_zeros(guint8 *array, gsize length)
+static gboolean read_record_header(FpiByteReader *reader, record_t *record)
 {
-   int count = 0;
+   gboolean read_ok = TRUE;
 
-   for (gint i = length - 1; i >= 0; --i) {
-      if (array[i] == 0x00) {
-         count++;
-      } else {
-         break; // Stop counting when a non-zero byte is found
-      }
-   }
+   read_ok &= fpi_byte_reader_get_uint8(reader, &record->type);
+   read_ok &= fpi_byte_reader_get_uint8(reader, &record->version_major);
+   read_ok &= fpi_byte_reader_get_uint8(reader, &record->version_minor);
 
-   return count;
+   return read_ok;
+}
+
+static gboolean read_record(const guint8 *serialized_record,
+                            const gsize serialized_record_size,
+                            record_t *record)
+{
+   gboolean ret = TRUE;
+
+   FpiByteReader reader;
+   fpi_byte_reader_init(&reader, serialized_record, serialized_record_size);
+   ret &= read_record_header(&reader, record);
+   ret &= fpi_byte_reader_get_uint16_be(&reader, &record->msg_len);
+   ret &= fpi_byte_reader_dup_data(&reader, record->msg_len, &record->msg);
+
+   return ret;
 }
 
 static gboolean decrypt_record(FpiDeviceSynapticsMoc *self,
                                record_t *record_to_decrypt, guint8 **ptext,
                                gsize *ptext_len)
 {
+#ifdef TLS_DEBUG
    printf("Decrypting record msg:\n");
    print_array(record_to_decrypt->msg, record_to_decrypt->msg_len);
+#endif
 
    gboolean ret = TRUE;
    gboolean crypt_initialized = FALSE;
-   // type_id (1) + tls_protocol_version (2) + length (2)
 
    *ptext_len = 0;
 
@@ -125,7 +141,7 @@ static gboolean decrypt_record(FpiDeviceSynapticsMoc *self,
    gsize expected_ptext_len = ctext_len - self->tls.tag_size;
 
    // create GCM IV = decryption_iv + nonce
-   gnutls_datum_t gcm_iv;
+   gnutls_datum_t gcm_iv = {.data = NULL, .size = 0};
    g_assert(self->tls.decryption_iv.size != 0);
    gcm_iv.size = sizeof(nonce) + self->tls.decryption_iv.size;
    gcm_iv.data = g_malloc(gcm_iv.size * sizeof(*gcm_iv.data));
@@ -133,15 +149,15 @@ static gboolean decrypt_record(FpiDeviceSynapticsMoc *self,
           self->tls.decryption_iv.size);
    FP_WRITE_UINT64_BE(gcm_iv.data + self->tls.decryption_iv.size, nonce);
 
-   // TODO: debug start
+#ifdef TLS_DEBUG
    fp_dbg("\ndecryption nonce: %lu", nonce);
    fp_dbg("\ndecryption IV:");
    print_array(self->tls.decryption_iv.data, self->tls.decryption_iv.size);
    fp_dbg("GCM IV:");
    print_array(gcm_iv.data, gcm_iv.size);
-   fp_dbg("dectyption key:");
+   fp_dbg("decryption key:");
    print_array(self->tls.decryption_key.data, self->tls.decryption_key.size);
-   // TODO: debug end
+#endif
 
    // Initialize GCM cipher
    g_assert(self->tls.cipher_alg == GNUTLS_CIPHER_AES_256_GCM);
@@ -157,11 +173,7 @@ static gboolean decrypt_record(FpiDeviceSynapticsMoc *self,
    fpi_byte_writer_init_with_data(&writer, additional_data,
                                   additional_data_size, FALSE);
    written &= fpi_byte_writer_put_uint64_be(&writer, self->tls.decrypt_seq_num);
-   written &= fpi_byte_writer_put_uint8(&writer, record_to_decrypt->type);
-   written &=
-       fpi_byte_writer_put_uint8(&writer, record_to_decrypt->version_major);
-   written &=
-       fpi_byte_writer_put_uint8(&writer, record_to_decrypt->version_minor);
+   written &= write_record_header(&writer, record_to_decrypt);
    written &= fpi_byte_writer_put_uint16_be(&writer, expected_ptext_len);
    g_assert(written); // NOTE: this should have no way of failing
 
@@ -169,10 +181,10 @@ static gboolean decrypt_record(FpiDeviceSynapticsMoc *self,
    gsize allocated_for_ptext = expected_ptext_len;
    *ptext = g_malloc(allocated_for_ptext);
 
-   // TODO: debug start
+#ifdef TLS_DEBUG
    fp_dbg("Decryption - auth data:");
    print_array(additional_data, additional_data_size);
-   // TODO: debug end
+#endif
 
    // Decrypt text
    GNUTLS_CHECK(gnutls_aead_cipher_decrypt(
@@ -184,8 +196,10 @@ static gboolean decrypt_record(FpiDeviceSynapticsMoc *self,
 
    self->tls.decrypt_seq_num += 1;
 
+#ifdef TLS_DEBUG
    printf("Decrypted:\n");
    print_array(*ptext, *ptext_len);
+#endif
 
 error:
    if (crypt_initialized) {
@@ -195,13 +209,16 @@ error:
       g_free(*ptext);
       *ptext = NULL;
    }
+   if (gcm_iv.data != NULL) {
+      g_free(gcm_iv.data);
+   }
 
    return ret;
 }
 
-static char *tls_alert_description_msg(const guint alert_description)
+static const char *tls_alert_description_msg(const guint alert_description)
 {
-   char *ret;
+   const char *ret;
    switch (alert_description) {
    case 0:
       ret = "CLOSE_NOTIFY";
@@ -278,6 +295,9 @@ static char *tls_alert_description_msg(const guint alert_description)
    case 110:
       ret = "UNSUPPORTED_EXTENSION";
       break;
+   case 166:
+      ret = "CLOSE_NOTIFY2";
+      break;
    default:
       ret = "UNKNOWN";
       break;
@@ -290,8 +310,8 @@ static void log_tls_alert_msg(const guint alert_level,
 {
    const char *alert_level_msg =
        alert_level == TLS_ALERT_LVL_WARNING ? "WARNING" : "FATAL";
-   fp_err("Received TLS alert level %s with description: %u aka %s",
-          alert_level_msg, alert_description,
+   fp_err("Received TLS alert level %d aka %s with description: %u aka %s",
+          alert_level, alert_level_msg, alert_description,
           tls_alert_description_msg(alert_description));
 }
 
@@ -303,9 +323,9 @@ static gboolean tls_prf(const gnutls_datum_t secret, const char *label,
 
    const gsize buf_size = 128;
    const gsize sha384_output_size = 48;
-   guint8 *input = NULL;
+   g_autofree guint8 *input = NULL;
    *output = NULL;
-   guint8 *to_digest = NULL;
+   g_autofree guint8 *to_digest = NULL;
 
    // prepare buffers
    guint8 A[sha384_output_size];
@@ -375,118 +395,65 @@ error:
       g_free(*output);
       *output = NULL;
    }
-   if (input != NULL) {
-      g_free(input);
-   }
-   if (to_digest != NULL) {
-      g_free(to_digest);
-   }
    return ret;
 }
-static void tls_prf_check(void)
-{
 
-   guint8 secret1[] = {
-       0x19, 0x3f, 0xd4, 0xb2, 0x7c, 0x10, 0xa6, 0xd7, 0xd7, 0x99, 0xb6, 0xf9,
-       0x31, 0x2c, 0xc9, 0x37, 0x5f, 0x8f, 0x00, 0xe2, 0x07, 0x2d, 0x4f, 0x31,
-       0x5c, 0xd2, 0x0e, 0x50, 0x94, 0x3a, 0x5d, 0xe0, 0xfc, 0xc8, 0xe1, 0x04,
-       0x39, 0xd0, 0x0a, 0xe4, 0xa0, 0x3b, 0x5a, 0xd5, 0xd3, 0x86, 0x4b, 0xfe};
-   char *label1 = "key expansion";
-   guint8 seed1[] = {0x66, 0xb3, 0x28, 0x0b, 0x0a, 0xe2, 0x93, 0xc6, 0x0d, 0x35,
-                     0xbc, 0xb6, 0xfd, 0xac, 0x0f, 0x33, 0x15, 0x74, 0x9f, 0x65,
-                     0x85, 0xe4, 0x08, 0xb7, 0xd4, 0xda, 0x44, 0xd5, 0xb4, 0x8b,
-                     0x85, 0x8c, 0x00, 0x00, 0x66, 0x96, 0x42, 0xe1, 0xb5, 0x7c,
-                     0x88, 0x5a, 0x1f, 0x4e, 0xc7, 0xe5, 0xea, 0x93, 0x60, 0x0f,
-                     0x14, 0x47, 0xb3, 0x85, 0xfc, 0xa8, 0x37, 0x80, 0x7f, 0xb7,
-                     0x04, 0x5c, 0x56, 0xcc
-
-   };
-
-   gsize result_len1 = 128;
-
-   guint8 expected_result1[] = {
-       0x36, 0xa7, 0xa1, 0x08, 0x92, 0x65, 0x2c, 0x62, 0x6f, 0xba, 0x1a, 0x46,
-       0x4b, 0xd7, 0x2b, 0x86, 0xc7, 0xb6, 0x74, 0xbe, 0xb9, 0xab, 0x5c, 0x09,
-       0x0c, 0x30, 0xc7, 0xf9, 0x98, 0xe5, 0x47, 0xfa, 0x1d, 0x04, 0xf1, 0xce,
-       0x1c, 0x17, 0x20, 0x03, 0x1d, 0x9e, 0x37, 0xd4, 0x25, 0x66, 0x93, 0x1b,
-       0xef, 0x54, 0x8d, 0xed, 0x0d, 0x55, 0xd2, 0xac, 0x43, 0x0c, 0x87, 0x47,
-       0xba, 0x98, 0x07, 0x81, 0x1c, 0x7c, 0x00, 0x7d, 0xa3, 0x30, 0xce, 0x70,
-       0x13, 0x02, 0xa4, 0x76, 0x65, 0x82, 0x67, 0x9f, 0xd3, 0x02, 0x16, 0x92,
-       0x81, 0x51, 0x24, 0x2e, 0xc2, 0xb7, 0x26, 0xdd, 0x1b, 0x5b, 0x91, 0xc9,
-       0x78, 0x6b, 0x0e, 0x58, 0x7b, 0x5c, 0x19, 0x2b, 0xe9, 0x66, 0x4a, 0x16,
-       0x89, 0x81, 0x15, 0x25, 0x2f, 0x19, 0x12, 0xb8, 0x1d, 0xf5, 0x8d, 0xbe,
-       0xa0, 0xe5, 0xd2, 0xb6, 0xb4, 0xfc, 0x5a, 0xe8
-
-   };
-
-   guint8 *result1 = NULL;
-   gnutls_datum_t secret_datum1 = {.data = secret1, .size = sizeof(secret1)};
-   g_assert(tls_prf(secret_datum1, label1, seed1, sizeof(seed1), &result1,
-                    result_len1));
-   // printf("expected:\n");
-   // print_array(expected_result, result_len);
-   // printf("got:\n");
-   // print_array(result, result_len);
-   g_assert(0 == memcmp(expected_result1, result1, result_len1));
-   fp_dbg("tls prf test 1 OK");
-
-   guint8 secret2[] = {0x45, 0x92, 0x78, 0xb4, 0x60, 0xae, 0x45, 0xdd,
-                       0xe2, 0xee, 0xae, 0x1f, 0x5a, 0xfb, 0xe2, 0x08,
-                       0x09, 0x95, 0x4e, 0x73, 0x65, 0x36, 0x5e, 0x49,
-                       0xa8, 0x6f, 0x87, 0xd7, 0xfe, 0xe2, 0x02, 0x44};
-   char *label2 = "master secret";
-   guint8 seed2[] = {0x5a, 0xf2, 0x3d, 0x9b, 0x69, 0xb8, 0x98, 0xf4, 0x78, 0x69,
-                     0x61, 0xa9, 0x0d, 0x41, 0xae, 0x67, 0x31, 0x1a, 0x1c, 0xa8,
-                     0x92, 0xb4, 0x49, 0x0d, 0x0d, 0x6d, 0x32, 0x27, 0x00, 0x00,
-                     0x00, 0x00, 0x00, 0x00, 0x5f, 0x9c, 0x1a, 0x49, 0x60, 0x1a,
-                     0xd8, 0x42, 0xbe, 0xfe, 0xb4, 0xdc, 0xe3, 0x1f, 0x01, 0xa9,
-                     0x2b, 0xa8, 0x97, 0x51, 0xd2, 0x14, 0x38, 0x79, 0x9d, 0xbb,
-                     0x2e, 0x86, 0x03, 0xe3};
-
-   gsize result_len2 = 48;
-
-   guint8 expected_result2[] = {
-       0xad, 0x0a, 0x9f, 0x9f, 0xe3, 0x9d, 0x2f, 0xd7, 0xfc, 0xb2, 0x34, 0xb5,
-       0xd7, 0xa3, 0x0f, 0xa1, 0x6c, 0x71, 0xec, 0x06, 0xd2, 0xc2, 0xb2, 0x6c,
-       0x58, 0xd0, 0xfd, 0x61, 0x40, 0xbf, 0xab, 0x0c, 0x7f, 0xa8, 0xd7, 0x81,
-       0xe0, 0x32, 0x23, 0xa2, 0x9a, 0xe4, 0x3e, 0x5c, 0xcd, 0x1a, 0x51, 0x6d};
-
-   guint8 *result2 = NULL;
-   gnutls_datum_t secret_datum2 = {.data = secret2, .size = sizeof(secret2)};
-   g_assert(tls_prf(secret_datum2, label2, seed2, sizeof(seed2), &result2,
-                    result_len2));
-   printf("expected:\n");
-   print_array(expected_result2, result_len2);
-   printf("got:\n");
-   print_array(result2, result_len2);
-   g_assert(0 == memcmp(expected_result2, result2, result_len2));
-   fp_dbg("tls prf test 2 OK");
-}
-
-static gboolean serialize_tls_record(record_t *record, guint8 *serialized,
-                                     gsize serialized_len)
-{
-   switch (record->type) {
-   case RECORD_TYPE_HANDSHAKE:
-      break;
-
-   default:
-      fp_err("Unimplemented record type to serialize: %d", record->type);
-      goto error;
-   }
-
-   return TRUE;
-error:
-   return FALSE;
-}
-
-static gboolean parse_and_store_pairing_privkey(FpiDeviceSynapticsMoc *self,
-                                                guint8 *data, gsize data_len)
+static gboolean check_server_finished_verify_data(FpiDeviceSynapticsMoc *self,
+                                                  FpiByteReader *reader,
+                                                  gsize recv_verify_data_size,
+                                                  gboolean *is_correct)
 {
    gboolean ret = TRUE;
-   GNUTLS_CHECK(gnutls_privkey_init(&self->pairing_data.private_key));
-   // if (0 != gnutls_privkey_import())
-   // FIXME: todo
+   *is_correct = FALSE;
+   const guint sha256_size = 32;
+   guint8 sent_messages_sha256[sha256_size];
+
+   const gsize verify_data_size = 12;
+   g_autofree guint8 *verify_data = NULL;
+   g_autofree guint8 *recv_verify_data = NULL;
+
+   // sizes should match
+   if (recv_verify_data_size != verify_data_size) {
+      fp_err("Received server finished with unexpected length: %lu, while "
+             "expected was %lu",
+             recv_verify_data_size, verify_data_size);
+      return ret;
+   }
+
+   fpi_byte_reader_dup_data(reader, verify_data_size, &recv_verify_data);
+
+#ifdef TLS_DEBUG
+   fp_dbg("Server finished sent messages:");
+   print_array(self->tls.sent_data, self->tls.sent_data_size);
+#endif
+
+   GNUTLS_CHECK(gnutls_hash_fast(
+       GNUTLS_DIG_SHA256, self->tls.sent_handshake_msgs,
+       self->tls.sent_handshake_msgs_size, sent_messages_sha256));
+#ifdef TLS_DEBUG
+   fp_dbg("Handshake finished sent messages hash:");
+   print_array(sent_messages_sha256, sizeof(sent_messages_sha256));
+#endif
+
+   BOOL_CHECK(tls_prf(self->tls.master_secret, "server finished",
+                      sent_messages_sha256, sha256_size, &verify_data,
+                      verify_data_size));
+
+#ifdef TLS_DEBUG
+   fp_dbg("tls prf server finished output:");
+   print_array(verify_data, verify_data_size);
+#endif
+
+   if (0 == memcmp(verify_data, recv_verify_data, verify_data_size)) {
+      *is_correct = TRUE;
+      fp_dbg("Server finished verify data match");
+   } else {
+      fp_err("Server finished verify data do NOT match");
+      fp_err("Got:");
+      print_array(recv_verify_data, recv_verify_data_size);
+      fp_err("Expected:");
+      print_array(verify_data, verify_data_size);
+   }
 
 error:
    return ret;
@@ -615,28 +582,13 @@ error:
    return FALSE;
 }
 
-static gboolean serialize_certificate_record_data(guint8 *certificate,
-                                                  guint8 *serialized,
-                                                  gsize *serialized_len)
-{
-   return TRUE;
-}
-
-static gboolean get_remote_tls_status(FpiDeviceSynapticsMoc *self,
-                                      gboolean *status, GError *error)
+gboolean get_remote_tls_status(FpiDeviceSynapticsMoc *self, gboolean *status,
+                               GError *error)
 {
    FpiUsbTransfer *transfer = fpi_usb_transfer_new(FP_DEVICE(self));
-   // bmRequestType = 0xC0
-   // bRequest = 0x14
-   // wValue =0
-   // wIndex = 0
-   // data_or_wLength = 2
-   // timeout = 2000
 
    fpi_usb_transfer_fill_control(
        transfer, G_USB_DEVICE_DIRECTION_DEVICE_TO_HOST,
-       /*these are pure educated guesses*/
-       // if does now work try vendor type
        G_USB_DEVICE_REQUEST_TYPE_VENDOR, G_USB_DEVICE_RECIPIENT_DEVICE,
        REQUEST_TLS_SESSION_STATUS, 0, 0, TLS_SESSION_STATUS_DATA_RESP_LEN);
 
@@ -654,8 +606,10 @@ static gboolean get_remote_tls_status(FpiDeviceSynapticsMoc *self,
    fp_dbg("Remote TLS session status: %s",
           *status ? "established" : "not established");
 
+   fpi_usb_transfer_unref(transfer);
    return TRUE;
 error:
+   fpi_usb_transfer_unref(transfer);
    g_error("Error in function %s: %d aka '%s'", __FUNCTION__, error->code,
            error->message);
    return FALSE;
@@ -664,35 +618,42 @@ error:
 static void update_handshake_messages_data(FpiDeviceSynapticsMoc *self,
                                            const guint8 *data, const gsize size)
 {
-   // FIXME: do not update with finished messages
-   gsize remaining_alloc_size =
-       self->tls.sent_data_alloc_size - self->tls.sent_data_size;
+   // NOTE: do not update with finished messages
+   gsize remaining_alloc_size = self->tls.sent_handshake_msgs_alloc_size -
+                                self->tls.sent_handshake_msgs_size;
 
    if (remaining_alloc_size <= size) {
-      gsize realloc_size = (self->tls.sent_data_alloc_size + size) * 2;
-      self->tls.sent_data = g_realloc(self->tls.sent_data, realloc_size);
-      self->tls.sent_data_alloc_size = realloc_size;
+      gsize realloc_size =
+          (self->tls.sent_handshake_msgs_alloc_size + size) * 2;
+      self->tls.sent_handshake_msgs =
+          g_realloc(self->tls.sent_handshake_msgs, realloc_size);
+      self->tls.sent_handshake_msgs_alloc_size = realloc_size;
    }
 
-   memcpy(&self->tls.sent_data[self->tls.sent_data_size], data, size);
-   self->tls.sent_data_size += size;
+   memcpy(&self->tls.sent_handshake_msgs[self->tls.sent_handshake_msgs_size],
+          data, size);
+   self->tls.sent_handshake_msgs_size += size;
 
-   // TODO: debug start
+#ifdef TLS_DEBUG
    fp_dbg("sent messages:");
    print_array(self->tls.sent_data, self->tls.sent_data_size);
-   // TODO: debug end
+#endif
 }
 
 static void update_handshake_messages_data_record(FpiDeviceSynapticsMoc *self,
                                                   const record_t *rec)
 {
-   update_handshake_messages_data(self, rec->msg, rec->msg_len);
+   // windows driver does not update with HS_FINISHED messages
+   if (rec->msg[0] != HS_FINISHED) {
+      update_handshake_messages_data(self, rec->msg, rec->msg_len);
+   }
 }
 
 static gboolean send_tls(FpiDeviceSynapticsMoc *self,
                          const record_t *send_records,
                          const guint send_record_cnt, guint8 **recv_data,
-                         gsize *recv_size, GError *error)
+                         gsize *recv_size, gboolean with_hs_header,
+                         GError *error)
 {
    gboolean ret = TRUE;
    /* +3 is the padding? */
@@ -703,20 +664,16 @@ static gboolean send_tls(FpiDeviceSynapticsMoc *self,
    gboolean written = TRUE;
    FpiByteWriter writer;
    fpi_byte_writer_init(&writer);
-   /* write command ID */
-   written &= fpi_byte_writer_put_uint8(&writer, VCSFW_CMD_TLS_DATA);
-   /* some padding? */
-   written &= fpi_byte_writer_put_uint8(&writer, 0);
-   written &= fpi_byte_writer_put_uint8(&writer, 0);
-   written &= fpi_byte_writer_put_uint8(&writer, 0);
+   if (with_hs_header) {
+      /* write command ID */
+      written &= fpi_byte_writer_put_uint8(&writer, VCSFW_CMD_TLS_DATA);
+      /* some padding? */
+      written &= fpi_byte_writer_put_uint24_le(&writer, 0);
+   }
 
    for (int i = 0; i < send_record_cnt; ++i) {
       /* write record header */
-      written &= fpi_byte_writer_put_uint8(&writer, send_records[i].type);
-      written &=
-          fpi_byte_writer_put_uint8(&writer, send_records[i].version_major);
-      written &=
-          fpi_byte_writer_put_uint8(&writer, send_records[i].version_minor);
+      written &= write_record_header(&writer, &send_records[i]);
       written &=
           fpi_byte_writer_put_uint16_be(&writer, send_records[i].msg_len);
       /* write record data */
@@ -738,7 +695,8 @@ error:
       g_free(send_data);
    }
    if (!ret && recv_data != NULL) {
-      g_free(recv_data);
+      g_free(*recv_data);
+      *recv_data = NULL;
    }
    return ret;
 }
@@ -746,11 +704,13 @@ error:
 static gboolean init_client_hello(FpiDeviceSynapticsMoc *self,
                                   hello_t *client_hello)
 {
-   GDateTime *datetime = g_date_time_new_now_utc();
 
    client_hello->version_major = self->tls.version_major,
    client_hello->version_minor = self->tls.version_minor;
+
+   GDateTime *datetime = g_date_time_new_now_utc();
    client_hello->current_timestamp = g_date_time_to_unix(datetime);
+   g_date_time_unref(datetime);
 
    /* generate client random */
    GRand *rand = g_rand_new();
@@ -764,6 +724,7 @@ static gboolean init_client_hello(FpiDeviceSynapticsMoc *self,
    memcpy(self->tls.client_random + sizeof(client_hello->current_timestamp),
           client_hello->random, sizeof(client_hello->random));
 
+#ifdef TLS_DEBUG
    fp_dbg("Client random is:");
    guint8 serialized_timestamp[sizeof(client_hello->current_timestamp)];
    FP_WRITE_UINT32_BE(serialized_timestamp, client_hello->current_timestamp);
@@ -771,6 +732,7 @@ static gboolean init_client_hello(FpiDeviceSynapticsMoc *self,
    print_array(serialized_timestamp, sizeof(client_hello->current_timestamp));
    fp_dbg("\trand:");
    print_array(client_hello->random, sizeof(client_hello->random));
+#endif
 
    /* copy session id from self */
    g_assert(self->tls.session_id != NULL);
@@ -790,11 +752,11 @@ static gboolean init_client_hello(FpiDeviceSynapticsMoc *self,
    memcpy(&client_hello->extensions[1], &ec_point_formats, sizeof(extension_t));
 
    return TRUE;
-error:
-   if (client_hello->extensions != NULL) {
-      g_free(client_hello->extensions);
-   }
-   return FALSE;
+   // error:
+   //    if (client_hello->extensions != NULL) {
+   //       g_free(client_hello->extensions);
+   //    }
+   //    return FALSE;
 }
 
 static gboolean parse_and_process_server_hello(FpiDeviceSynapticsMoc *self,
@@ -814,15 +776,17 @@ static gboolean parse_and_process_server_hello(FpiDeviceSynapticsMoc *self,
    read_ok &= fpi_byte_reader_get_uint8(reader, &version_minor);
 
    /* read current time and server random */
-   const guint8 *recv_random;
+   const guint8 *recv_random = NULL;
    read_ok &= fpi_byte_reader_get_data(reader, sizeof(self->tls.server_random),
                                        &recv_random);
    if (read_ok) {
       memcpy(&self->tls.server_random, recv_random,
              sizeof(self->tls.server_random));
+#ifdef TLS_DEBUG
+      fp_dbg("received server_random:");
+      print_array(recv_random, sizeof(self->tls.server_random));
+#endif
    }
-   fp_dbg("received server_random:");
-   print_array(recv_random, sizeof(self->tls.server_random));
 
    /* read session id */
    read_ok &= fpi_byte_reader_get_uint8(reader, &self->tls.session_id_len);
@@ -901,11 +865,22 @@ static gboolean parse_and_process_handshake_record(FpiDeviceSynapticsMoc *self,
 
       case HS_FINISHED:
          fp_dbg("received handshake finished");
-         if (self->tls.handshake_state != TLS_HANDSHAKE_START) {
-            fp_err("Unexpected recieval of handshake finished message");
+         if (self->tls.handshake_state != TLS_HANDSHAKE_END) {
+            fp_err("Unexpected recieval of handshake finished message - "
+                   "handshake state is %d",
+                   self->tls.handshake_state);
             ret = FALSE;
          }
-         // FIXME: check sent messages hash
+         gboolean verify_matches = FALSE;
+         BOOL_CHECK(check_server_finished_verify_data(self, &reader, msg_len,
+                                                      &verify_matches));
+         if (!verify_matches) {
+            fp_dbg("Server verify message does not match");
+            ret = FALSE;
+            goto error;
+         }
+         fp_dbg("Server verify message matches");
+         self->tls.established = TRUE;
          self->tls.handshake_state = TLS_HANDSHAKE_FINISHED;
          cont = FALSE;
          break;
@@ -934,8 +909,9 @@ static gboolean parse_and_process_records(FpiDeviceSynapticsMoc *self,
    gboolean ret = TRUE;
    fpi_byte_reader_init(&reader, data, data_len);
 
-   record_t record = {.msg_len = 0};
+   record_t record;
    while ((fpi_byte_reader_get_remaining(&reader) != 0) && read_ok) {
+      record.msg = NULL;
       /* parse record header */
       read_ok &= fpi_byte_reader_get_uint8(&reader, &record.type);
       read_ok &= fpi_byte_reader_get_uint8(&reader, &record.version_major);
@@ -969,12 +945,17 @@ static gboolean parse_and_process_records(FpiDeviceSynapticsMoc *self,
          break;
       case RECORD_TYPE_HANDSHAKE:
          update_handshake_messages_data_record(self, &record);
-         read_ok &= parse_and_process_handshake_record(self, &record);
+         BOOL_CHECK(parse_and_process_handshake_record(self, &record));
          break;
       case RECORD_TYPE_ALERT:;
          guint8 alert_level = record.msg[0];
          guint8 alert_description = record.msg[1];
-         if (read_ok) {
+         if (alert_level == TLS_ALERT_LVL_WARNING &&
+             alert_description == TLS_ALERT_DESC_CLOSE_NOTIFY) {
+            fp_dbg("Remote confirmed TLS session close");
+            self->tls.remote_sends_encrypted = FALSE;
+            self->tls.established = FALSE;
+         } else {
             log_tls_alert_msg(alert_level, alert_description);
          }
          self->tls.handshake_state = TLS_HANDSHAKE_ALERT;
@@ -985,9 +966,16 @@ static gboolean parse_and_process_records(FpiDeviceSynapticsMoc *self,
          fp_err("Got unimplemented record type: %d", record.type);
          goto error;
       }
+      if (record.msg != NULL) {
+         g_free(record.msg);
+         record.msg = NULL;
+      }
    }
 
 error:
+   if (record.msg != NULL) {
+      g_free(record.msg);
+   }
    return ret;
 }
 
@@ -1033,7 +1021,6 @@ append_client_key_exchange_to_record(FpiByteWriter *writer,
    gnutls_pubkey_t pubkey;
    GNUTLS_CHECK(gnutls_pubkey_init(&pubkey));
 
-   // TODO: abstract into kex if not used elsewhere
    // the flag GNUTLS_KEY_DIGITAL_SIGNATURE is a guess
    GNUTLS_CHECK(gnutls_pubkey_import_privkey(pubkey, *privkey,
                                              GNUTLS_KEY_DIGITAL_SIGNATURE, 0));
@@ -1043,18 +1030,19 @@ append_client_key_exchange_to_record(FpiByteWriter *writer,
    GNUTLS_CHECK(gnutls_pubkey_export_ecc_raw(pubkey, NULL, &x, &y));
    gnutls_pubkey_deinit(pubkey);
 
-   // TODO: debug start
+#ifdef TLS_DEBUG
    fp_dbg("exported pubkey");
    fp_dbg("\tx");
    print_array(x.data, x.size);
    fp_dbg("\ty");
    print_array(y.data, y.size);
-   // TODO: debug end
+#endif
 
    /* uncompressed format */
    guint x_offset = x.size - 32;
    guint y_offset = y.size - 32;
 
+#ifdef TLS_DEBUG
    if (x_offset != 0) {
       fp_dbg("x point data before:");
       print_array(x.data, x.size);
@@ -1070,6 +1058,7 @@ append_client_key_exchange_to_record(FpiByteWriter *writer,
       print_array(y.data + y_offset, 32);
       printf("\n");
    }
+#endif
 
    ret &= fpi_byte_writer_put_uint8(writer, 0x4);
    ret &= fpi_byte_writer_put_data(writer, x.data + x_offset, 32);
@@ -1097,29 +1086,28 @@ static gboolean append_certificate_verify_to_record(FpiDeviceSynapticsMoc *self,
    gnutls_datum_t sent_messages_sha256_datum = {.data = sent_messages_sha256,
                                                 .size = sha256_size};
 
-   // TODO: debug start
+#ifdef TLS_DEBUG
    fp_dbg("Messages to certificate veify");
    print_array(self->tls.sent_data, self->tls.sent_data_size);
-   // TODO: debug end
+#endif
 
-   GNUTLS_CHECK(gnutls_hash_fast(GNUTLS_DIG_SHA256, self->tls.sent_data,
-                                 self->tls.sent_data_size,
-                                 &sent_messages_sha256));
+   GNUTLS_CHECK(gnutls_hash_fast(
+       GNUTLS_DIG_SHA256, self->tls.sent_handshake_msgs,
+       self->tls.sent_handshake_msgs_size, &sent_messages_sha256));
 
-   // TODO: debug start
+#ifdef TLS_DEBUG
    fp_dbg("Siging hash:");
    print_array(sent_messages_sha256, sha256_size);
-   // TODO: debug end
+#endif
 
-   // GNUTLS_CHECK(gnutls_privkey_sign_data2(
    GNUTLS_CHECK(gnutls_privkey_sign_hash2(
        self->pairing_data.private_key, GNUTLS_SIGN_ECDSA_SHA256, 0,
        &sent_messages_sha256_datum, &signature));
 
-   // TODO: debug start
+#ifdef TLS_DEBUG
    fp_dbg("Signature:");
    print_array(signature.data, signature.size);
-   // TODO: debug end
+#endif
 
    /* add header */
    ret &= fpi_byte_writer_put_uint8(writer, HS_CERTIFICATE_VERIFY);
@@ -1137,11 +1125,15 @@ static gboolean encrypt_record(FpiDeviceSynapticsMoc *self,
                                record_t *record_to_encrypt, guint8 **ctext,
                                gsize *ctext_len)
 {
+#ifdef TLS_DEBUG
    printf("Encrypting record msg:\n");
    print_array(record_to_encrypt->msg, record_to_encrypt->msg_len);
+#endif
 
    gboolean ret = TRUE;
    gboolean crypt_initialized = FALSE;
+
+   gnutls_datum_t gcm_iv = {.data = NULL, .size = 0};
 
    // Setup storage for additional data
    gsize additional_data_size =
@@ -1153,7 +1145,6 @@ static gboolean encrypt_record(FpiDeviceSynapticsMoc *self,
    GNUTLS_CHECK(gnutls_rnd(GNUTLS_RND_NONCE, &nonce, sizeof(nonce)));
 
    // create GCM IV = encryption_iv + nonce
-   gnutls_datum_t gcm_iv;
    g_assert(self->tls.encryption_iv.size != 0);
    gcm_iv.size = sizeof(nonce) + self->tls.encryption_iv.size;
    gcm_iv.data = g_malloc(gcm_iv.size * sizeof(*gcm_iv.data));
@@ -1161,15 +1152,15 @@ static gboolean encrypt_record(FpiDeviceSynapticsMoc *self,
           self->tls.encryption_iv.size);
    FP_WRITE_UINT64_BE(gcm_iv.data + self->tls.encryption_iv.size, nonce);
 
-   // // TODO: debug start
-   // fp_dbg("\nEncryption nonce: %lu", nonce);
-   // fp_dbg("\nEncryption IV:");
-   // print_array(self->tls.encryption_iv.data, self->tls.encryption_iv.size);
-   // fp_dbg("GCM IV:");
-   // print_array(gcm_iv.data, gcm_iv.size);
-   // fp_dbg("Enctyption key:");
-   // print_array(self->tls.encryption_key.data, self->tls.encryption_key.size);
-   // // TODO: debug end
+#ifdef TLS_DEBUG
+   fp_dbg("\nEncryption nonce: %lu", nonce);
+   fp_dbg("\nEncryption IV:");
+   print_array(self->tls.encryption_iv.data, self->tls.encryption_iv.size);
+   fp_dbg("GCM IV:");
+   print_array(gcm_iv.data, gcm_iv.size);
+   fp_dbg("Encryption key:");
+   print_array(self->tls.encryption_key.data, self->tls.encryption_key.size);
+#endif
 
    // Initialize GCM cipher
    g_assert(self->tls.cipher_alg == GNUTLS_CIPHER_AES_256_GCM);
@@ -1185,19 +1176,15 @@ static gboolean encrypt_record(FpiDeviceSynapticsMoc *self,
    fpi_byte_writer_init_with_data(&writer, additional_data,
                                   additional_data_size, FALSE);
    written &= fpi_byte_writer_put_uint64_be(&writer, self->tls.encrypt_seq_num);
-   written &= fpi_byte_writer_put_uint8(&writer, record_to_encrypt->type);
-   written &=
-       fpi_byte_writer_put_uint8(&writer, record_to_encrypt->version_major);
-   written &=
-       fpi_byte_writer_put_uint8(&writer, record_to_encrypt->version_minor);
+   written &= write_record_header(&writer, record_to_encrypt);
    written &=
        fpi_byte_writer_put_uint16_be(&writer, record_to_encrypt->msg_len);
    g_assert(written); // NOTE: this should have no way of failing
 
-   // // TODO: debug start
-   // fp_dbg("Encryption - auth data:");
-   // print_array(additional_data, additional_data_size);
-   // // TODO: debug end
+#ifdef TLS_DEBUG
+   fp_dbg("Encryption - auth data:");
+   print_array(additional_data, additional_data_size);
+#endif
 
    // TODO: check - maximul encrypted size = plaintext_size + tag_size
    // Allocate for result
@@ -1219,8 +1206,10 @@ static gboolean encrypt_record(FpiDeviceSynapticsMoc *self,
 
    self->tls.encrypt_seq_num += 1;
 
+#ifdef TLS_DEBUG
    printf("Encrypted:\n");
    print_array(*ctext, *ctext_len);
+#endif
 
 error:
    if (crypt_initialized) {
@@ -1229,6 +1218,9 @@ error:
    if (!ret && *ctext != NULL) {
       g_free(*ctext);
       *ctext = NULL;
+   }
+   if (gcm_iv.data != NULL) {
+      g_free(gcm_iv.data);
    }
 
    return ret;
@@ -1243,32 +1235,34 @@ append_encrypted_handshake_finish_to_record(FpiDeviceSynapticsMoc *self,
    const gsize sha256_size = 32;
    const gsize prf_size = 12;
    guint8 sent_messages_sha256[sha256_size];
-   guint8 *tls_prf_output = NULL;
-   guint8 *to_encrypt = NULL;
+   g_autofree guint8 *tls_prf_output = NULL;
+   g_autofree guint8 *to_encrypt = NULL;
    gsize to_encrypt_size = 0;
-   guint8 *encrypted = NULL;
+   g_autofree guint8 *encrypted = NULL;
    gsize encrypted_size = 0;
    const gsize header_size = 4;
 
-   // TODO: debug start
+#ifdef TLS_DEBUG
    fp_dbg("Handshake finished sent messages:");
    print_array(self->tls.sent_data, self->tls.sent_data_size);
-   // TODO: debug end
+#endif
 
-   GNUTLS_CHECK(gnutls_hash_fast(GNUTLS_DIG_SHA256, self->tls.sent_data,
-                                 self->tls.sent_data_size,
-                                 sent_messages_sha256));
-   // TODO: debug start
+   GNUTLS_CHECK(gnutls_hash_fast(
+       GNUTLS_DIG_SHA256, self->tls.sent_handshake_msgs,
+       self->tls.sent_handshake_msgs_size, sent_messages_sha256));
+#ifdef TLS_DEBUG
    fp_dbg("Handshake finished sent messages hash:");
    print_array(sent_messages_sha256, sizeof(sent_messages_sha256));
-   // TODO: debug end
+#endif
 
    BOOL_CHECK(tls_prf(self->tls.master_secret, "client finished",
                       sent_messages_sha256, sha256_size, &tls_prf_output,
                       prf_size));
 
+#ifdef TLS_DEBUG
    fp_dbg("tls prf client finished output:");
    print_array(tls_prf_output, prf_size);
+#endif
 
    // Get data to encrypt
    to_encrypt_size = header_size + prf_size;
@@ -1295,22 +1289,13 @@ append_encrypted_handshake_finish_to_record(FpiDeviceSynapticsMoc *self,
    ret &= fpi_byte_writer_put_data(writer, encrypted, encrypted_size);
 
 error:
-   if (tls_prf_output != NULL) {
-      g_free(tls_prf_output);
-   }
-   if (to_encrypt != NULL) {
-      g_free(to_encrypt);
-   }
-   if (encrypted != NULL) {
-      g_free(encrypted);
-   }
    return ret;
 }
 
 static gboolean generate_and_store_aead_keys(FpiDeviceSynapticsMoc *self)
 {
    gboolean ret = TRUE;
-   guint8 *data = NULL;
+   g_autofree guint8 *data = NULL;
 
    gsize key_size = self->tls.encryption_key.size;
    if (!tls_prf(self->tls.master_secret, "key expansion",
@@ -1319,15 +1304,17 @@ static gboolean generate_and_store_aead_keys(FpiDeviceSynapticsMoc *self)
       ret = FALSE;
       goto error;
    }
-   // printf("key expansion data:\n");
-   // print_array(data, 4 * key_size);
+
+#ifdef TLS_DEBUG
+   printf("key expansion data:\n");
+   print_array(data, 4 * key_size);
+#endif
 
    g_assert(self->tls.encryption_key.size != 0);
    g_assert(self->tls.decryption_key.size != 0);
    g_assert(self->tls.encryption_iv.size != 0);
    g_assert(self->tls.decryption_iv.size != 0);
 
-   // FIXME: g_free in close
    /* store parameters */
    guint offset = 0;
    self->tls.encryption_key.data =
@@ -1348,9 +1335,6 @@ static gboolean generate_and_store_aead_keys(FpiDeviceSynapticsMoc *self)
    g_assert(offset <= 4 * key_size);
 
 error:
-   if (data != NULL) {
-      g_free(data);
-   }
    return ret;
 }
 
@@ -1400,65 +1384,137 @@ static gboolean serialize_record(const record_t *to_serialize,
    return ret;
 }
 
-// gboolean tls_wrap(FpiDeviceSynapticsMoc *self, guint8 *ptext, gsize
-// ptext_size,
-//                   guint8 **ctext, gsize *ctext_size)
-// {
-//    gboolean ret = TRUE;
-//    guint8 *encrypted_msg = NULL;
-//    gsize encrypted_msg_size = 0;
-//
-//    if (!self->tls.established) {
-//       g_warning("Calling wrap while tls is not established");
-//       *ctext = ptext;
-//       *ctext_size = ptext_size;
-//       return ret;
-//    }
-//
-//    BOOL_CHECK(
-//        encrypt(self, ptext, ptext_size, &encrypted_msg,
-//        &encrypted_msg_size));
-//
-//    record_t record_to_send = {.type = RECORD_TYPE_APPLICATION_DATA,
-//                               .version_major = self->tls.version_major,
-//                               .version_minor = self->tls.version_minor,
-//                               .msg = encrypted_msg,
-//                               .msg_len = encrypted_msg_size};
-//
-//    BOOL_CHECK(serialize_record(&record_to_send, ctext, ctext_size));
-//
-// error:
-//    if (encrypted_msg != NULL) {
-//       g_free(encrypted_msg);
-//    }
-//    return ret;
-// }
-
-gboolean tls_close_sesion(FpiDeviceSynapticsMoc *self, GError *error)
+gboolean tls_wrap(FpiDeviceSynapticsMoc *self, guint8 *ptext, gsize ptext_size,
+                  guint8 **ctext, gsize *ctext_size)
 {
    gboolean ret = TRUE;
-   record_t record_to_send = {
+   gboolean written = TRUE;
+   guint8 *encrypted_msg = NULL;
+
+   if (!self->tls.established) {
+      g_warning("Calling wrap while tls is not established");
+      *ctext = ptext;
+      *ctext_size = ptext_size;
+      return ret;
+   }
+
+   record_t record_to_encrypt = {
+       .type = RECORD_TYPE_APPLICATION_DATA,
+       .version_major = self->tls.version_major,
+       .version_minor = self->tls.version_minor,
+       .msg = ptext,
+       .msg_len = ptext_size,
+   };
+
+   guint8 *encrypted_record = NULL;
+   gsize encrypted_record_size = 0;
+   BOOL_CHECK(encrypt_record(self, &record_to_encrypt, &encrypted_record,
+                             &encrypted_record_size));
+
+   *ctext_size = RECORD_HEADER_SIZE + encrypted_record_size;
+   *ctext = g_malloc(*ctext_size);
+
+   FpiByteWriter writer;
+   fpi_byte_writer_init_with_data(&writer, *ctext, *ctext_size, FALSE);
+   written &= write_record_header(&writer, &record_to_encrypt);
+   written &= fpi_byte_writer_put_uint16_be(&writer, encrypted_record_size);
+   written &= fpi_byte_writer_put_data(&writer, encrypted_record,
+                                       encrypted_record_size);
+
+   WRITTEN_CHECK(written);
+
+error:
+   if (!ret && *ctext != NULL) {
+      g_free(*ctext);
+      *ctext = NULL;
+   }
+   if (encrypted_record != NULL) {
+      g_free(encrypted_record);
+   }
+   if (encrypted_msg != NULL) {
+      g_free(encrypted_msg);
+   }
+   return ret;
+}
+
+gboolean tls_unwrap(FpiDeviceSynapticsMoc *self, guint8 *ctext,
+                    gsize ctext_size, guint8 **ptext, gsize *ptext_size)
+{
+   gboolean ret = TRUE;
+
+   if (!self->tls.established) {
+      g_warning("Calling unwrap while tls is not established");
+      *ptext = ctext;
+      *ptext_size = ctext_size;
+      return ret;
+   }
+
+   record_t encrypted_record = {0};
+   BOOL_CHECK(read_record(ctext, ctext_size, &encrypted_record));
+
+   BOOL_CHECK(decrypt_record(self, &encrypted_record, ptext, ptext_size));
+
+   if (encrypted_record.type == RECORD_TYPE_ALERT) {
+      log_tls_alert_msg((*ptext)[0], (*ptext)[1]);
+      self->tls.established = FALSE;
+      self->tls.remote_sends_encrypted = FALSE;
+      ret = FALSE;
+   }
+
+error:
+   if (!ret && *ptext != NULL) {
+      g_free(*ptext);
+      *ptext = NULL;
+   }
+   if (encrypted_record.msg != NULL) {
+      g_free(encrypted_record.msg);
+   }
+   return ret;
+}
+
+gboolean tls_close_session(FpiDeviceSynapticsMoc *self, GError *error)
+{
+   gboolean ret = TRUE;
+
+   g_autofree guint8 *send_data = NULL;
+   g_autofree guint8 *recv_data = NULL;
+   g_autofree guint8 *encrypted = NULL;
+
+   record_t record_to_encrypt = {
        .type = RECORD_TYPE_ALERT,
        .version_major = self->tls.version_major,
        .version_minor = self->tls.version_minor,
        .msg_len = 2,
    };
 
-   guint8 msg[record_to_send.msg_len];
+   guint8 msg[record_to_encrypt.msg_len];
    msg[0] = TLS_ALERT_LVL_WARNING;
    msg[1] = TLS_ALERT_DESC_CLOSE_NOTIFY;
-   record_to_send.msg = msg;
+   record_to_encrypt.msg = msg;
 
-   guint8 *recv_data;
-   gsize recv_data_size;
+   gsize encrypted_size = 0;
    BOOL_CHECK(
-       send_tls(self, &record_to_send, 1, &recv_data, &recv_data_size, error));
+       encrypt_record(self, &record_to_encrypt, &encrypted, &encrypted_size));
+
+   // turn if off now, as we do not want the encrypted command to be wrapped
+   self->tls.established = FALSE;
+
+   const gsize send_size = RECORD_HEADER_SIZE + encrypted_size;
+   send_data = g_malloc(send_size);
+
+   gboolean written = TRUE;
+   FpiByteWriter writer;
+   fpi_byte_writer_init_with_data(&writer, send_data, send_size, FALSE);
+   written &= write_record_header(&writer, &record_to_encrypt);
+   written &= fpi_byte_writer_put_uint16_be_inline(&writer, encrypted_size);
+   written &= fpi_byte_writer_put_data(&writer, encrypted, encrypted_size);
+   WRITTEN_CHECK(written);
+
+   gsize recv_data_size = 256;
+   BOOL_CHECK(synaptics_secure_connect(self, send_data, send_size, &recv_data,
+                                       &recv_data_size, FALSE));
 
    BOOL_CHECK(parse_and_process_records(self, recv_data, recv_data_size));
-
-   if (recv_data != NULL) {
-      g_free(recv_data);
-   }
 
 error:
    return ret;
@@ -1476,6 +1532,16 @@ static gboolean tls_handshake_state_prepare(FpiDeviceSynapticsMoc *self)
    self->tls.session_id_len = TLS_SESSION_ID_LEN;
    self->tls.session_id = g_malloc0(self->tls.session_id_len);
    self->tls.remote_sends_encrypted = FALSE;
+
+   self->tls.handshake_state += 1; // TLS_HANDSHAKE_START
+
+error:
+   return ret;
+}
+
+gboolean load_sample_pairing_data(FpiDeviceSynapticsMoc *self)
+{
+   gboolean ret = TRUE;
 
    /* load sample certificates for now */
    self->pairing_data.sensor_cert_bytes = sample_sensor_cert;
@@ -1503,7 +1569,7 @@ static gboolean tls_handshake_state_prepare(FpiDeviceSynapticsMoc *self)
 
    GNUTLS_CHECK(gnutls_privkey_verify_params(self->pairing_data.private_key));
 
-   self->tls.handshake_state += 1; // TLS_HANDSHAKE_START
+   self->pairing_data.present = TRUE;
 
 error:
    return ret;
@@ -1513,12 +1579,12 @@ static gboolean tls_handshake_state_start(FpiDeviceSynapticsMoc *self,
                                           GError *error)
 {
    gboolean ret = TRUE;
-   guint8 *recv_data = NULL;
+   g_autofree guint8 *recv_data = NULL;
 
    hello_t client_hello = {.extensions = NULL};
    BOOL_CHECK(init_client_hello(self, &client_hello));
 
-   record_t client_hello_record;
+   record_t client_hello_record = {.msg = NULL};
    BOOL_CHECK(
        get_client_hello_record(self, &client_hello, &client_hello_record));
 
@@ -1528,7 +1594,7 @@ static gboolean tls_handshake_state_start(FpiDeviceSynapticsMoc *self,
    gsize recv_data_size;
 
    BOOL_CHECK(send_tls(self, &client_hello_record, 1, &recv_data,
-                       &recv_data_size, error));
+                       &recv_data_size, TRUE, error));
 
    if (!parse_and_process_records(self, recv_data, recv_data_size)) {
       goto error;
@@ -1536,13 +1602,12 @@ static gboolean tls_handshake_state_start(FpiDeviceSynapticsMoc *self,
 
    self->tls.handshake_state = TLS_HANDSHAKE_END;
 
-   return ret;
 error:
+   if (client_hello_record.msg != NULL) {
+      g_free(client_hello_record.msg);
+   }
    if (client_hello.extensions != NULL) {
       g_free(client_hello.extensions);
-   }
-   if (recv_data != NULL) {
-      g_free(recv_data);
    }
    return ret;
 }
@@ -1594,13 +1659,13 @@ static gboolean calculate_master_secret(FpiDeviceSynapticsMoc *self,
 {
    gboolean ret = TRUE;
 
-   gnutls_datum_t premaster_secret;
+   gnutls_datum_t premaster_secret = {.data = NULL, .size = 0};
    BOOL_CHECK(calculate_premaster_secret(self, privkey, &premaster_secret));
 
-   // TODO: debug start
+#ifdef TLS_DEBUG
    fp_dbg("premaster_secret:");
    print_array(premaster_secret.data, premaster_secret.size);
-   // TODO: debug end
+#endif
 
    /* prepare derive_input */
    memcpy(self->tls.derive_input, self->tls.client_random,
@@ -1610,22 +1675,27 @@ static gboolean calculate_master_secret(FpiDeviceSynapticsMoc *self,
 
    /* calculate master secret */
    self->tls.master_secret.size = MASTER_SECRET_SIZE;
+
+#ifdef TLS_DEBUG
    fp_dbg("calculating master secret form:");
    fp_dbg("\tpremaster secret:");
    print_array(premaster_secret.data, premaster_secret.size);
    fp_dbg("\tseed:");
    print_array(self->tls.derive_input, sizeof(self->tls.derive_input));
+#endif
 
    ret &= tls_prf(premaster_secret, "master secret", self->tls.derive_input,
                   sizeof(self->tls.derive_input), &self->tls.master_secret.data,
                   self->tls.master_secret.size);
-   //
-   // TODO: debug start
+#ifdef TLS_DEBUG
    fp_dbg("master_secret:");
    print_array(self->tls.master_secret.data, self->tls.master_secret.size);
-   // TODO: debug end
+#endif
 
 error:
+   if (premaster_secret.data != NULL) {
+      g_free(premaster_secret.data);
+   }
    return ret;
 }
 
@@ -1634,7 +1704,8 @@ static gboolean tls_handshake_state_end(FpiDeviceSynapticsMoc *self,
 {
    gboolean ret = TRUE;
 
-   guint8 *recv_data = NULL;
+   g_autofree guint8 *recv_data = NULL;
+   gboolean privkey_initialized = FALSE;
 
    record_t records_to_send[3];
    records_to_send[0].msg = NULL;
@@ -1660,11 +1731,12 @@ static gboolean tls_handshake_state_end(FpiDeviceSynapticsMoc *self,
 
    gnutls_privkey_t privkey;
    GNUTLS_CHECK(gnutls_privkey_init(&privkey));
+   privkey_initialized = TRUE;
    GNUTLS_CHECK(gnutls_privkey_generate(
        privkey, GNUTLS_PK_ECDSA,
        GNUTLS_CURVE_TO_BITS(GNUTLS_ECC_CURVE_SECP256R1), 0));
 
-   // TODO: DEBUG start
+#ifdef TLS_DEBUG
    gnutls_datum_t x;
    gnutls_datum_t y;
    gnutls_datum_t k;
@@ -1677,7 +1749,7 @@ static gboolean tls_handshake_state_end(FpiDeviceSynapticsMoc *self,
    print_array(y.data, y.size);
    fp_dbg("\tk");
    print_array(k.data, k.size);
-   // TODO: DEBUG end
+#endif
 
    gsize client_kex_pos_before = fpi_byte_writer_get_pos(&writer);
    written &= append_client_key_exchange_to_record(&writer, &privkey);
@@ -1740,15 +1812,15 @@ static gboolean tls_handshake_state_end(FpiDeviceSynapticsMoc *self,
 
    gsize recv_size;
    BOOL_CHECK(
-       send_tls(self, records_to_send, 3, &recv_data, &recv_size, error));
+       send_tls(self, records_to_send, 3, &recv_data, &recv_size, TRUE, error));
 
    BOOL_CHECK(parse_and_process_records(self, recv_data, recv_size));
 
    self->tls.handshake_state = TLS_HANDSHAKE_FINISHED;
 
 error:
-   if (recv_data != NULL) {
-      g_free(recv_data);
+   if (privkey_initialized) {
+      gnutls_privkey_deinit(privkey);
    }
    if (records_to_send[0].msg != NULL) {
       g_free(records_to_send[0].msg);
@@ -1807,6 +1879,11 @@ gboolean establish_tls_session(FpiDeviceSynapticsMoc *self, GError *error)
          if (!tls_handshake_state_end(self, error)) {
             self->tls.handshake_state = TLS_HANDSHAKE_FAILED;
          }
+         self->tls.sent_handshake_msgs_alloc_size = 0;
+         self->tls.sent_handshake_msgs_size = 0;
+         if (self->tls.sent_handshake_msgs != NULL) {
+            g_free(self->tls.sent_handshake_msgs);
+         }
          break;
 
       case TLS_HANDSHAKE_ALERT:
@@ -1814,6 +1891,11 @@ gboolean establish_tls_session(FpiDeviceSynapticsMoc *self, GError *error)
          break;
 
       case TLS_HANDSHAKE_FAILED:
+         self->tls.sent_handshake_msgs_alloc_size = 0;
+         self->tls.sent_handshake_msgs_size = 0;
+         if (self->tls.sent_handshake_msgs != NULL) {
+            g_free(self->tls.sent_handshake_msgs);
+         }
          self->tls.established = FALSE;
          ret = FALSE;
          goto error;
@@ -1835,6 +1917,40 @@ error:
       // g_error("Error in function %s: %d aka '%s'", __FUNCTION__,
       // error->code,
       g_error("Error in function %s", __FUNCTION__);
+   }
+   return ret;
+}
+
+gboolean verify_sensor_certificate(FpiDeviceSynapticsMoc *self,
+                                   gnutls_pubkey_t sensor_pubkey)
+{
+   gboolean ret = TRUE;
+   gboolean pubkey_initialized = FALSE;
+
+   /* get public key */
+   gnutls_pubkey_t pubkey;
+   GNUTLS_CHECK(gnutls_pubkey_init(&pubkey));
+   pubkey_initialized = TRUE;
+
+   // the flag GNUTLS_KEY_DIGITAL_SIGNATURE is a guess
+   GNUTLS_CHECK(gnutls_pubkey_import_privkey(pubkey,
+                                             self->pairing_data.private_key,
+                                             GNUTLS_KEY_DIGITAL_SIGNATURE, 0));
+
+   // TODO: think of a name for teh constant
+   // everything up to signature size
+   gnutls_datum_t data = {.size = 142,
+                          .data = self->pairing_data.sensor_cert_bytes};
+   gnutls_datum_t signature = {.size = self->pairing_data.sensor_cert.sign_size,
+                               .data =
+                                   self->pairing_data.sensor_cert.sign_data};
+
+   GNUTLS_CHECK(gnutls_pubkey_verify_data2(
+       sensor_pubkey, GNUTLS_SIGN_ECDSA_SHA256, 0, &data, &signature));
+
+error:
+   if (pubkey_initialized) {
+      gnutls_pubkey_deinit(pubkey);
    }
    return ret;
 }

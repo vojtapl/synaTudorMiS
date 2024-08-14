@@ -10,6 +10,7 @@ G_DECLARE_FINAL_TYPE(FpiDeviceSynapticsMoc, fpi_device_synaptics_moc, FPI,
                      DEVICE_SYNAPTICS_MOC, FpDevice)
 
 #define CERTIFICATE_KEY_SIZE 68
+#define SENSOR_EVENT_QUEUE_SIZE 5
 
 typedef enum {
    TLS_HANDSHAKE_PREPARE = 0,
@@ -20,6 +21,22 @@ typedef enum {
    TLS_HANDSHAKE_FAILED,
    TLS_HANDSHAKE_FINISHED,
 } tls_handshake_state_t;
+
+typedef enum {
+   NO_EVENTS = 0,
+   EV_FINGER_DOWN = 1U << 1,
+   EV_FINGER_UP = 1U << 2,
+   /* events EV_3 to EV_9 are unused, but are here for completeness */
+   EV_3 = 1U << 3,
+   EV_4 = 1U << 4,
+   EV_5 = 1U << 5,
+   EV_6 = 1U << 6,
+   EV_7 = 1U << 7,
+   EV_8 = 1U << 8,
+   EV_9 = 1U << 9,
+   EV_FRAME_READY = 1U << 24,
+   NUM_EVENTS,
+} sensor_event_type_t;
 
 typedef struct {
    guint16 status;
@@ -41,7 +58,6 @@ typedef struct {
 } transmission_ssm_data;
 
 typedef struct {
-   // TODO: differentiate / add supported things
    gboolean established;
    guint8 *session_id;
    guint8 session_id_len;
@@ -73,10 +89,17 @@ typedef struct {
    gboolean remote_sends_encrypted;
 
    // for hashing
-   guint8 *sent_data;
-   gsize sent_data_size;
-   gsize sent_data_alloc_size;
+   guint8 *sent_handshake_msgs;
+   gsize sent_handshake_msgs_size;
+   gsize sent_handshake_msgs_alloc_size;
 } tls_t;
+
+typedef struct {
+   guint16 num_current_users;
+   guint16 num_current_templates;
+   guint16 num_current_payloads;
+
+} storage_t;
 
 typedef struct {
    guint16 magic;
@@ -133,10 +156,15 @@ struct _FpiDeviceSynapticsMoc {
 
    pairing_data_t pairing_data;
 
+   // Everything stored on sensor
+   storage_t storage;
+
    // FIXME: init these to zero somewhere
    guint16 event_seq_num;      // current host event sequence number
    guint16 num_pending_events; // number of pending events which are unread
    gboolean event_read_in_legacy_mode;
+   guint num_events_in_queue;
+   sensor_event_type_t event_queue[SENSOR_EVENT_QUEUE_SIZE];
 
    // struct syna_enroll_resp_data enroll_resp_data;
    // syna_state_t state;

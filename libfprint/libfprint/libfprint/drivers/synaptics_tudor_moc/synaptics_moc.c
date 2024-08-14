@@ -10,6 +10,9 @@
 #include "tls.c"
 #include "tls.h"
 
+static db2_id_t cache_tuid = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                              0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+
 G_DEFINE_TYPE(FpiDeviceSynapticsMoc, fpi_device_synaptics_moc, FP_TYPE_DEVICE)
 
 static const FpIdEntry id_table[] = {
@@ -26,34 +29,181 @@ static const FpIdEntry id_table[] = {
     {.vid = 0, .pid = 0, .driver_data = 0}, /* terminating entry */
 };
 
+static gboolean capture_image(FpiDeviceSynapticsMoc *self, guint8 frame_flags,
+                              GError *error)
+{
+   gboolean ret = TRUE;
+
+   fp_dbg("setting event config to EV_FRAME_READY");
+   BOOL_CHECK(send_event_config(self, EV_FRAME_READY, error));
+
+   BOOL_CHECK(send_frame_acq(self, frame_flags, error));
+
+   fpi_device_report_finger_status(FP_DEVICE(self), FP_FINGER_STATUS_NEEDED);
+   fp_dbg("setting event config to EV_FRAME_READY | EV_FINGER_DOWN");
+   BOOL_CHECK(send_event_config(self, EV_FRAME_READY | EV_FINGER_DOWN, error));
+
+   BOOL_CHECK(
+       wait_for_events_blocking(self, EV_FRAME_READY | EV_FINGER_DOWN, error));
+
+   fpi_device_report_finger_status(FP_DEVICE(self), FP_FINGER_STATUS_PRESENT);
+
+   BOOL_CHECK(send_event_config(self, 0, error));
+
+   BOOL_CHECK(send_frame_finish(self, error));
+
+error:
+   return ret;
+}
+
+static gboolean get_enrollment_data(FpiDeviceSynapticsMoc *self,
+                                    db2_id_t payload_id,
+                                    enrollment_t *enrollment, GError *error)
+{
+   gboolean ret = TRUE;
+
+   guint obj_data_size;
+   g_autofree guint8 *obj_data;
+   BOOL_CHECK(send_db2_get_object_data(self, OBJ_TYPE_PAYLOADS, payload_id,
+                                       &obj_data, &obj_data_size, error));
+
+   BOOL_CHECK(get_enrollment_data_from_serialized_container(
+       obj_data, obj_data_size, enrollment));
+
+error:
+   return ret;
+}
+
+static gboolean get_enrollments(FpiDeviceSynapticsMoc *self,
+                                enrollment_t **enrollments,
+                                guint *enrollments_cnt, GError *error)
+{
+   gboolean ret = TRUE;
+
+   guint allocated_enrollments_cnt = 5;
+   *enrollments = g_malloc_n(allocated_enrollments_cnt, sizeof(enrollment_t));
+
+   guint16 tuid_list_len = 0;
+   g_autofree db2_id_t *tuid_list = NULL;
+   g_autofree db2_id_t *payload_list = NULL;
+
+   BOOL_CHECK(send_db2_get_object_list(self, OBJ_TYPE_TEMPLATES, cache_tuid,
+                                       &tuid_list, &tuid_list_len, error));
+   if (tuid_list_len == 0) {
+      fp_dbg("received empty tuid_list");
+      goto error;
+   }
+
+   for (int i = 0; i < tuid_list_len; ++i) {
+      guint16 payload_list_len = 0;
+      fp_dbg("Getting payloads for template_id:");
+      print_array(tuid_list[i], sizeof(db2_id_t));
+      BOOL_CHECK(send_db2_get_object_list(self, OBJ_TYPE_PAYLOADS, tuid_list[i],
+                                          &payload_list, &payload_list_len,
+                                          error));
+      if (payload_list_len == 0) {
+         fp_warn("No payload data for enrollment with tuid:");
+         print_array(tuid_list[i], sizeof(db2_id_t));
+         continue;
+      }
+
+      for (int j = 0; j < payload_list_len; ++j) {
+         fp_dbg("Getting enrollment data for payload_id:");
+         print_array(payload_list[j], sizeof(db2_id_t));
+         BOOL_CHECK(get_enrollment_data(self, payload_list[j],
+                                        &((*enrollments)[*enrollments_cnt]),
+                                        error));
+         *enrollments_cnt += 1;
+
+         if (*enrollments_cnt >= allocated_enrollments_cnt) {
+            allocated_enrollments_cnt *= 2;
+            *enrollments = g_realloc_n(*enrollments, allocated_enrollments_cnt,
+                                       sizeof(enrollment_t));
+         }
+      }
+      if (payload_list != NULL) {
+         g_free(payload_list);
+         payload_list = NULL;
+      }
+   }
+
+error:
+   if (!ret && (*enrollments != NULL)) {
+      g_free(*enrollments);
+      *enrollments = NULL;
+   }
+   return ret;
+}
+
+static FpPrint *fp_print_from_enrollment(FpiDeviceSynapticsMoc *self,
+                                         enrollment_t *enrollment)
+{
+   FpPrint *print;
+   g_autofree gchar *user_id =
+       g_strndup((gchar *)enrollment->user_id, sizeof(user_id_t));
+
+   print = fp_print_new(FP_DEVICE(self));
+
+   GVariant *uid = g_variant_new_fixed_array(
+       G_VARIANT_TYPE_BYTE, enrollment->user_id, sizeof(user_id_t), 1);
+   GVariant *tid = g_variant_new_fixed_array(
+       G_VARIANT_TYPE_BYTE, enrollment->template_id, sizeof(db2_id_t), 1);
+
+   GVariant *data = g_variant_new("(y@ay@ay)", enrollment->finger_id, tid, uid);
+
+   fpi_print_set_type(print, FPI_PRINT_RAW);
+   fpi_print_set_device_stored(print, TRUE);
+   g_object_set(print, "fpi-data", data, NULL);
+   g_object_set(print, "description", user_id, NULL);
+   fpi_print_fill_from_user_id(print, user_id);
+
+   return print;
+}
+
+static gboolean get_template_id_from_print_data(GVariant *data,
+                                                db2_id_t template_id,
+                                                GError *error)
+{
+   gboolean ret = TRUE;
+
+   g_autoptr(GVariant) user_id_var = NULL;
+   g_autoptr(GVariant) tid_var = NULL;
+   g_autofree const guint8 *tid = NULL;
+
+   g_return_val_if_fail(data != NULL, FALSE);
+
+   if (!g_variant_check_format_string(data, "(y@ay@ay)", FALSE)) {
+      error =
+          fpi_device_error_new_msg(FP_DEVICE_ERROR_DATA_INVALID,
+                                   "Print data has invalid fpi-data format");
+      ret = FALSE;
+      goto error;
+   }
+
+   guint8 finger_id = 0;
+   g_variant_get(data, "(y@ay@ay)", finger_id, &tid_var, &user_id_var);
+
+   gsize tid_len = 0;
+   tid = g_variant_get_fixed_array(tid_var, &tid_len, 1);
+   if (tid_len != DB2_ID_SIZE) {
+      error = fpi_device_error_new_msg(
+          FP_DEVICE_ERROR_DATA_INVALID,
+          "Stored template id in print data has invalid size of %lu", tid_len);
+      ret = FALSE;
+      goto error;
+   }
+
+   memcpy(template_id, tid, DB2_ID_SIZE);
+
+error:
+   return ret;
+}
+
 // open -----------------------------------------------------------------------
-
-static void fp_init_ssm_run_state(FpiSsm *ssm, FpDevice *device)
-{
-   FpiDeviceSynapticsMoc *self = FPI_DEVICE_SYNAPTICS_MOC(device);
-
-   switch (fpi_ssm_get_cur_state(self->task_ssm)) {
-      // case INIT_SEND_GET_VERSION:
-      //    break;
-      // case INIT_GET_BOOTLOADER_STATE:
-      //    break;
-   }
-}
-
-static void fp_init_ssm_done(FpiSsm *ssm, FpDevice *dev, GError *error)
-{
-   FpiDeviceSynapticsMoc *self = FPI_DEVICE_SYNAPTICS_MOC(dev);
-   fp_info("Init complete!");
-   if (fpi_ssm_get_error(self->task_ssm)) {
-      error = fpi_ssm_get_error(self->task_ssm);
-   }
-   fpi_device_open_complete(dev, error);
-   self->task_ssm = NULL;
-}
 
 static void synaptics_moc_open(FpDevice *device)
 {
-   fp_dbg("--- open start ---");
+   fp_dbg("==================== open start ====================");
    FpiDeviceSynapticsMoc *self = FPI_DEVICE_SYNAPTICS_MOC(device);
    GError *error = NULL;
 
@@ -73,31 +223,52 @@ static void synaptics_moc_open(FpDevice *device)
    if (!send_get_version(self, &version_data, error)) {
       goto error;
    }
-   // send_test(self, error);
 
    gboolean in_bootloader_mode =
        version_data.product_id == 'B' || version_data.product_id == 'C';
-   g_assert(!in_bootloader_mode);
+   if (in_bootloader_mode) {
+      fp_err("Sensor is in bootloader mode!");
+      g_assert(FALSE);
+   }
 
    guint8 provision_state = version_data.provision_state & 0xF;
    gboolean is_provisioned = provision_state == PROVISION_STATE_PROVISIONED;
    if (is_provisioned) {
+      if (!load_sample_pairing_data(self)) {
+         fp_err("Error while loading sample pairing data");
+         goto error;
+      }
+
       if (!self->pairing_data.present) {
          fp_err("No present pairing_data - need to pair / read from storage!");
-         g_critical("\t-> Not implemented");
+         fp_err("\t-> Not implemented");
          g_assert(FALSE);
       }
 
-      // TODO: verify sensor certificate
+      // TODO:
+      // if (!verify_sensor_certificate(self)) {
+
+   } else {
+      fp_err("Sensor is not paired");
+      fp_err("\t-> Not implemented");
+      g_assert(FALSE);
    }
 
    g_assert(!self->task_ssm);
 
    establish_tls_session(self, error);
 
-   // self->task_ssm = fpi_ssm_new(device, fp_init_ssm_run_state,
-   // INIT_NUM_STATES); fpi_ssm_start(self->task_ssm, fp_init_ssm_done);
-   return;
+   gboolean tls_status = FALSE;
+   get_remote_tls_status(self, &tls_status, error);
+   fp_dbg("remote TLS status before sending: %d", tls_status);
+
+   get_version_t version_data2 = {0};
+   if (!send_get_version(self, &version_data2, error)) {
+      goto error;
+   }
+   tls_status = FALSE;
+   get_remote_tls_status(self, &tls_status, error);
+   fp_dbg("remote TLS status after sending: %d", tls_status);
 
 error:
    fpi_device_open_complete(FP_DEVICE(self), error);
@@ -105,51 +276,155 @@ error:
 
 // close ----------------------------------------------------------------------
 
-static void fp_close_ssm_run_state(FpiSsm *ssm, FpDevice *device)
-{
-   FpiDeviceSynapticsMoc *self = FPI_DEVICE_SYNAPTICS_MOC(device);
-}
-
-static void fp_close_ssm_done(FpiSsm *ssm, FpDevice *dev, GError *error)
-{
-   FpiDeviceSynapticsMoc *self = FPI_DEVICE_SYNAPTICS_MOC(dev);
-   fp_info("close complete!");
-   if (fpi_ssm_get_error(self->task_ssm)) {
-      error = fpi_ssm_get_error(self->task_ssm);
-   }
-   fpi_device_close_complete(dev, error);
-   self->task_ssm = NULL;
-}
-
 static void synaptics_moc_close(FpDevice *device)
 {
-   fp_dbg("--- close start ---");
+   fp_dbg("==================== close start ====================");
+
+   FpiDeviceSynapticsMoc *self = FPI_DEVICE_SYNAPTICS_MOC(device);
+   GError *error = NULL;
+
+   G_DEBUG_HERE();
+
+   g_autoptr(GError) release_error = NULL;
+
+   g_clear_object(&self->interrupt_cancellable);
+
+   if (self->tls.established) {
+      tls_close_session(self, error);
+   }
+   if (self->tls.master_secret.data != NULL) {
+      g_free(self->tls.master_secret.data);
+   }
+   if (self->tls.encryption_key.data != NULL) {
+      g_free(self->tls.encryption_key.data);
+   }
+   if (self->tls.decryption_key.data != NULL) {
+      g_free(self->tls.decryption_key.data);
+   }
+   if (self->tls.encryption_iv.data != NULL) {
+      g_free(self->tls.encryption_iv.data);
+   }
+   if (self->tls.decryption_iv.data != NULL) {
+      g_free(self->tls.decryption_iv.data);
+   }
+   if (self->tls.session_id != NULL) {
+      g_free(self->tls.session_id);
+   }
+   if (self->pairing_data.sensor_cert.sign_data != NULL) {
+      g_free(self->pairing_data.sensor_cert.sign_data);
+   }
+   if (self->pairing_data.host_cert.sign_data != NULL) {
+      g_free(self->pairing_data.host_cert.sign_data);
+   }
+   gnutls_privkey_deinit(self->pairing_data.private_key);
+
+   g_usb_device_release_interface(fpi_device_get_usb_device(FP_DEVICE(self)), 0,
+                                  0, &release_error);
+
+   fpi_device_close_complete(device, release_error);
 }
 
 // enroll ---------------------------------------------------------------------
 
-static void fp_enroll_ssm_run_state(FpiSsm *ssm, FpDevice *device)
-{
-   FpiDeviceSynapticsMoc *self = FPI_DEVICE_SYNAPTICS_MOC(device);
-}
-
-static void fp_enroll_ssm_done(FpiSsm *ssm, FpDevice *dev, GError *error)
-{
-   FpiDeviceSynapticsMoc *self = FPI_DEVICE_SYNAPTICS_MOC(dev);
-   fp_info("enroll complete!");
-   if (fpi_ssm_get_error(self->task_ssm)) {
-      error = fpi_ssm_get_error(self->task_ssm);
-   }
-   // TODO:
-   gpointer print = NULL;
-   fpi_device_enroll_complete(dev, print, error);
-   self->task_ssm = NULL;
-}
-
 static void synaptics_moc_enroll(FpDevice *device)
 {
+   FpiDeviceSynapticsMoc *self = FPI_DEVICE_SYNAPTICS_MOC(device);
+   guint16 finger_id;
+   GError error;
 
-   fp_dbg("--- enroll start ---");
+   G_DEBUG_HERE();
+
+   FpPrint *print = NULL;
+   fpi_device_get_enroll_data(device, &print);
+
+   user_id_t user_id = {0};
+   g_autofree char *user_id_str = fpi_print_generate_user_id(print);
+   gsize user_id_str_len = strlen(user_id_str);
+   memcpy(user_id, user_id_str, user_id_str_len);
+
+   // get finger id
+   finger_id = fp_print_get_finger(print);
+
+   fp_dbg("Trying to enroll print with:");
+   fp_dbg("\tuser_id:");
+   print_array(user_id, sizeof(user_id_t));
+   fp_dbg("\tfinger_id/sub_id: %u", finger_id);
+
+   if (!send_enroll_start(self, &error)) {
+      goto error;
+   }
+
+   // TODO: check if finger_id is already enrolled
+
+   enroll_add_image_t enroll_stats = {0};
+   while (enroll_stats.progress != 100) {
+      if (!send_event_config(self, EV_FINGER_UP, &error)) {
+         goto error;
+      }
+
+      wait_for_events_blocking(self, EV_FINGER_UP, &error);
+
+      if (!capture_image(self, CAPTURE_FLAGS_ENROLL, &error)) {
+         fp_err("capture image failed");
+         goto error;
+      }
+
+      if (!send_enroll_add_image(self, &enroll_stats, &error)) {
+         fp_err("enroll add image failed");
+         goto error;
+      }
+
+      if (enroll_stats.status != 0) {
+         fp_err("status %d != 0", enroll_stats.status);
+         goto error;
+      }
+
+      if (enroll_stats.rejected != 0) {
+         if (enroll_stats.redundant != 0) {
+            fp_info("Image rejected due to being redundant: %u",
+                    enroll_stats.redundant);
+         } else {
+            fp_info("Image rejected due to bad quality: %u%%",
+                    enroll_stats.quality);
+         }
+      } else {
+         fp_info("Image accepted with quality: %u%%", enroll_stats.quality);
+      }
+   }
+
+   g_assert(enroll_stats.progress == 100);
+   fp_info("Enrollment finished with quality %u", enroll_stats.enroll_quality);
+   fp_dbg("Template ID is:");
+   print_array(enroll_stats.tuid, sizeof(db2_id_t));
+
+   if (!add_enrollment(self, user_id, finger_id, enroll_stats.tuid, &error)) {
+      fp_err("Adding enrollment failed");
+      goto error;
+   }
+
+   if (!send_enroll_finish(self, &error)) {
+      fp_err("Sending enroll finish failed");
+      goto error;
+   }
+
+   GVariant *uid = g_variant_new_fixed_array(G_VARIANT_TYPE_BYTE, user_id,
+                                             sizeof(user_id_t), 1);
+   GVariant *tid = g_variant_new_fixed_array(
+       G_VARIANT_TYPE_BYTE, enroll_stats.tuid, sizeof(db2_id_t), 1);
+   GVariant *data = g_variant_new("(y@ay@ay)", finger_id, tid, uid);
+   fpi_print_set_type(print, FPI_PRINT_RAW);
+   fpi_print_set_device_stored(print, TRUE);
+   g_object_set(print, "fpi-data", data, NULL);
+   g_object_set(print, "description", user_id, NULL);
+
+   fpi_device_enroll_complete(device, g_object_ref(print), NULL);
+   return;
+
+error:
+   if (!send_enroll_finish(self, &error)) {
+      fp_err("Sending enroll (finish) cancel failed");
+   }
+   fpi_device_enroll_complete(device, NULL, &error);
 }
 
 // verify ---------------------------------------------------------------------
@@ -172,125 +447,220 @@ static void fp_verify_ssm_done(FpiSsm *ssm, FpDevice *dev, GError *error)
 
 static void synaptics_moc_verify(FpDevice *device)
 {
-   fp_dbg("--- verify start ---");
+   fp_dbg("==================== verify start ====================");
+   FpiDeviceSynapticsMoc *self = FPI_DEVICE_SYNAPTICS_MOC(device);
+   GError *error = NULL;
+   FpPrint *print_to_verify = NULL;
+   g_autoptr(GVariant) fp_data;
+
+   G_DEBUG_HERE();
+
+   if (!capture_image(self, CAPTURE_FLAGS_AUTH, error)) {
+      goto error;
+   }
+
+   guint32 image_quality = 0;
+   if (!send_get_image_metrics(self, MIS_IMAGE_METRICS_IMG_QUALITY,
+                               &image_quality, error)) {
+      goto error;
+   }
+   if (image_quality < IMAGE_QUALITY_THRESHOLD) {
+      fp_info("Image quality %d%% is lower than threshold %d%%", image_quality,
+              IMAGE_QUALITY_THRESHOLD);
+      error = fpi_device_error_new_msg(
+          FP_DEVICE_ERROR_GENERAL,
+          "Image quality %d%% is lower than threshold %d%%", image_quality,
+          IMAGE_QUALITY_THRESHOLD);
+      goto error;
+   }
+
+   fpi_device_get_verify_data(device, &print_to_verify);
+   g_object_get(print_to_verify, "fpi-data", &fp_data, NULL);
+
+   db2_id_t template_id;
+   if (!get_template_id_from_print_data(fp_data, template_id, error)) {
+      goto error;
+   }
+
+   gboolean matched = FALSE;
+   enrollment_t enrollment_match = {0};
+   if (!send_identify_match(self, NULL, 0, &matched, &enrollment_match,
+                            error)) {
+      goto error;
+   }
+   fp_dbg("Identify matched: %d", matched);
+
+   if (matched) {
+      FpPrint *new_scan = fp_print_from_enrollment(self, &enrollment_match);
+      fpi_device_verify_report(device, FPI_MATCH_SUCCESS, new_scan, error);
+
+      fp_dbg("Identify cmd matched enrollment with data:");
+      fp_dbg("\tuser_id");
+      print_array(enrollment_match.user_id, sizeof(user_id_t));
+      fp_dbg("\ttemplate_id");
+      print_array(enrollment_match.template_id, sizeof(db2_id_t));
+      fp_dbg("\tfinger_id: %d", enrollment_match.finger_id);
+
+   } else {
+      // we get no print data on no match
+      fpi_device_verify_report(device, FPI_MATCH_FAIL, NULL, NULL);
+   }
+
+error:
+   fpi_device_verify_complete(device, error);
 }
 
 // identify -------------------------------------------------------------------
 
-static void fp_identify_ssm_run_state(FpiSsm *ssm, FpDevice *device)
-{
-   FpiDeviceSynapticsMoc *self = FPI_DEVICE_SYNAPTICS_MOC(device);
-}
-
-static void fp_identify_ssm_done(FpiSsm *ssm, FpDevice *dev, GError *error)
-{
-   FpiDeviceSynapticsMoc *self = FPI_DEVICE_SYNAPTICS_MOC(dev);
-   fp_info("identify complete!");
-   if (fpi_ssm_get_error(self->task_ssm)) {
-      error = fpi_ssm_get_error(self->task_ssm);
-   }
-   fpi_device_identify_complete(dev, error);
-   self->task_ssm = NULL;
-}
-
 static void synaptics_moc_identify(FpDevice *device)
 {
-
-   fp_dbg("--- identify start ---");
-}
-
-// capture --------------------------------------------------------------------
-
-static void fp_capture_ssm_run_state(FpiSsm *ssm, FpDevice *device)
-{
+   fp_dbg("==================== identify start ====================");
    FpiDeviceSynapticsMoc *self = FPI_DEVICE_SYNAPTICS_MOC(device);
-}
+   GError *error = NULL;
 
-static void fp_capture_ssm_done(FpiSsm *ssm, FpDevice *dev, GError *error)
-{
-   fp_dbg("--- capture start ---");
+   G_DEBUG_HERE();
 
-   FpiDeviceSynapticsMoc *self = FPI_DEVICE_SYNAPTICS_MOC(dev);
-   fp_info("capture complete!");
-   if (fpi_ssm_get_error(self->task_ssm)) {
-      error = fpi_ssm_get_error(self->task_ssm);
+   if (!capture_image(self, CAPTURE_FLAGS_AUTH, error)) {
+      goto error;
    }
-   // TODO:
-   gpointer image = NULL;
-   fpi_device_capture_complete(dev, image, error);
-   self->task_ssm = NULL;
-}
 
-static void synaptics_moc_capture(FpDevice *device) {}
+   guint32 image_quality = 0;
+   if (!send_get_image_metrics(self, MIS_IMAGE_METRICS_IMG_QUALITY,
+                               &image_quality, error)) {
+      goto error;
+   }
+   if (image_quality < IMAGE_QUALITY_THRESHOLD) {
+      fp_info("Image quality %d%% is lower than threshold %d%%", image_quality,
+              IMAGE_QUALITY_THRESHOLD);
+      error = fpi_device_error_new_msg(
+          FP_DEVICE_ERROR_GENERAL,
+          "Image quality %d%% is lower than threshold %d%%", image_quality,
+          IMAGE_QUALITY_THRESHOLD);
+      goto error;
+   }
+
+   gboolean matched = FALSE;
+   enrollment_t enrollment_match = {0};
+   if (!send_identify_match(self, NULL, 0, &matched, &enrollment_match,
+                            error)) {
+      goto error;
+   }
+   fp_dbg("Identify matched: %d", matched);
+
+   if (matched) {
+      FpPrint *matching = NULL;
+      FpPrint *new_scan = fp_print_from_enrollment(self, &enrollment_match);
+
+      fp_dbg("Identify cmd matched enrollment with data:");
+      fp_dbg("\tuser_id");
+      print_array(enrollment_match.user_id, sizeof(user_id_t));
+      fp_dbg("\ttemplate_id");
+      print_array(enrollment_match.template_id, sizeof(db2_id_t));
+      fp_dbg("\tfinger_id: %d", enrollment_match.finger_id);
+
+      GPtrArray *templates = NULL;
+      fpi_device_get_identify_data(device, &templates);
+      for (gint i = 0; i < templates->len; ++i) {
+         if (fp_print_equal(g_ptr_array_index(templates, i), new_scan)) {
+            matching = g_ptr_array_index(templates, i);
+            break;
+         }
+      }
+      fpi_device_identify_report(device, matching, new_scan, NULL);
+   } else {
+      // we get no print data on no match
+      fpi_device_identify_report(device, NULL, NULL, NULL);
+   }
+
+error:
+   fpi_device_identify_complete(device, error);
+}
 
 // list -----------------------------------------------------------------------
 
-static void fp_list_ssm_run_state(FpiSsm *ssm, FpDevice *device)
-{
-   FpiDeviceSynapticsMoc *self = FPI_DEVICE_SYNAPTICS_MOC(device);
-}
-
-static void fp_list_ssm_done(FpiSsm *ssm, FpDevice *dev, GError *error)
-{
-   FpiDeviceSynapticsMoc *self = FPI_DEVICE_SYNAPTICS_MOC(dev);
-   fp_info("list complete!");
-   if (fpi_ssm_get_error(self->task_ssm)) {
-      error = fpi_ssm_get_error(self->task_ssm);
-   }
-   gpointer list = NULL;
-   fpi_device_list_complete(dev, list, error);
-   self->task_ssm = NULL;
-}
-
 static void synaptics_moc_list(FpDevice *device)
 {
-   fp_dbg("--- list start ---");
+   fp_dbg("==================== list start ====================");
+   FpiDeviceSynapticsMoc *self = FPI_DEVICE_SYNAPTICS_MOC(device);
+   GError error;
+
+   guint enrollment_cnt = 0;
+   g_autofree enrollment_t *enrollment_array;
+   if (!get_enrollments(self, &enrollment_array, &enrollment_cnt, &error)) {
+      fp_info("Unable to get database data");
+      fpi_device_list_complete(device, NULL, &error);
+   }
+
+   if (enrollment_cnt == 0) {
+      fpi_device_list_complete(
+          device, NULL,
+          fpi_device_error_new_msg(FP_DEVICE_ERROR_DATA_FULL,
+                                   "Database is empty"));
+   }
+
+   g_autoptr(GPtrArray) list_result = NULL;
+   list_result = g_ptr_array_new_with_free_func(g_object_unref);
+
+   for (int i = 0; i < enrollment_cnt; ++i) {
+      FpPrint *print = fp_print_from_enrollment(self, &enrollment_array[i]);
+      g_ptr_array_add(list_result, g_object_ref_sink(print));
+   }
+
+   fp_info("Query templates complete!");
+   fpi_device_list_complete(device, g_steal_pointer(&list_result), NULL);
 }
 
 // delete_print ---------------------------------------------------------------
 
-static void fp_delete_print_ssm_run_state(FpiSsm *ssm, FpDevice *device)
-{
-   FpiDeviceSynapticsMoc *self = FPI_DEVICE_SYNAPTICS_MOC(device);
-}
-
-static void fp_delete_print_ssm_done(FpiSsm *ssm, FpDevice *dev, GError *error)
-{
-   FpiDeviceSynapticsMoc *self = FPI_DEVICE_SYNAPTICS_MOC(dev);
-   fp_info("delete_print complete!");
-   if (fpi_ssm_get_error(self->task_ssm)) {
-      error = fpi_ssm_get_error(self->task_ssm);
-   }
-   fpi_device_delete_complete(dev, error);
-   self->task_ssm = NULL;
-}
-
 static void synaptics_moc_delete_print(FpDevice *device)
 {
-   fp_dbg("--- delete start ---");
+   fp_dbg("==================== delete start ====================");
+   FpiDeviceSynapticsMoc *self = FPI_DEVICE_SYNAPTICS_MOC(device);
+   GError *error = NULL;
+
+   FpPrint *print;
+   fpi_device_get_delete_data(device, &print);
+
+   g_autoptr(GVariant) data = NULL;
+   g_object_get(print, "fpi-data", &data, NULL);
+
+   db2_id_t template_id;
+   if (!get_template_id_from_print_data(data, template_id, error)) {
+      fpi_device_delete_complete(
+          device, fpi_device_error_new_msg(
+                      FP_DEVICE_ERROR_DATA_INVALID,
+                      "Unable to get template id from print fpi-data"));
+      return;
+   }
+
+   fp_dbg("Deleting print with template ID:");
+   print_array(template_id, DB2_ID_SIZE);
+
+   fp_warn("TEST5");
+
+   if (!send_db2_delete_object(self, OBJ_TYPE_TEMPLATES, &template_id, error)) {
+      fpi_device_delete_complete(device, error);
+   }
+
+   fpi_device_delete_complete(device, NULL);
 }
 
 // clear_storage --------------------------------------------------------------
 
-static void fp_clear_storage_ssm_run_state(FpiSsm *ssm, FpDevice *device)
-{
-   FpiDeviceSynapticsMoc *self = FPI_DEVICE_SYNAPTICS_MOC(device);
-}
-
-static void fp_clear_storage_ssm_done(FpiSsm *ssm, FpDevice *dev, GError *error)
-{
-   FpiDeviceSynapticsMoc *self = FPI_DEVICE_SYNAPTICS_MOC(dev);
-   fp_info("clear_storage complete!");
-   if (fpi_ssm_get_error(self->task_ssm)) {
-      error = fpi_ssm_get_error(self->task_ssm);
-   }
-   fpi_device_clear_storage_complete(dev, error);
-   self->task_ssm = NULL;
-}
-
 static void synaptics_moc_clear_storage(FpDevice *device)
 {
-   fp_dbg("--- clear_storage start ---");
+   fp_dbg("==================== clear storage start ====================");
+   FpiDeviceSynapticsMoc *self = FPI_DEVICE_SYNAPTICS_MOC(device);
+   GError error;
+
+   if (!send_db2_format(self, &error)) {
+      goto error;
+   }
+
+error:
+   // FIXME:
+   // fpi_device_clear_storage_complete(device, &error);
+   fpi_device_clear_storage_complete(device, NULL);
 }
 
 // cancel ---------------------------------------------------------------------
@@ -312,28 +682,28 @@ static void fp_cancel_ssm_done(FpiSsm *ssm, FpDevice *dev, GError *error)
 
 static void synaptics_moc_cancel(FpDevice *device)
 {
-   fp_dbg("--- cancel start ---");
+   fp_dbg("==================== cancel start ====================");
 }
 
 // suspend --------------------------------------------------------------------
 
 static void synaptics_moc_suspend(FpDevice *device)
 {
-   fp_dbg("--- suspend start ---");
+   fp_dbg("==================== suspend start ====================");
 }
 
 // resume ---------------------------------------------------------------------
 
 static void synaptics_moc_resume(FpDevice *device)
 {
-   fp_dbg("--- resume start ---");
+   fp_dbg("==================== resume start ====================");
 }
 
 // ----------------------------------------------------------------------------
 
 static void fpi_device_synaptics_moc_init(FpiDeviceSynapticsMoc *self)
 {
-   fp_dbg("--- init start ---");
+   fp_dbg("==================== init start ====================");
 }
 
 static void
@@ -354,20 +724,20 @@ fpi_device_synaptics_moc_class_init(FpiDeviceSynapticsMocClass *klass)
    dev_class->temp_hot_seconds = -1;
    dev_class->temp_cold_seconds = -1;
 
-   // dev_class->usb_discover = synaptics_moc_usb_discover;
-   // dev_class->probe = synaptics_moc_probe;
+   // dev_class->usb_discover
+   // dev_class->probe
    dev_class->open = synaptics_moc_open;
    dev_class->close = synaptics_moc_close;
    dev_class->enroll = synaptics_moc_enroll;
    dev_class->verify = synaptics_moc_verify;
    dev_class->identify = synaptics_moc_identify;
-   dev_class->capture = synaptics_moc_capture;
+   // dev_class->capture
    dev_class->list = synaptics_moc_list;
    dev_class->delete = synaptics_moc_delete_print;
    dev_class->clear_storage = synaptics_moc_clear_storage;
-   dev_class->cancel = synaptics_moc_cancel;
-   dev_class->suspend = synaptics_moc_suspend;
-   dev_class->resume = synaptics_moc_resume;
+   // dev_class->cancel = synaptics_moc_cancel;
+   // dev_class->suspend = synaptics_moc_suspend;
+   // dev_class->resume = synaptics_moc_resume;
 
    fpi_device_class_auto_initialize_features(dev_class);
 }
