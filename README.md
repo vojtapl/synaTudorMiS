@@ -68,6 +68,7 @@ The fingerprint reader in my laptop (06CB:00FF) does not seem to support raw fra
 - FW = firmware
 - SBL = ?
 - MiS = match in sensor
+- qm = Synaptics Quantum Matcher
 
 
 ### Acknowledgment

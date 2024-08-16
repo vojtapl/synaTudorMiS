@@ -5,8 +5,9 @@ This folder will hopefully contain a patched version of libfprint, which works w
 - what not to leave for completeness
 ### Next up:
 - suspend, resume
-- cancel
 - what remains in class init
+- printing an array for debug without printf
+- reporting statuses
 - using glib functions
 - error handling
 - memory checking

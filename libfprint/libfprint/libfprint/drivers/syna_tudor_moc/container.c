@@ -1,3 +1,26 @@
+/*
+ * Synaptics Tudor Match-In-Sensor driver for libfprint
+ *
+ * Copyright (c) 2024 Vojtěch Pluskal
+ *
+ * some parts are based on work of Popax21 see:
+ * https://github.com/Popax21/synaTudor/tree/rev
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+ */
+
 #include "container.h"
 #include "fpi-byte-writer.h"
 #include "fpi-device.h"
@@ -62,8 +85,8 @@ gboolean deserialize_container(const guint8 *serialized,
                                    &((*cont)[*cont_item_cnt].data));
       if (read_ok) {
 #ifdef CONTAINER_DEBUG
-         print_array((*cont)[*cont_item_cnt].data,
-                     (*cont)[*cont_item_cnt].data_size);
+         fp_dbg_large_hex((*cont)[*cont_item_cnt].data,
+                          (*cont)[*cont_item_cnt].data_size);
 #endif
          *cont_item_cnt += 1;
 
@@ -104,7 +127,8 @@ gboolean get_container_with_id_index(container_item_t *container,
 
 gboolean get_enrollment_data_from_serialized_container(const guint8 *data,
                                                        const gsize data_size,
-                                                       enrollment_t *enrollment)
+                                                       enrollment_t *enrollment,
+                                                       GError **error)
 {
    gboolean ret = TRUE;
 
@@ -127,22 +151,27 @@ gboolean get_enrollment_data_from_serialized_container(const guint8 *data,
                                           ENROLL_TAG_FINGER_ID,
                                           &finger_id_idx));
 
-   if (container_array[template_id_idx].data_size != sizeof(db2_id_t)) {
+   if (container_array[template_id_idx].data_size != DB2_ID_SIZE) {
       fp_err("Container item at id: %d has invalid size: %d for template_id, "
              "which requires: %lu",
              template_id_idx, container_array[template_id_idx].data_size,
              sizeof(template_id_idx));
+      *error = fpi_device_error_new_msg(FP_DEVICE_ERROR_GENERAL,
+                                        "container item has invalid size");
+
       ret = FALSE;
       goto error;
    }
    memcpy(enrollment->template_id, container_array[template_id_idx].data,
-          sizeof(db2_id_t));
+          DB2_ID_SIZE);
 
    if (container_array[user_id_idx].data_size != sizeof(user_id_t)) {
       fp_err("Container item at id: %d has invalid size: %d for user_id, which "
              "requires: %lu",
              user_id_idx, container_array[user_id_idx].data_size,
              sizeof(user_id_idx));
+      *error = fpi_device_error_new_msg(FP_DEVICE_ERROR_GENERAL,
+                                        "container item has invalid size");
       ret = FALSE;
       goto error;
    }
@@ -155,6 +184,8 @@ gboolean get_enrollment_data_from_serialized_container(const guint8 *data,
           "requires: %lu",
           finger_id_idx, container_array[finger_id_idx].data_size,
           sizeof(guint8));
+      *error = fpi_device_error_new_msg(FP_DEVICE_ERROR_GENERAL,
+                                        "container item has invalid size");
       ret = FALSE;
       goto error;
    }

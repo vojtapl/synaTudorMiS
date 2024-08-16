@@ -177,7 +177,7 @@
         00000000 - exit (SSI_IOCTL_CODE_BL_ENTER)
         00000010 - enter (VCSDRV_IOCTL_WRITE_DFT)
 
-- 0x7d: bootloader patch (VCSFW_CMD_BOOTLDR_PATCH, SSI_IOCTL_CODE_BL_PATCH_LOAD)
+- 0x7d: bootloader patch (VCSFW_CMD_BOOTLDR_PATCH)
     - req:
         1-*: patch data
     - resp: size: 2
@@ -234,7 +234,7 @@
            14: param_4
            15: 1
            16: (0)
-    - resp: size: 2
+    - resp: size: 2connect
 
 - 0x81: frame finish (VCSFW_CMD_FRAME_FINISH)
     - in tudorCmdFrameFinish:
@@ -308,7 +308,7 @@
         12-13: frame number
         14-14+buffer_len: frame stream
 
-- 0x8e: read iota (VCSFW_CMD_IOTA_FIND, SSI_IOCTL_CODE_IOTA_READ)
+- 0x8e: read iota (VCSFW_CMD_IOTA_FIND)
     - in tudorCmdIotaRead
         - req: size: 17
             1-2: IOTA id
@@ -390,10 +390,12 @@
            1-4: 4=finish
         - resp: size: 2
 
-- 0x99: identify match
+- 0x99: identify match (VCSFW_CMD_IDENTIFY_CONDITIONAL_WBF_MATCH)
   - in misIdentifyMatchCmd
      - req: size: 0xd + 0x10*sizeof(smt) + sizeof(smt2)
-        1-4:  1
+        1-4:  subcommand 1
+           1 = VCSFW_CMD_IDENTIFY_WBF_MATCH
+           3 = VCSFW_CMD_IDENTIFY_CONDITIONAL_WBF_MATCH (has different structure)
         5-8:  numTuidsToMatch
         9-12: sizeof(someDataX)
         13-:  someDataX or tuidsToMatch (only one used)
@@ -537,7 +539,7 @@
      - resp: size: 4
         2-3: no of deleted objects
 
-- 0xa4: cleanup
+- 0xa4: VCSFW_CMD_DB2_CLEANUP
      - req: size: 2
         1: (1)
      - resp: size: 8
@@ -586,11 +588,23 @@
         17-20: (0)
     - resp: size: 2
 
+- 0xab: (from synaWudfBioUsb108.dll) VCSFW_CMD_EXTSIG
+   - req: size 37
+      1-4: subcommand
+         3 = VCSFW_SUBCMD_EXTSIG_WRITE
+      5-9:
+      9-16:
+      17-:
+   - resp: size 2
+
+
 - 0xac: *SSO* (VCSFW_CMD_SSO)
 
 - 0xae: OPINFO_GET (VCSFW_CMD_OPINFO_GET)
     - req: size: 1 + sizeof(paramBlob)
     - resp: size: ?
+    - something: VCSFW_OPINFO_GET_CMD_READ_BY_TAGID
+
 
 - 0xaf: VCSFW_CMD_HW_INFO_GET
   - in query_HW_SBL_info
@@ -616,11 +630,14 @@
         16: PkgInfoSubId2
         17:
 
+- 0xb4: (from synaWudfBioUsb162.dll) VCSFW_CMD_GET_VERSION2
+- 0xe5: (from synaWudfBioUsb162.dll) VCSFW_CMD_EXT_COMMAND
+
 
 ### responses:
 - base structure:
     0-1: status
-- specific error code:
+- cmd status to vcs result
     0x000 -> 0
     0x401 -> 0x0d1 = VCS_RESULT_SENSOR_BAD_CMD
     0x403 -> 0x076 = VCS_RESULT_GEN_OBJECT_DOESNT_EXIST
@@ -636,8 +653,10 @@
     0x5cc -> 0
     0x680 -> 0x1f5 = VCS_RESULT_DB_FULL
     0x683 -> 0x076 = VCS_RESULT_GEN_OBJECT_DOESNT_EXIST
+    0x689 -> 0x068 = VCS_RESULT_GEN_OPERATION_DENIED
     0x6e0 -> 0x0dc =
     0x6ea -> 0x0df - used in CMD_FRAME_ACQ - likely smt. like processing
+    0x70e -> 0 (synaWudfBioUsb162)
 
     other -> 0x0ca = VCS_RESULT_SENSOR_MALFUNCTIONED
     others received:
@@ -648,7 +667,6 @@
         0x6db
         0x6e1 - when reading a host partition - read out of range
         0x6e7 - when reading a valid partition id which is not 2
-
 
 ### provision states:
 - 0,1: not provisioned

@@ -1,5 +1,24 @@
 /*
- * TODO: header
+ * Synaptics Tudor Match-In-Sensor driver for libfprint
+ *
+ * Copyright (c) 2024 Vojtěch Pluskal
+ *
+ * some parts are based on work of Popax21 see:
+ * https://github.com/Popax21/synaTudor/tree/rev
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #pragma once
@@ -43,7 +62,6 @@
 
 #define WRAP_RESPONSE_ADDITIONAL_SIZE 0x45
 #define MATCH_STATS_SIZE 36
-#define EVENT_WAIT_TIMEOUT_MS 60000
 #define SENSOR_FW_CMD_HEADER_LEN 1
 #define SENSOR_FW_REPLY_HEADER_LEN 2
 #define DB2_ID_SIZE 16
@@ -105,6 +123,11 @@ typedef enum {
    ENROLL_SUBCMD_FINISH = 4,
 } enroll_subcmd_t;
 
+typedef enum {
+   VCSFW_CMD_IDENTIFY_WBF_MATCH = 1,
+   VCSFW_CMD_IDENTIFY_CONDITIONAL_WBF_MATCH = 3,
+} identify_subcmd_t;
+
 /* Response structs =========================================================*/
 
 typedef struct {
@@ -140,12 +163,12 @@ typedef struct {
    guint16 enroll_quality;
    guint32 status;
    guint32 smt_like_has_fixed_pattern;
-   db2_id_t tuid;
+   db2_id_t template_id;
 
 } enroll_add_image_t;
 
 typedef struct {
-   db2_id_t tuid;
+   db2_id_t template_id;
    guint8 *user_id;
    guint16 finger_id;
 } match_stat_t;
@@ -174,73 +197,73 @@ typedef struct {
 
 /* Functions ================================================================*/
 gboolean send_get_version(FpiDeviceSynaTudorMoc *self, get_version_t *resp,
-                          GError *error);
+                          GError **error);
 
 gboolean send_frame_acq(FpiDeviceSynaTudorMoc *self, guint8 frame_flags,
-                        GError *error);
+                        GError **error);
 
-gboolean send_frame_finish(FpiDeviceSynaTudorMoc *self, GError *error);
+gboolean send_frame_finish(FpiDeviceSynaTudorMoc *self, GError **error);
 
-gboolean send_enroll_start(FpiDeviceSynaTudorMoc *self, GError *error);
+gboolean send_enroll_start(FpiDeviceSynaTudorMoc *self, GError **error);
 
 gboolean send_enroll_add_image(FpiDeviceSynaTudorMoc *self,
-                               enroll_add_image_t *resp, GError *error);
+                               enroll_add_image_t *resp, GError **error);
 
 gboolean send_enroll_commit(FpiDeviceSynaTudorMoc *self,
                             guint8 *enroll_commit_data,
-                            gsize enroll_commit_data_size, GError *error);
+                            gsize enroll_commit_data_size, GError **error);
 
-gboolean send_enroll_finish(FpiDeviceSynaTudorMoc *self, GError *error);
+gboolean send_enroll_finish(FpiDeviceSynaTudorMoc *self, GError **error);
 
 gboolean send_identify_match(FpiDeviceSynaTudorMoc *self,
-                             db2_id_t *tuids_to_match, gsize number_of_tuids,
-                             gboolean *matched, enrollment_t *match,
-                             GError *error);
+                             db2_id_t *template_ids_to_match,
+                             gsize number_of_template_ids, gboolean *matched,
+                             enrollment_t *match, GError **error);
 
 gboolean send_get_image_metrics(FpiDeviceSynaTudorMoc *self, guint32 type,
-                                guint32 *recv_value, GError *error);
+                                guint32 *recv_value, GError **error);
 
 gboolean send_event_config(FpiDeviceSynaTudorMoc *self, guint32 event_mask,
-                           GError *error);
+                           GError **error);
 
 gboolean send_event_read(FpiDeviceSynaTudorMoc *self, guint32 *recv_event_mask,
-                         GError *error);
+                         GError **error);
 
 gboolean synaptics_secure_connect(FpiDeviceSynaTudorMoc *self,
                                   guint8 *send_data, gsize send_len,
                                   guint8 **recv_data, gsize *recv_len,
-                                  const gboolean check_status);
+                                  const gboolean check_status, GError **error);
 
-gboolean send_reset(FpiDeviceSynaTudorMoc *self, GError *error);
+gboolean send_reset(FpiDeviceSynaTudorMoc *self, GError **error);
 
-gboolean send_db2_info(FpiDeviceSynaTudorMoc *self, GError *error);
+gboolean send_db2_info(FpiDeviceSynaTudorMoc *self, GError **error);
 
-gboolean send_db2_format(FpiDeviceSynaTudorMoc *self, GError *error);
+gboolean send_db2_format(FpiDeviceSynaTudorMoc *self, GError **error);
 
 gboolean add_enrollment(FpiDeviceSynaTudorMoc *self, guint8 *user_id,
-                        guint8 finger_id, db2_id_t tuid, GError *error);
+                        guint8 finger_id, db2_id_t template_id, GError **error);
 
 gboolean send_db2_delete_object(FpiDeviceSynaTudorMoc *self,
                                 obj_type_t obj_type, db2_id_t *obj_id,
-                                GError *error);
+                                GError **error);
 
 gboolean send_db2_get_object_list(FpiDeviceSynaTudorMoc *self,
                                   obj_type_t obj_type, db2_id_t obj_id,
                                   db2_id_t **obj_list, guint16 *obj_list_len,
-                                  GError *error);
+                                  GError **error);
 
 gboolean send_db2_get_object_info(FpiDeviceSynaTudorMoc *self,
                                   obj_type_t obj_type, db2_id_t obj_id,
                                   guint8 **obj_info, gsize *obj_info_size,
-                                  GError *error);
+                                  GError **error);
 
 gboolean send_db2_get_object_data(FpiDeviceSynaTudorMoc *self,
                                   obj_type_t obj_type, db2_id_t obj_id,
                                   guint8 **obj_data, guint *obj_data_size,
-                                  GError *error);
+                                  GError **error);
 
 gboolean get_event_data(FpiDeviceSynaTudorMoc *self, guint8 *event_buffer,
-                        gsize event_buffer_size);
+                        gsize event_buffer_size, GError **error);
 
 gboolean wait_for_events_blocking(FpiDeviceSynaTudorMoc *self,
-                                  guint32 event_mask, GError *error);
+                                  guint32 event_mask, GError **error);

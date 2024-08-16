@@ -7,10 +7,9 @@
 #include <gnutls/gnutls.h>
 
 G_DECLARE_FINAL_TYPE(FpiDeviceSynaTudorMoc, fpi_device_synaptics_moc, FPI,
-                     DEVICE_SYNAPTICS_MOC, FpDevice)
+                     DEVICE_SYNA_TUDOR_MOC, FpDevice)
 
 #define CERTIFICATE_KEY_SIZE 68
-#define SENSOR_EVENT_QUEUE_SIZE 5
 
 typedef enum {
    TLS_HANDSHAKE_PREPARE = 0,
@@ -38,6 +37,16 @@ typedef enum {
    NUM_EVENTS,
 } sensor_event_type_t;
 
+typedef enum {
+   TLS_CERT_TYPE_RSA_SIGN = 1,
+   TLS_CERT_TYPE_DSS_SIGN = 2,
+   TLS_CERT_TYPE_RSA_FIXED_DH = 3,
+   TLS_CERT_TYPE_DSS_FIXED_DH = 4,
+   TLS_CERT_TYPE_ECDSA_SIGN = 64,
+   TLS_CERT_TYPE_RSA_FIXED_ECDH = 65,
+   TLS_CERT_TYPE_ECDSA_FIXED_ECDH = 66,
+} tls_certificate_type_t;
+
 typedef struct {
    guint16 status;
    guint32 payload_len;
@@ -62,15 +71,12 @@ typedef struct {
    guint8 *session_id;
    guint8 session_id_len;
 
-   tls_handshake_state_t handshake_state;
-
    guint8 version_major;
    guint8 version_minor;
 
-   guint32 server_timestamp;
-
    guint16 ciphersuit;
    guint8 compression_method;
+   gnutls_mac_algorithm_t mac_algo;
 
    guint8 client_random[32]; // note: the first 4 bytes are time
    guint8 server_random[32]; // note: the first 4 bytes are time
@@ -85,8 +91,11 @@ typedef struct {
    guint64 encrypt_seq_num;
    guint64 decrypt_seq_num;
 
+   tls_certificate_type_t requested_cert;
    gnutls_cipher_algorithm_t cipher_alg;
    gboolean remote_sends_encrypted;
+
+   tls_handshake_state_t handshake_state;
 
    // for hashing
    guint8 *sent_handshake_msgs;
@@ -98,7 +107,6 @@ typedef struct {
    guint16 num_current_users;
    guint16 num_current_templates;
    guint16 num_current_payloads;
-
 } storage_t;
 
 typedef struct {
@@ -126,47 +134,19 @@ typedef struct {
    gnutls_privkey_t private_key;
 } pairing_data_t;
 
+typedef struct {
+   guint16 seq_num;     // current host event sequence number
+   guint16 num_pending; // number of pending events which are unread
+   gboolean read_in_legacy_mode;
+} events_t;
+
 struct _FpiDeviceSynaTudorMoc {
    FpDevice parent;
 
-   // TODO: not aplicable?
-   // guint8                cmd_seq_num;
-   // guint8                last_seq_num;
-
-   FpiSsm *task_ssm;
-   FpiSsm *cmd_ssm;
-   transmission_ssm_data cmd_ssm_data;
-
-   FpiUsbTransfer *cmd_pending_transfer;
-   gboolean cmd_complete_on_removal;
-   gboolean cmd_suspended;
-   guint8 id_idx;
-
-   // bmkt_sensor_version_t mis_version;
-
-   gboolean action_starting;
-   GCancellable *interrupt_cancellable;
-
-   gint enroll_stage;
-   gboolean finger_on_sensor;
-   GPtrArray *list_result;
-
-   // TLS session things
-   tls_t tls;
+   GCancellable *cancellable;
 
    pairing_data_t pairing_data;
-
-   // Everything stored on sensor
-   storage_t storage;
-
-   // FIXME: init these to zero somewhere
-   guint16 event_seq_num;      // current host event sequence number
-   guint16 num_pending_events; // number of pending events which are unread
-   gboolean event_read_in_legacy_mode;
-   guint num_events_in_queue;
-   sensor_event_type_t event_queue[SENSOR_EVENT_QUEUE_SIZE];
-
-   // struct syna_enroll_resp_data enroll_resp_data;
-   // syna_state_t state;
-   // GError *delay_error;
+   tls_t tls;         // TLS session things
+   storage_t storage; // Sensor has storage for prints
+   events_t events;
 };

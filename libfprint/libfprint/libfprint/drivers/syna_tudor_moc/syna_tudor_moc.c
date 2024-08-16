@@ -1,5 +1,24 @@
 /*
- * TODO: add header
+ * Synaptics Tudor Match-In-Sensor driver for libfprint
+ *
+ * Copyright (c) 2024 Vojtěch Pluskal
+ *
+ * some parts are based on work of Popax21 see:
+ * https://github.com/Popax21/synaTudor/tree/rev
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #include "communication.c"
@@ -10,8 +29,9 @@
 #include "tls.c"
 #include "tls.h"
 
-static db2_id_t cache_tuid = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-                              0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+static db2_id_t cache_template_id = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                                     0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                                     0xff, 0xff, 0xff, 0xff};
 
 G_DEFINE_TYPE(FpiDeviceSynaTudorMoc, fpi_device_syna_tudor_moc, FP_TYPE_DEVICE)
 
@@ -30,25 +50,22 @@ static const FpIdEntry id_table[] = {
 };
 
 static gboolean capture_image(FpiDeviceSynaTudorMoc *self, guint8 frame_flags,
-                              GError *error)
+                              GError **error)
 {
    gboolean ret = TRUE;
 
-   fp_dbg("setting event config to EV_FRAME_READY");
    BOOL_CHECK(send_event_config(self, EV_FRAME_READY, error));
 
    BOOL_CHECK(send_frame_acq(self, frame_flags, error));
 
    fpi_device_report_finger_status(FP_DEVICE(self), FP_FINGER_STATUS_NEEDED);
-   fp_dbg("setting event config to EV_FRAME_READY | EV_FINGER_DOWN");
    BOOL_CHECK(send_event_config(self, EV_FRAME_READY | EV_FINGER_DOWN, error));
 
    BOOL_CHECK(
        wait_for_events_blocking(self, EV_FRAME_READY | EV_FINGER_DOWN, error));
-
    fpi_device_report_finger_status(FP_DEVICE(self), FP_FINGER_STATUS_PRESENT);
 
-   BOOL_CHECK(send_event_config(self, 0, error));
+   BOOL_CHECK(send_event_config(self, NO_EVENTS, error));
 
    BOOL_CHECK(send_frame_finish(self, error));
 
@@ -58,7 +75,7 @@ error:
 
 static gboolean get_enrollment_data(FpiDeviceSynaTudorMoc *self,
                                     db2_id_t payload_id,
-                                    enrollment_t *enrollment, GError *error)
+                                    enrollment_t *enrollment, GError **error)
 {
    gboolean ret = TRUE;
 
@@ -68,7 +85,7 @@ static gboolean get_enrollment_data(FpiDeviceSynaTudorMoc *self,
                                        &obj_data, &obj_data_size, error));
 
    BOOL_CHECK(get_enrollment_data_from_serialized_container(
-       obj_data, obj_data_size, enrollment));
+       obj_data, obj_data_size, enrollment, error));
 
 error:
    return ret;
@@ -76,40 +93,41 @@ error:
 
 static gboolean get_enrollments(FpiDeviceSynaTudorMoc *self,
                                 enrollment_t **enrollments,
-                                guint *enrollments_cnt, GError *error)
+                                guint *enrollments_cnt, GError **error)
 {
    gboolean ret = TRUE;
 
    guint allocated_enrollments_cnt = 5;
    *enrollments = g_malloc_n(allocated_enrollments_cnt, sizeof(enrollment_t));
 
-   guint16 tuid_list_len = 0;
-   g_autofree db2_id_t *tuid_list = NULL;
+   guint16 template_id_list_len = 0;
+   g_autofree db2_id_t *template_id_list = NULL;
    g_autofree db2_id_t *payload_list = NULL;
 
-   BOOL_CHECK(send_db2_get_object_list(self, OBJ_TYPE_TEMPLATES, cache_tuid,
-                                       &tuid_list, &tuid_list_len, error));
-   if (tuid_list_len == 0) {
-      fp_dbg("received empty tuid_list");
+   BOOL_CHECK(send_db2_get_object_list(self, OBJ_TYPE_TEMPLATES,
+                                       cache_template_id, &template_id_list,
+                                       &template_id_list_len, error));
+   if (template_id_list_len == 0) {
+      fp_dbg("received empty template_id_list");
       goto error;
    }
 
-   for (int i = 0; i < tuid_list_len; ++i) {
+   for (int i = 0; i < template_id_list_len; ++i) {
       guint16 payload_list_len = 0;
       fp_dbg("Getting payloads for template_id:");
-      print_array(tuid_list[i], sizeof(db2_id_t));
-      BOOL_CHECK(send_db2_get_object_list(self, OBJ_TYPE_PAYLOADS, tuid_list[i],
-                                          &payload_list, &payload_list_len,
-                                          error));
+      fp_dbg_large_hex(template_id_list[i], DB2_ID_SIZE);
+      BOOL_CHECK(send_db2_get_object_list(self, OBJ_TYPE_PAYLOADS,
+                                          template_id_list[i], &payload_list,
+                                          &payload_list_len, error));
       if (payload_list_len == 0) {
-         fp_warn("No payload data for enrollment with tuid:");
-         print_array(tuid_list[i], sizeof(db2_id_t));
+         fp_warn("No payload data for enrollment with template_id:");
+         fp_dbg_large_hex(template_id_list[i], DB2_ID_SIZE);
          continue;
       }
 
       for (int j = 0; j < payload_list_len; ++j) {
          fp_dbg("Getting enrollment data for payload_id:");
-         print_array(payload_list[j], sizeof(db2_id_t));
+         fp_dbg_large_hex(payload_list[j], DB2_ID_SIZE);
          BOOL_CHECK(get_enrollment_data(self, payload_list[j],
                                         &((*enrollments)[*enrollments_cnt]),
                                         error));
@@ -147,7 +165,7 @@ static FpPrint *fp_print_from_enrollment(FpiDeviceSynaTudorMoc *self,
    GVariant *uid = g_variant_new_fixed_array(
        G_VARIANT_TYPE_BYTE, enrollment->user_id, sizeof(user_id_t), 1);
    GVariant *tid = g_variant_new_fixed_array(
-       G_VARIANT_TYPE_BYTE, enrollment->template_id, sizeof(db2_id_t), 1);
+       G_VARIANT_TYPE_BYTE, enrollment->template_id, DB2_ID_SIZE, 1);
 
    GVariant *data = g_variant_new("(y@ay@ay)", enrollment->finger_id, tid, uid);
 
@@ -162,7 +180,7 @@ static FpPrint *fp_print_from_enrollment(FpiDeviceSynaTudorMoc *self,
 
 static gboolean get_template_id_from_print_data(GVariant *data,
                                                 db2_id_t template_id,
-                                                GError *error)
+                                                GError **error)
 {
    gboolean ret = TRUE;
 
@@ -173,7 +191,7 @@ static gboolean get_template_id_from_print_data(GVariant *data,
    g_return_val_if_fail(data != NULL, FALSE);
 
    if (!g_variant_check_format_string(data, "(y@ay@ay)", FALSE)) {
-      error =
+      *error =
           fpi_device_error_new_msg(FP_DEVICE_ERROR_DATA_INVALID,
                                    "Print data has invalid fpi-data format");
       ret = FALSE;
@@ -186,7 +204,7 @@ static gboolean get_template_id_from_print_data(GVariant *data,
    gsize tid_len = 0;
    tid = g_variant_get_fixed_array(tid_var, &tid_len, 1);
    if (tid_len != DB2_ID_SIZE) {
-      error = fpi_device_error_new_msg(
+      *error = fpi_device_error_new_msg(
           FP_DEVICE_ERROR_DATA_INVALID,
           "Stored template id in print data has invalid size of %lu", tid_len);
       ret = FALSE;
@@ -209,7 +227,7 @@ static void syna_tudor_moc_open(FpDevice *device)
 
    G_DEBUG_HERE();
 
-   self->interrupt_cancellable = g_cancellable_new();
+   self->cancellable = g_cancellable_new();
 
    /* Claim usb interface */
    if (!g_usb_device_claim_interface(fpi_device_get_usb_device(device), 0, 0,
@@ -217,10 +235,18 @@ static void syna_tudor_moc_open(FpDevice *device)
       goto error;
    }
 
+   gboolean tls_status = FALSE;
+   get_remote_tls_status(self, &tls_status, &error);
+   fp_dbg("remote TLS at start: %d", tls_status);
+
    g_usb_device_reset(fpi_device_get_usb_device(device), &error);
 
+   tls_status = FALSE;
+   get_remote_tls_status(self, &tls_status, &error);
+   fp_dbg("remote TLS after reset: %d", tls_status);
+
    get_version_t version_data = {0};
-   if (!send_get_version(self, &version_data, error)) {
+   if (!send_get_version(self, &version_data, &error)) {
       goto error;
    }
 
@@ -234,7 +260,7 @@ static void syna_tudor_moc_open(FpDevice *device)
    guint8 provision_state = version_data.provision_state & 0xF;
    gboolean is_provisioned = provision_state == PROVISION_STATE_PROVISIONED;
    if (is_provisioned) {
-      if (!load_sample_pairing_data(self)) {
+      if (!load_sample_pairing_data(self, &error)) {
          fp_err("Error while loading sample pairing data");
          goto error;
       }
@@ -254,20 +280,18 @@ static void syna_tudor_moc_open(FpDevice *device)
       g_assert(FALSE);
    }
 
-   g_assert(!self->task_ssm);
+   establish_tls_session(self, &error);
 
-   establish_tls_session(self, error);
-
-   gboolean tls_status = FALSE;
-   get_remote_tls_status(self, &tls_status, error);
+   tls_status = FALSE;
+   get_remote_tls_status(self, &tls_status, &error);
    fp_dbg("remote TLS status before sending: %d", tls_status);
 
    get_version_t version_data2 = {0};
-   if (!send_get_version(self, &version_data2, error)) {
+   if (!send_get_version(self, &version_data2, &error)) {
       goto error;
    }
    tls_status = FALSE;
-   get_remote_tls_status(self, &tls_status, error);
+   get_remote_tls_status(self, &tls_status, &error);
    fp_dbg("remote TLS status after sending: %d", tls_status);
 
 error:
@@ -287,10 +311,10 @@ static void syna_tudor_moc_close(FpDevice *device)
 
    g_autoptr(GError) release_error = NULL;
 
-   g_clear_object(&self->interrupt_cancellable);
+   g_clear_object(&self->cancellable);
 
    if (self->tls.established) {
-      tls_close_session(self, error);
+      tls_close_session(self, &error);
    }
    if (self->tls.master_secret.data != NULL) {
       g_free(self->tls.master_secret.data);
@@ -330,7 +354,7 @@ static void syna_tudor_moc_enroll(FpDevice *device)
 {
    FpiDeviceSynaTudorMoc *self = FPI_DEVICE_SYNA_TUDOR_MOC(device);
    guint16 finger_id;
-   GError error;
+   GError *error = NULL;
 
    G_DEBUG_HERE();
 
@@ -347,14 +371,14 @@ static void syna_tudor_moc_enroll(FpDevice *device)
 
    fp_dbg("Trying to enroll print with:");
    fp_dbg("\tuser_id:");
-   print_array(user_id, sizeof(user_id_t));
+   fp_dbg_large_hex(user_id, sizeof(user_id_t));
    fp_dbg("\tfinger_id/sub_id: %u", finger_id);
 
    if (!send_enroll_start(self, &error)) {
       goto error;
    }
 
-   // TODO: check if finger_id is already enrolled
+   // TODO: check if finger_id is already enrolled?
 
    enroll_add_image_t enroll_stats = {0};
    while (enroll_stats.progress != 100) {
@@ -362,7 +386,10 @@ static void syna_tudor_moc_enroll(FpDevice *device)
          goto error;
       }
 
-      wait_for_events_blocking(self, EV_FINGER_UP, &error);
+      if (!wait_for_events_blocking(self, EV_FINGER_UP, &error)) {
+         fp_err("wait_for_events_blocking failed");
+         goto error;
+      }
 
       if (!capture_image(self, CAPTURE_FLAGS_ENROLL, &error)) {
          fp_err("capture image failed");
@@ -395,9 +422,10 @@ static void syna_tudor_moc_enroll(FpDevice *device)
    g_assert(enroll_stats.progress == 100);
    fp_info("Enrollment finished with quality %u", enroll_stats.enroll_quality);
    fp_dbg("Template ID is:");
-   print_array(enroll_stats.tuid, sizeof(db2_id_t));
+   fp_dbg_large_hex(enroll_stats.template_id, DB2_ID_SIZE);
 
-   if (!add_enrollment(self, user_id, finger_id, enroll_stats.tuid, &error)) {
+   if (!add_enrollment(self, user_id, finger_id, enroll_stats.template_id,
+                       &error)) {
       fp_err("Adding enrollment failed");
       goto error;
    }
@@ -410,7 +438,7 @@ static void syna_tudor_moc_enroll(FpDevice *device)
    GVariant *uid = g_variant_new_fixed_array(G_VARIANT_TYPE_BYTE, user_id,
                                              sizeof(user_id_t), 1);
    GVariant *tid = g_variant_new_fixed_array(
-       G_VARIANT_TYPE_BYTE, enroll_stats.tuid, sizeof(db2_id_t), 1);
+       G_VARIANT_TYPE_BYTE, enroll_stats.template_id, DB2_ID_SIZE, 1);
    GVariant *data = g_variant_new("(y@ay@ay)", finger_id, tid, uid);
    fpi_print_set_type(print, FPI_PRINT_RAW);
    fpi_print_set_device_stored(print, TRUE);
@@ -424,26 +452,10 @@ error:
    if (!send_enroll_finish(self, &error)) {
       fp_err("Sending enroll (finish) cancel failed");
    }
-   fpi_device_enroll_complete(device, NULL, &error);
+   fpi_device_enroll_complete(device, NULL, error);
 }
 
 // verify ---------------------------------------------------------------------
-
-static void fp_verify_ssm_run_state(FpiSsm *ssm, FpDevice *device)
-{
-   FpiDeviceSynaTudorMoc *self = FPI_DEVICE_SYNA_TUDOR_MOC(device);
-}
-
-static void fp_verify_ssm_done(FpiSsm *ssm, FpDevice *dev, GError *error)
-{
-   FpiDeviceSynaTudorMoc *self = FPI_DEVICE_SYNA_TUDOR_MOC(dev);
-   fp_info("verify complete!");
-   if (fpi_ssm_get_error(self->task_ssm)) {
-      error = fpi_ssm_get_error(self->task_ssm);
-   }
-   fpi_device_verify_complete(dev, error);
-   self->task_ssm = NULL;
-}
 
 static void syna_tudor_moc_verify(FpDevice *device)
 {
@@ -455,13 +467,13 @@ static void syna_tudor_moc_verify(FpDevice *device)
 
    G_DEBUG_HERE();
 
-   if (!capture_image(self, CAPTURE_FLAGS_AUTH, error)) {
+   if (!capture_image(self, CAPTURE_FLAGS_AUTH, &error)) {
       goto error;
    }
 
    guint32 image_quality = 0;
    if (!send_get_image_metrics(self, MIS_IMAGE_METRICS_IMG_QUALITY,
-                               &image_quality, error)) {
+                               &image_quality, &error)) {
       goto error;
    }
    if (image_quality < IMAGE_QUALITY_THRESHOLD) {
@@ -478,14 +490,14 @@ static void syna_tudor_moc_verify(FpDevice *device)
    g_object_get(print_to_verify, "fpi-data", &fp_data, NULL);
 
    db2_id_t template_id;
-   if (!get_template_id_from_print_data(fp_data, template_id, error)) {
+   if (!get_template_id_from_print_data(fp_data, template_id, &error)) {
       goto error;
    }
 
    gboolean matched = FALSE;
    enrollment_t enrollment_match = {0};
    if (!send_identify_match(self, NULL, 0, &matched, &enrollment_match,
-                            error)) {
+                            &error)) {
       goto error;
    }
    fp_dbg("Identify matched: %d", matched);
@@ -496,9 +508,9 @@ static void syna_tudor_moc_verify(FpDevice *device)
 
       fp_dbg("Identify cmd matched enrollment with data:");
       fp_dbg("\tuser_id");
-      print_array(enrollment_match.user_id, sizeof(user_id_t));
+      fp_dbg_large_hex(enrollment_match.user_id, sizeof(user_id_t));
       fp_dbg("\ttemplate_id");
-      print_array(enrollment_match.template_id, sizeof(db2_id_t));
+      fp_dbg_large_hex(enrollment_match.template_id, DB2_ID_SIZE);
       fp_dbg("\tfinger_id: %d", enrollment_match.finger_id);
 
    } else {
@@ -520,13 +532,13 @@ static void syna_tudor_moc_identify(FpDevice *device)
 
    G_DEBUG_HERE();
 
-   if (!capture_image(self, CAPTURE_FLAGS_AUTH, error)) {
+   if (!capture_image(self, CAPTURE_FLAGS_AUTH, &error)) {
       goto error;
    }
 
    guint32 image_quality = 0;
    if (!send_get_image_metrics(self, MIS_IMAGE_METRICS_IMG_QUALITY,
-                               &image_quality, error)) {
+                               &image_quality, &error)) {
       goto error;
    }
    if (image_quality < IMAGE_QUALITY_THRESHOLD) {
@@ -542,7 +554,7 @@ static void syna_tudor_moc_identify(FpDevice *device)
    gboolean matched = FALSE;
    enrollment_t enrollment_match = {0};
    if (!send_identify_match(self, NULL, 0, &matched, &enrollment_match,
-                            error)) {
+                            &error)) {
       goto error;
    }
    fp_dbg("Identify matched: %d", matched);
@@ -553,9 +565,9 @@ static void syna_tudor_moc_identify(FpDevice *device)
 
       fp_dbg("Identify cmd matched enrollment with data:");
       fp_dbg("\tuser_id");
-      print_array(enrollment_match.user_id, sizeof(user_id_t));
+      fp_dbg_large_hex(enrollment_match.user_id, sizeof(user_id_t));
       fp_dbg("\ttemplate_id");
-      print_array(enrollment_match.template_id, sizeof(db2_id_t));
+      fp_dbg_large_hex(enrollment_match.template_id, DB2_ID_SIZE);
       fp_dbg("\tfinger_id: %d", enrollment_match.finger_id);
 
       GPtrArray *templates = NULL;
@@ -582,13 +594,13 @@ static void syna_tudor_moc_list(FpDevice *device)
 {
    fp_dbg("==================== list start ====================");
    FpiDeviceSynaTudorMoc *self = FPI_DEVICE_SYNA_TUDOR_MOC(device);
-   GError error;
+   GError *error = NULL;
 
    guint enrollment_cnt = 0;
    g_autofree enrollment_t *enrollment_array;
    if (!get_enrollments(self, &enrollment_array, &enrollment_cnt, &error)) {
       fp_info("Unable to get database data");
-      fpi_device_list_complete(device, NULL, &error);
+      fpi_device_list_complete(device, NULL, error);
    }
 
    if (enrollment_cnt == 0) {
@@ -625,7 +637,7 @@ static void syna_tudor_moc_delete_print(FpDevice *device)
    g_object_get(print, "fpi-data", &data, NULL);
 
    db2_id_t template_id;
-   if (!get_template_id_from_print_data(data, template_id, error)) {
+   if (!get_template_id_from_print_data(data, template_id, &error)) {
       fpi_device_delete_complete(
           device, fpi_device_error_new_msg(
                       FP_DEVICE_ERROR_DATA_INVALID,
@@ -634,11 +646,10 @@ static void syna_tudor_moc_delete_print(FpDevice *device)
    }
 
    fp_dbg("Deleting print with template ID:");
-   print_array(template_id, DB2_ID_SIZE);
+   fp_dbg_large_hex(template_id, DB2_ID_SIZE);
 
-   fp_warn("TEST5");
-
-   if (!send_db2_delete_object(self, OBJ_TYPE_TEMPLATES, &template_id, error)) {
+   if (!send_db2_delete_object(self, OBJ_TYPE_TEMPLATES, &template_id,
+                               &error)) {
       fpi_device_delete_complete(device, error);
    }
 
@@ -651,59 +662,42 @@ static void syna_tudor_moc_clear_storage(FpDevice *device)
 {
    fp_dbg("==================== clear storage start ====================");
    FpiDeviceSynaTudorMoc *self = FPI_DEVICE_SYNA_TUDOR_MOC(device);
-   GError error;
+   GError *error = NULL;
 
    if (!send_db2_format(self, &error)) {
       goto error;
    }
 
 error:
-   // FIXME:
-   // fpi_device_clear_storage_complete(device, &error);
-   fpi_device_clear_storage_complete(device, NULL);
+   fpi_device_clear_storage_complete(device, error);
 }
 
 // cancel ---------------------------------------------------------------------
 
-static void fp_cancel_ssm_run_state(FpiSsm *ssm, FpDevice *device)
-{
-   FpiDeviceSynaTudorMoc *self = FPI_DEVICE_SYNA_TUDOR_MOC(device);
-}
-
-static void fp_cancel_ssm_done(FpiSsm *ssm, FpDevice *dev, GError *error)
-{
-   FpiDeviceSynaTudorMoc *self = FPI_DEVICE_SYNA_TUDOR_MOC(dev);
-   fp_info("cancel complete!");
-   if (fpi_ssm_get_error(self->task_ssm)) {
-      error = fpi_ssm_get_error(self->task_ssm);
-   }
-   self->task_ssm = NULL;
-}
-
-static void syna_tudor_moc_cancel(FpDevice *device)
-{
-   fp_dbg("==================== cancel start ====================");
-}
+// static void syna_tudor_moc_cancel(FpDevice *device)
+// {
+//    fp_dbg("==================== cancel start ====================");
+// }
 
 // suspend --------------------------------------------------------------------
 
-static void syna_tudor_moc_suspend(FpDevice *device)
-{
-   fp_dbg("==================== suspend start ====================");
-}
+// static void syna_tudor_moc_suspend(FpDevice *device)
+// {
+//    fp_dbg("==================== suspend start ====================");
+// }
 
 // resume ---------------------------------------------------------------------
 
-static void syna_tudor_moc_resume(FpDevice *device)
-{
-   fp_dbg("==================== resume start ====================");
-}
+// static void syna_tudor_moc_resume(FpDevice *device)
+// {
+//    fp_dbg("==================== resume start ====================");
+// }
 
 // ----------------------------------------------------------------------------
 
 static void fpi_device_syna_tudor_moc_init(FpiDeviceSynaTudorMoc *self)
 {
-   fp_dbg("==================== init start ====================");
+   G_DEBUG_HERE();
 }
 
 static void

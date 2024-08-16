@@ -1,5 +1,24 @@
 /*
- * TODO: add header
+ * Synaptics Tudor Match-In-Sensor driver for libfprint
+ *
+ * Copyright (c) 2024 Vojtěch Pluskal
+ *
+ * some parts are based on work of Popax21 see:
+ * https://github.com/Popax21/synaTudor/tree/rev
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #include "other_constants.h"
@@ -49,5 +68,7 @@ gboolean get_container_with_id_index(container_item_t *container,
                                      guint container_cnt, guint8 id,
                                      guint *idx);
 
-gboolean get_enrollment_data_from_serialized_container(
-    const guint8 *data, gsize data_size, enrollment_t *enrollment);
+gboolean get_enrollment_data_from_serialized_container(const guint8 *data,
+                                                       const gsize data_size,
+                                                       enrollment_t *enrollment,
+                                                       GError **error);
