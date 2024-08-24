@@ -27,28 +27,32 @@
 #include "other_constants.h"
 #include <glib.h>
 
-/* Response statuses ========================================================*/
+/* Response statuses ======================================================= */
 
-/* here are known response names; in original code others are considered
- * a malfunction of the fingerprint sensor */
-#define RESPONSE_OK_1 0x000
+/* these are sensor statuses converted to known or deduced VCS_RESULT names;
+ * - in original code others are considered a malfunction of the fingerprint
+ *   sensor aka VCS_RESULT_SENSOR_MALFUNCTIONED
+ * - names which do not start with VCS_RESULT are not original
+ */
+#define VCS_RESULT_OK_1 0x000
 #define VCS_RESULT_SENSOR_BAD_CMD 0x401
 #define VCS_RESULT_GEN_OBJECT_DOESNT_EXIST_1 0x403
-#define VCS_RESULT_GEN_OPERATION_DENIED 0x404
-#define RESPONSE_BAD_PARAM_1 0x405
-#define RESPONSE_BAD_PARAM_2 0x406
-#define RESPONSE_BAD_PARAM_3 0x407
-#define RESPONSE_OK_2 0x412
+#define VCS_RESULT_GEN_OPERATION_DENIED_1 0x404
+#define VCS_RESULT_GEN_BAD_PARAM_1 0x405
+#define VCS_RESULT_GEN_BAD_PARAM_2 0x406
+#define VCS_RESULT_GEN_BAD_PARAM_3 0x407
+#define VCS_RESULT_OK_2 0x412
+#define UNKNOWN_RESPONSE_ON_WHICH_SEND_AGAIN 0x48c
 #define VCS_RESULT_MATCHER_MATCH_FAILED 0x509
 #define VCS_RESULT_SENSOR_FRAME_NOT_READY 0x5B6
-#define RESPONSE_OK_3 0x5CC
+#define VCS_RESULT_OK_3 0x5CC
 #define VCS_RESULT_DB_FULL 0x680
 #define VCS_RESULT_GEN_OBJECT_DOESNT_EXIST_2 0x683
-/*this name is deduced*/
+#define VCS_RESULT_GEN_OPERATION_DENIED_2 0x689
 #define RESPONSE_PROCESSING_FRAME 0x6EA
-#define UNKNOWN_RESPONSE_ON_WHICH_SEND_AGAIN 0x48c
+#define VCS_RESULT_OK_4 0x70e
 
-/* USB defines ==============================================================*/
+/* USB defines ============================================================= */
 
 #define USB_EP_REQUEST 0x01
 #define USB_EP_REPLY 0x81
@@ -58,7 +62,7 @@
 #define USB_INTERRUPT_DATA_SIZE 7
 #define USB_TRANSFER_WAIT_TIMEOUT_MS 1000
 
-/* others ===================================================================*/
+/* others ================================================================== */
 
 #define WRAP_RESPONSE_ADDITIONAL_SIZE 0x45
 #define MATCH_STATS_SIZE 36
@@ -82,12 +86,12 @@ typedef enum {
    VCSFW_CMD_STORAGE_PART_FORMAT = 0x3f,
    VCSFW_CMD_STORAGE_PART_READ = 0x40,
    VCSFW_CMD_STORAGE_PART_WRITE = 0x41,
-   VCSFW_CMD_TLS_DATA = 0x44, // non-original name
+   VCSFW_CMD_TLS_DATA = 0x44, /* non-original name */
    VCSFW_CMD_DB_OBJECT_CREATE = 0x47,
    VCSFW_CMD_TAKE_OWNERSHIP_EX2 = 0x4f,
    VCSFW_CMD_GET_CERTIFICATE_EX = 0x50,
    VCSFW_CMD_TIDLE_SET = 0x57,
-   // exit/enter bootloader mode 0x69
+   /* exit/enter bootloader mode 0x69 */
    VCSFW_CMD_BOOTLDR_PATCH = 0x7d,
    VCSFW_CMD_FRAME_READ = 0x7f,
    VCSFW_CMD_FRAME_ACQ = 0x80,
@@ -99,18 +103,18 @@ typedef enum {
    VCSFW_CMD_IOTA_FIND = 0x8e,
    VCSFW_CMD_PAIR = 0x93,
    VCSFW_CMD_ENROLL = 0x96,
-   VCSFW_CMD_IDENTIFY_MATCH = 0x99,    // non-original name
-   VCSFW_CMD_GET_IMAGE_METRICS = 0x9d, // non-original name
+   VCSFW_CMD_IDENTIFY_MATCH = 0x99,    /* non-original name */
+   VCSFW_CMD_GET_IMAGE_METRICS = 0x9d, /* non-original name */
    VCSFW_CMD_DB2_GET_DB_INFO = 0x9e,
    VCSFW_CMD_DB2_GET_OBJECT_LIST = 0x9f,
    VCSFW_CMD_DB2_GET_OBJECT_INFO = 0xa0,
    VCSFW_CMD_DB2_GET_OBJECT_DATA = 0xa1,
    VCSFW_CMD_DB2_WRITE_OBJECT = 0xa2,
    VCSFW_CMD_DB2_DELETE_OBJECT = 0xa3,
-   VCSFW_CMD_DB2_CLEANUP = 0xa4, // non-original name
+   VCSFW_CMD_DB2_CLEANUP = 0xa4,
    VCSFW_CMD_DB2_FORMAT = 0xa5,
-   // ? 0xa6
-   VCSFW_CMD_RESET_SBL_MODE = 0xaa, // non-original name
+   /* ? 0xa6 */
+   VCSFW_CMD_RESET_SBL_MODE = 0xaa, /* non-original name */
    VCSFW_CMD_SSO = 0xac,
    VCSFW_CMD_OPINFO_GET = 0xae,
    VCSFW_CMD_HW_INFO_GET = 0xaf,
@@ -128,31 +132,7 @@ typedef enum {
    VCSFW_CMD_IDENTIFY_CONDITIONAL_WBF_MATCH = 3,
 } identify_subcmd_t;
 
-/* Response structs =========================================================*/
-
-typedef struct {
-   guint32 fw_build_time;
-   guint32 fw_build_num;
-
-   guint8 fw_version_major;
-   guint8 fw_version_minor;
-   guint8 fw_target;
-   guint8 product_id;
-
-   guint8 silicon_revision;
-   guint8 formal_release;
-   guint8 platform;
-   guint8 patch;
-
-   guint8 serial_number[6];
-
-   guint8 security;
-   guint8 interface;
-   // 7 bytes unused
-   guint8 device_type;
-   // 2 bytes unused
-   guint8 provision_state;
-} get_version_t;
+/* Response structs ======================================================== */
 
 typedef struct {
    guint16 progress;
@@ -195,7 +175,7 @@ typedef struct {
 
 } db2_info_t;
 
-/* Functions ================================================================*/
+/* Functions =============================================================== */
 gboolean send_get_version(FpiDeviceSynaTudorMoc *self, get_version_t *resp,
                           GError **error);
 

@@ -23,24 +23,33 @@
 
 #include "communication.h"
 #include "container.c"
-#include "drivers_api.h"
 #include "fpi-byte-reader.h"
 #include "fpi-byte-writer.h"
 #include "fpi-usb-transfer.h"
-#include "gio/gio.h"
-#include "other_constants.h"
 #include "tls.h"
 #include "utils.h"
 #include <glib.h>
-#include <stdio.h>
 
-static const char *convert_sensor_status_to_string(guint16 status)
+static gboolean sensor_status_is_result_ok(guint16 status)
+{
+   return (status == VCS_RESULT_OK_1 || status == VCS_RESULT_OK_2 ||
+           status == VCS_RESULT_OK_3 || status == VCS_RESULT_OK_4);
+}
+
+static gboolean sensor_status_is_result_bad_param(guint16 status)
+{
+   return (status == VCS_RESULT_GEN_BAD_PARAM_1 ||
+           status == VCS_RESULT_GEN_BAD_PARAM_2 ||
+           status == VCS_RESULT_GEN_BAD_PARAM_3);
+}
+
+static const char *sensor_status_to_string(guint16 status)
 {
    const char *ret;
 
    switch (status) {
    case 0x000:
-      ret = "RESPONSE_OK_1";
+      ret = "VCS_RESULT_OK_1";
       break;
    case 0x401:
       ret = "VCS_RESULT_SENSOR_BAD_CMD";
@@ -49,19 +58,22 @@ static const char *convert_sensor_status_to_string(guint16 status)
       ret = "VCS_RESULT_GEN_OBJECT_DOESNT_EXIST_1";
       break;
    case 0x404:
-      ret = "VCS_RESULT_GEN_OPERATION_DENIED";
+      ret = "VCS_RESULT_GEN_OPERATION_DENIED_1";
       break;
    case 0x405:
-      ret = "RESPONSE_BAD_PARAM_1";
+      ret = "VCS_RESULT_GEN_BAD_PARAM_1";
       break;
    case 0x406:
-      ret = "RESPONSE_BAD_PARAM_2";
+      ret = "VCS_RESULT_GEN_BAD_PARAM_2";
       break;
    case 0x407:
-      ret = "RESPONSE_BAD_PARAM_3";
+      ret = "VCS_RESULT_GEN_BAD_PARAM_3";
       break;
    case 0x412:
-      ret = "RESPONSE_OK_2";
+      ret = "VCS_RESULT_OK_2";
+      break;
+   case 0x48c:
+      ret = "UNKNOWN_RESPONSE_ON_WHICH_SEND_AGAIN";
       break;
    case 0x509:
       ret = "VCS_RESULT_MATCHER_MATCH_FAILED";
@@ -70,7 +82,7 @@ static const char *convert_sensor_status_to_string(guint16 status)
       ret = "VCS_RESULT_SENSOR_FRAME_NOT_READY";
       break;
    case 0x5CC:
-      ret = "RESPONSE_OK_3";
+      ret = "VCS_RESULT_OK_3";
       break;
    case 0x680:
       ret = "VCS_RESULT_DB_FULL";
@@ -78,20 +90,26 @@ static const char *convert_sensor_status_to_string(guint16 status)
    case 0x683:
       ret = "VCS_RESULT_GEN_OBJECT_DOESNT_EXIST_2";
       break;
+   case 0x689:
+      ret = "VCS_RESULT_GEN_OPERATION_DENIED_2";
+      break;
    case 0x6EA:
       ret = "RESPONSE_PROCESSING_FRAME";
       break;
+   case 0x70e:
+      ret = "VCS_RESULT_OK_4";
+      break;
    case 0x315:
-      ret = "last TLS session not closed";
+      ret = "last TLS session was not closed";
       break;
    default:
-      ret = "UNKNOWN_STATUS";
+      ret = "generic VCS_RESULT_SENSOR_MALFUNCTIONED";
    }
 
    return ret;
 }
 
-static const char *cmd_id_to_str(vcsfw_cmd_t cmd_id)
+static const char *cmd_id_to_str(guint8 cmd_id)
 {
    const char *ret;
 
@@ -113,6 +131,9 @@ static const char *cmd_id_to_str(vcsfw_cmd_t cmd_id)
       break;
    case 0x10:
       ret = "VCSFW_CMD_RESET_OWNERSHIP";
+      break;
+   case 0x15:
+      ret = "CMD_TLS_ALERT";
       break;
    case 0x19:
       ret = "VCSFW_CMD_GET_STARTINFO";
@@ -147,9 +168,9 @@ static const char *cmd_id_to_str(vcsfw_cmd_t cmd_id)
    case 0x57:
       ret = "VCSFW_CMD_TIDLE_SET";
       break;
-   // case 0x69:
-   //    ret = "bootloader mode exit/enter";
-   //    break;
+   case 0x69:
+      ret = "CMD_BOOTLOADER_MODE_EXIT_OR_ENTER";
+      break;
    case 0x7d:
       ret = "VCSFW_CMD_BOOTLDR_PATCH";
       break;
@@ -213,9 +234,10 @@ static const char *cmd_id_to_str(vcsfw_cmd_t cmd_id)
    case 0xa5:
       ret = "VCSFW_CMD_DB2_FORMAT";
       break;
-   // case 0xa6:
-   //    ret = "yet unnamed cmd";
-   //    break;
+   /* case 0xa6:
+    *    ret = "yet unnamed cmd";
+    *    break;
+    */
    case 0xaa:
       ret = "VCSFW_CMD_RESET_SBL_MODE";
       break;
@@ -291,10 +313,10 @@ static void debug_print_db2_info(db2_info_t *db2_info)
    fp_dbg("\tnum_available_user_slots: %d", db2_info->num_available_user_slots);
    fp_dbg("\tnum_current_templates: %d", db2_info->num_current_templates);
    fp_dbg("\tnum_deleted_templates: %d", db2_info->num_deleted_templates);
-   fp_dbg("\tnum_available_template_slots: %d",
+   fp_dbg("\tnum_available_template_slots: %d ",
           db2_info->num_available_template_slots);
-   fp_dbg("\tnum_current_payloads: %d", db2_info->num_current_payloads);
-   fp_dbg("\tnum_deleted_payloads: %d", db2_info->num_deleted_payloads);
+   fp_dbg("\tnum_current_payloads: %d ", db2_info->num_current_payloads);
+   fp_dbg("\tnum_deleted_payloads: %d ", db2_info->num_deleted_payloads);
    fp_dbg("\tnum_available_payload_slots: %d",
           db2_info->num_available_payload_slots);
 }
@@ -316,7 +338,7 @@ gboolean synaptics_secure_connect(FpiDeviceSynaTudorMoc *self,
    guint8 *wrapped_data = NULL;
    gsize wrapped_size = 0;
 
-   // Wrap command if in TLS session
+   /* Wrap command if in TLS session */
    if (self->tls.established) {
       BOOL_CHECK(tls_wrap(self, send_data, send_len, &wrapped_data,
                           &wrapped_size, error));
@@ -325,15 +347,15 @@ gboolean synaptics_secure_connect(FpiDeviceSynaTudorMoc *self,
       wrapped_data = send_data;
       wrapped_size = send_len;
    }
-   fp_dbg("raw req:");
+   fp_dbg("  raw req:");
    fp_dbg_large_hex(send_data, send_len);
-   fp_dbg("raw wreq:");
+   fp_dbg("  raw wreq:");
    fp_dbg_large_hex(wrapped_data, wrapped_size);
 
-   /* send data */
+   /* Send data */
    transfer = fpi_usb_transfer_new(FP_DEVICE(self));
    fpi_usb_transfer_fill_bulk(transfer, USB_EP_REQUEST, wrapped_size);
-   // TODO: do I understand this correctly
+   /* TODO: do I understand this correctly */
    transfer->short_is_error = FALSE;
    memcpy(transfer->buffer, wrapped_data, wrapped_size);
    BOOL_CHECK(fpi_usb_transfer_submit_sync(
@@ -353,19 +375,19 @@ gboolean synaptics_secure_connect(FpiDeviceSynaTudorMoc *self,
       goto error;
    }
 
-   fp_dbg("Transfer: len: %lu, actual_length: %lu", transfer->length,
+   fp_dbg("  Transfer: len: %lu, actual_length: %lu", transfer->length,
           transfer->actual_length);
-   fp_dbg("raw wresp:");
+   fp_dbg("  raw wresp:");
    fp_dbg_large_hex(transfer->buffer, transfer->actual_length);
 
-   // Unwrap command if in TLS session
+   /* Unwrap command if in TLS session */
    if (self->tls.established && transfer->actual_length != status_header_len) {
       BOOL_CHECK(tls_unwrap(self, transfer->buffer, transfer->actual_length,
                             recv_data, recv_len, error));
-      fp_dbg("unwrapped message data:");
+      fp_dbg("  unwrapped message data:");
       fp_dbg_large_hex(*recv_data, *recv_len);
    } else {
-      /* response can be shorter, e.g. on error */
+      /* Response can be shorter, e.g. on error */
       *recv_len = transfer->actual_length;
 
       *recv_data = g_malloc((*recv_len) * sizeof(guint8));
@@ -376,10 +398,9 @@ gboolean synaptics_secure_connect(FpiDeviceSynaTudorMoc *self,
 
    status = FP_READ_UINT16_LE(*recv_data);
 
-   if ((check_status) && (status != RESPONSE_OK_1) &&
-       (status != RESPONSE_OK_2) && (status != RESPONSE_OK_3)) {
+   if ((check_status) && !sensor_status_is_result_ok(status)) {
       fp_warn("Device responded with error: 0x%04x aka %s", status,
-              convert_sensor_status_to_string(status));
+              sensor_status_to_string(status));
       *error = fpi_device_error_new(FP_DEVICE_ERROR_PROTO);
       ret = FALSE;
       goto error;
@@ -419,30 +440,32 @@ gboolean send_get_version(FpiDeviceSynaTudorMoc *self, get_version_t *resp,
    fpi_byte_reader_init(&reader, recv_data, recv_size);
 
    gboolean read_ok = TRUE;
-   guint16 status;
-   read_ok &= fpi_byte_reader_get_uint16_le(&reader, &status);
-   read_ok &= fpi_byte_reader_get_uint32_le(&reader, &resp->fw_build_num);
-   read_ok &= fpi_byte_reader_get_uint32_le(&reader, &resp->fw_build_num);
-   read_ok &= fpi_byte_reader_get_uint8(&reader, &resp->fw_version_major);
-   read_ok &= fpi_byte_reader_get_uint8(&reader, &resp->fw_version_minor);
-   read_ok &= fpi_byte_reader_get_uint8(&reader, &resp->fw_target);
+   /* no need to read status again */
+   read_ok &= fpi_byte_reader_skip(&reader, sizeof(guint16));
+
+   read_ok &= fpi_byte_reader_get_uint32_le(&reader, &resp->build_time);
+   read_ok &= fpi_byte_reader_get_uint32_le(&reader, &resp->build_num);
+   read_ok &= fpi_byte_reader_get_uint8(&reader, &resp->version_major);
+   read_ok &= fpi_byte_reader_get_uint8(&reader, &resp->version_minor);
+   read_ok &= fpi_byte_reader_get_uint8(&reader, &resp->target);
    read_ok &= fpi_byte_reader_get_uint8(&reader, &resp->product_id);
+
    read_ok &= fpi_byte_reader_get_uint8(&reader, &resp->silicon_revision);
    read_ok &= fpi_byte_reader_get_uint8(&reader, &resp->formal_release);
    read_ok &= fpi_byte_reader_get_uint8(&reader, &resp->platform);
    read_ok &= fpi_byte_reader_get_uint8(&reader, &resp->patch);
-   const guint8 *ser_num_data;
-   if (fpi_byte_reader_get_data(&reader, sizeof(resp->serial_number),
-                                &ser_num_data)) {
-
-      memcpy(resp->serial_number, ser_num_data, sizeof(resp->serial_number));
+   const guint8 *data;
+   if (fpi_byte_reader_get_data(&reader, sizeof(resp->serial_number), &data)) {
+      memcpy(resp->serial_number, data, sizeof(resp->serial_number));
    } else {
       read_ok = FALSE;
    }
-   read_ok &= fpi_byte_reader_get_uint8(&reader, &resp->security);
+   read_ok &= fpi_byte_reader_get_uint16_le(&reader, &resp->security);
    read_ok &= fpi_byte_reader_get_uint8(&reader, &resp->interface);
-   read_ok &= fpi_byte_reader_skip(&reader, 8);
+   /* skip over unknown */
+   read_ok &= fpi_byte_reader_skip(&reader, 7);
    read_ok &= fpi_byte_reader_get_uint8(&reader, &resp->device_type);
+   /* skip over unknown */
    read_ok &= fpi_byte_reader_skip(&reader, 2);
    read_ok &= fpi_byte_reader_get_uint8(&reader, &resp->provision_state);
 
@@ -451,18 +474,22 @@ gboolean send_get_version(FpiDeviceSynaTudorMoc *self, get_version_t *resp,
       *error = fpi_device_error_new(FP_DEVICE_ERROR_PROTO);
       ret = FALSE;
       goto error;
+   } else {
+      g_assert(fpi_byte_reader_get_pos(&reader) == 38);
    }
 
    fp_dbg("Get version data:");
-   fp_dbg("\tBuild Time: %d", resp->fw_build_time);
-   fp_dbg("\tBuild Num: %d", resp->fw_build_num);
-   fp_dbg("\tVersion: %d.%d", resp->fw_version_major, resp->fw_version_minor);
-   fp_dbg("\tTarget: %d", resp->fw_target);
+   fp_dbg("\tBuild Time: %d", resp->build_time);
+   fp_dbg("\tBuild Num: %d", resp->build_num);
+   fp_dbg("\tVersion: %d.%d", resp->version_major, resp->version_minor);
+   fp_dbg("\tTarget: %d", resp->target);
    fp_dbg("\tProduct: %c", resp->product_id);
    fp_dbg("\tSilicon revision: %d", resp->silicon_revision);
    fp_dbg("\tFormal release: %d", resp->formal_release);
    fp_dbg("\tPlatform: %d", resp->platform);
    fp_dbg("\tPatch: %d", resp->patch);
+   fp_dbg("\tSerial number:");
+   fp_dbg_large_hex(resp->serial_number, sizeof(resp->serial_number));
    fp_dbg("\tSecurity: %d", resp->security);
    fp_dbg("\tInterface: %d", resp->interface);
    fp_dbg("\tDevice type: %d", resp->device_type);
@@ -482,6 +509,8 @@ gboolean send_frame_acq(FpiDeviceSynaTudorMoc *self, guint8 frame_flags,
 
    const int no_retries = 3;
 
+   const guint32 num_frames = 1;
+
    /* These were the only frame flags used, which enabled a bit of
     * simplification.*/
    g_assert((frame_flags == CAPTURE_FLAGS_AUTH) ||
@@ -490,14 +519,14 @@ gboolean send_frame_acq(FpiDeviceSynaTudorMoc *self, guint8 frame_flags,
    g_autofree guint8 *recv_data = NULL;
    guint8 send_data[send_size];
    send_data[0] = VCSFW_CMD_FRAME_ACQ;
-   /*I was uable to find the meaning of these values, so I did not abstract
-    * them into constants.*/
+   /* I was uable to find the meaning of these values, so I did not abstract
+    * them into constants */
    if (frame_flags == CAPTURE_FLAGS_AUTH) {
       FP_WRITE_UINT32_LE(&(send_data[1]), 4116);
    } else {
       FP_WRITE_UINT32_LE(&(send_data[1]), 12);
    }
-   FP_WRITE_UINT32_LE(&(send_data[5]), 1); // number of frames
+   FP_WRITE_UINT32_LE(&(send_data[5]), num_frames);
    FP_WRITE_UINT16_LE(&(send_data[9]), 1);
    send_data[10] = 0;
    send_data[11] = 0;
@@ -509,24 +538,23 @@ gboolean send_frame_acq(FpiDeviceSynaTudorMoc *self, guint8 frame_flags,
 
    guint16 status;
    for (int i = 0; i < no_retries; ++i) {
-      /*Do not check the response status as there is a status on which we
-       * should send the command again*/
+      /* Do not check the response status as there is a status on which we
+       * should send the command again */
       BOOL_CHECK(synaptics_secure_connect(
           self, send_data, send_size, &recv_data, &recv_size, FALSE, error));
 
       status = FP_READ_UINT16_LE(recv_data);
-      if (status == RESPONSE_OK_1 || status == RESPONSE_OK_2 ||
-          status == RESPONSE_OK_3) {
+      if (sensor_status_is_result_ok(status)) {
          break;
       } else if (status == RESPONSE_PROCESSING_FRAME) {
          fp_dbg("received status RESPONSE_PROCESSING_FRAME, retrying");
          continue;
       } else {
          fp_warn("Received status 0x%04x aka %s", status,
-                 convert_sensor_status_to_string(status));
+                 sensor_status_to_string(status));
          *error = fpi_device_error_new_msg(
              FP_DEVICE_ERROR_PROTO, "Received status 0x%04x aka %s", status,
-             convert_sensor_status_to_string(status));
+             sensor_status_to_string(status));
          ret = FALSE;
          goto error;
       }
@@ -569,12 +597,16 @@ gboolean send_enroll_start(FpiDeviceSynaTudorMoc *self, GError **error)
 
    FpiByteWriter writer;
    fpi_byte_writer_init_with_data(&writer, send_data, send_size, FALSE);
-   fpi_byte_writer_put_uint8(&writer, VCSFW_CMD_ENROLL);        // offset +0
-   fpi_byte_writer_put_uint32_le(&writer, ENROLL_SUBCMD_START); // offset +1
+   /* offset +0 */
+   fpi_byte_writer_put_uint8(&writer, VCSFW_CMD_ENROLL);
+   /* offset +1 */
+   fpi_byte_writer_put_uint32_le(&writer, ENROLL_SUBCMD_START);
    /* deduced name */
    const guint32 send_nonce_buffer = nonce_buffer_size != 0;
-   fpi_byte_writer_put_uint32_le(&writer, send_nonce_buffer); // offset +5
-   fpi_byte_writer_put_uint32_le(&writer, nonce_buffer_size); // offset +9
+   /* offset +5 */
+   fpi_byte_writer_put_uint32_le(&writer, send_nonce_buffer);
+   /* offset +9 */
+   fpi_byte_writer_put_uint32_le(&writer, nonce_buffer_size);
 
    BOOL_CHECK(synaptics_secure_connect(self, send_data, send_size, &recv_data,
                                        &recv_size, TRUE, error));
@@ -598,8 +630,10 @@ gboolean send_enroll_add_image(FpiDeviceSynaTudorMoc *self,
 
    FpiByteWriter writer;
    fpi_byte_writer_init_with_data(&writer, send_data, send_size, FALSE);
-   fpi_byte_writer_put_uint8(&writer, VCSFW_CMD_ENROLL);            // offset +0
-   fpi_byte_writer_put_uint32_le(&writer, ENROLL_SUBCMD_ADD_IMAGE); // offset +1
+   /* offset +0 */
+   fpi_byte_writer_put_uint8(&writer, VCSFW_CMD_ENROLL);
+   /* offset +1 */
+   fpi_byte_writer_put_uint32_le(&writer, ENROLL_SUBCMD_ADD_IMAGE);
 
    BOOL_CHECK(synaptics_secure_connect(self, send_data, send_size, &recv_data,
                                        &recv_size, TRUE, error));
@@ -625,24 +659,28 @@ gboolean send_enroll_add_image(FpiDeviceSynaTudorMoc *self,
          goto error;
       }
    }
-   read_ok &= fpi_byte_reader_skip(&reader, 2); // skip over unknown
+   /* skip over unknown */
+   read_ok &= fpi_byte_reader_skip(&reader, 2);
    read_ok &= fpi_byte_reader_get_uint16_le(&reader, &resp->progress);
    read_ok &= fpi_byte_reader_skip(&reader, 16);
    read_ok &= fpi_byte_reader_get_uint32_le(&reader, &resp->quality);
    read_ok &= fpi_byte_reader_get_uint32_le(&reader, &resp->redundant);
    read_ok &= fpi_byte_reader_get_uint32_le(&reader, &resp->rejected);
-   read_ok &= fpi_byte_reader_skip(&reader, 4); // skip over unknown
+   /* skip over unknown */
+   read_ok &= fpi_byte_reader_skip(&reader, 4);
    read_ok &= fpi_byte_reader_get_uint32_le(&reader, &resp->template_cnt);
    read_ok &= fpi_byte_reader_get_uint16_le(&reader, &resp->enroll_quality);
-   read_ok &= fpi_byte_reader_skip(&reader, 6); // skip over unknown
+   /* skip over unknown */
+   read_ok &= fpi_byte_reader_skip(&reader, 6);
    read_ok &= fpi_byte_reader_get_uint32_le(&reader, &resp->status);
-   read_ok &= fpi_byte_reader_skip(&reader, 4); // skip over unknown
+   /* skip over unknown */
+   read_ok &= fpi_byte_reader_skip(&reader, 4);
    read_ok &= fpi_byte_reader_get_uint32_le(&reader,
                                             &resp->smt_like_has_fixed_pattern);
 
    READ_OK_CHECK(read_ok);
 
-   // template_id is only given when progress is 100%
+   /* template_id is only given when progress is 100% */
    if (resp->progress == 100) {
       memcpy(resp->template_id, template_id_offset, sizeof(resp->template_id));
    }
@@ -678,14 +716,17 @@ gboolean send_enroll_commit(FpiDeviceSynaTudorMoc *self,
    gboolean written = TRUE;
    FpiByteWriter writer;
    fpi_byte_writer_init_with_data(&writer, send_data, send_size, FALSE);
-   written &= fpi_byte_writer_put_uint8(&writer, VCSFW_CMD_ENROLL); // offset +0
-   written &= fpi_byte_writer_put_uint32_le(&writer,
-                                            ENROLL_SUBCMD_COMMIT); // offset +1
-   written &= fpi_byte_writer_put_uint32_le(&writer, 0);           // offset +5
-   written &= fpi_byte_writer_put_uint32_le(
-       &writer, enroll_commit_data_size); // offset +9
+   /* offset +0 */
+   written &= fpi_byte_writer_put_uint8(&writer, VCSFW_CMD_ENROLL);
+   /* offset +1 */
+   written &= fpi_byte_writer_put_uint32_le(&writer, ENROLL_SUBCMD_COMMIT);
+   /* offset +5 */
+   written &= fpi_byte_writer_put_uint32_le(&writer, 0);
+   /* offset +9 */
+   written &= fpi_byte_writer_put_uint32_le(&writer, enroll_commit_data_size);
+   /* offset +13 */
    written &= fpi_byte_writer_put_data(&writer, enroll_commit_data,
-                                       enroll_commit_data_size); // offset +13
+                                       enroll_commit_data_size);
    WRITTEN_CHECK(written);
 
    BOOL_CHECK(synaptics_secure_connect(self, send_data, send_size, &recv_data,
@@ -745,21 +786,25 @@ gboolean send_identify_match(FpiDeviceSynaTudorMoc *self,
    gboolean written = TRUE;
    FpiByteWriter writer;
    fpi_byte_writer_init_with_data(&writer, send_data, send_size, FALSE);
-   written &= fpi_byte_writer_put_uint8(&writer,
-                                        VCSFW_CMD_IDENTIFY_MATCH); // offset +0
-   written &= fpi_byte_writer_put_uint32_le(
-       &writer, VCSFW_CMD_IDENTIFY_WBF_MATCH);                     // offset +1
-   written &= fpi_byte_writer_put_uint32_le(&writer, data_2_size); // offset +5
-   written &= fpi_byte_writer_put_uint32_le(
-       &writer, number_of_template_ids); // offset +9
+   /* offset +0 */
+   written &= fpi_byte_writer_put_uint8(&writer, VCSFW_CMD_IDENTIFY_MATCH);
+   /* offset +1 */
+   written &=
+       fpi_byte_writer_put_uint32_le(&writer, VCSFW_CMD_IDENTIFY_WBF_MATCH);
+   /* offset +5 */
+   written &= fpi_byte_writer_put_uint32_le(&writer, data_2_size);
+   /* offset +9 */
+   written &= fpi_byte_writer_put_uint32_le(&writer, number_of_template_ids);
    WRITTEN_CHECK(written);
 
    if (template_ids_to_match != NULL) {
+      /* offset +13 */
       fpi_byte_writer_put_data(&writer, *template_ids_to_match,
                                number_of_template_ids *
-                                   template_id_list_byte_size); // offset +13
+                                   template_id_list_byte_size);
    } else if (data_2 != NULL) {
-      fpi_byte_writer_put_data(&writer, data_2, data_2_size); // offset +13
+      /* offset +13 */
+      fpi_byte_writer_put_data(&writer, data_2, data_2_size);
    }
 
    BOOL_CHECK(synaptics_secure_connect(self, send_data, send_size, &recv_data,
@@ -778,23 +823,24 @@ gboolean send_identify_match(FpiDeviceSynaTudorMoc *self,
       fp_dbg("Received status 0x%04x aka match fail", status);
       *matched = FALSE;
       goto error;
-   } else if (status != RESPONSE_OK_1 && status != RESPONSE_OK_2 &&
-              status != RESPONSE_OK_3) {
+   } else if (!sensor_status_is_result_ok(status)) {
       fp_err("%s received error status: 0x%4x aka %s", __FUNCTION__, status,
-             convert_sensor_status_to_string(status));
+             sensor_status_to_string(status));
       goto error;
    }
    guint32 match_stats_len = 0;
-   guint32 y_len = 0; // exact name not known
-   guint32 z_len = 0; // exact name not known
-   // we do not read this template id as it is sent in serialized as well and
-   // from testing it is always the same
-   read_ok &= fpi_byte_reader_skip(&reader, DB2_ID_SIZE); // offset +2
-   read_ok &=
-       fpi_byte_reader_get_uint32_le(&reader, &match_stats_len); // offset +18
+   /* exact names are not known */
+   guint32 y_len = 0;
+   guint32 z_len = 0;
+   /* we do not read this template id as it is sent serialized  in z_data and
+    * from testing it always matches */
+   /* offset +2 */
+   read_ok &= fpi_byte_reader_skip(&reader, DB2_ID_SIZE);
+   /* offset +18 */
+   read_ok &= fpi_byte_reader_get_uint32_le(&reader, &match_stats_len);
    read_ok &= fpi_byte_reader_get_uint32_le(&reader, &y_len);
    read_ok &= fpi_byte_reader_get_uint32_le(&reader, &z_len);
-   // do not read match stats as what is interpretable is not useful
+   /* do not read match stats as what is interpretable is not useful */
    read_ok &= fpi_byte_reader_skip(&reader, MATCH_STATS_SIZE);
    read_ok &= fpi_byte_reader_get_data(&reader, z_len, &z_data);
 
@@ -958,7 +1004,14 @@ gboolean send_event_read(FpiDeviceSynaTudorMoc *self, guint32 *recv_event_mask,
       if (!self->events.read_in_legacy_mode) {
          FP_WRITE_UINT32_LE(&send_data[5], 1);
       } else {
-         send_size = 5; // shorten message if fallen back to legacy mode
+         /* shorten message if fallen back to legacy mode */
+         send_size = 5;
+      }
+
+      // clean up from last iteration
+      if (recv_data != NULL) {
+         g_free(recv_data);
+         recv_data = NULL;
       }
 
       BOOL_CHECK(synaptics_secure_connect(
@@ -971,16 +1024,12 @@ gboolean send_event_read(FpiDeviceSynaTudorMoc *self, guint32 *recv_event_mask,
       FpiByteReader reader;
       fpi_byte_reader_init(&reader, recv_data, recv_size);
       read_ok &= fpi_byte_reader_get_uint16_le(&reader, &status);
-      if (status != RESPONSE_OK_1 && status != RESPONSE_OK_2 &&
-          status != RESPONSE_OK_3) {
-         if (status == RESPONSE_BAD_PARAM_1 || status == RESPONSE_BAD_PARAM_2 ||
-             status == RESPONSE_BAD_PARAM_3) {
-            fp_dbg(
-                "Received status 0x%04x on event read, falling back to legacy "
-                "event reading",
-                status);
+      if (!sensor_status_is_result_ok(status)) {
+         if (sensor_status_is_result_bad_param(status)) {
+            fp_dbg("Received status 0x%04x on event read, falling back to "
+                   "legacy event reading",
+                   status);
             self->events.read_in_legacy_mode = TRUE;
-            free(recv_data);
             continue;
          } else {
             *error = fpi_device_error_new_msg(
@@ -1012,20 +1061,18 @@ gboolean send_event_read(FpiDeviceSynaTudorMoc *self, guint32 *recv_event_mask,
       }
 
       if (!read_ok) {
-         fp_warn(
-             "Transfer in version response to event read query was too short");
+         fp_warn("Transfer in version response to event read query was too "
+                 "short");
          *error = fpi_device_error_new(FP_DEVICE_ERROR_PROTO);
          ret = FALSE;
          goto error;
       }
 
-      /*update event sequence number*/
+      /* update event sequence number */
       self->events.seq_num = (self->events.seq_num + recv_num_events) & 0xffff;
       fp_dbg("New event sequence number: %d", self->events.seq_num);
 
-      free(recv_data);
-
-      /*parse number of pending events*/
+      /* parse number of pending events */
       if (self->events.read_in_legacy_mode) {
          g_assert(recv_num_pending_events >= recv_num_events);
          self->events.num_pending = recv_num_pending_events - recv_num_events;
@@ -1035,6 +1082,9 @@ gboolean send_event_read(FpiDeviceSynaTudorMoc *self, guint32 *recv_event_mask,
    } while (self->events.num_pending > 0);
 
 error:
+   if (recv_data != NULL) {
+      g_free(recv_data);
+   }
    return ret;
 }
 
@@ -1058,7 +1108,7 @@ gboolean send_db2_info(FpiDeviceSynaTudorMoc *self, GError **error)
    gboolean read_ok = TRUE;
    FpiByteReader reader;
    fpi_byte_reader_init(&reader, recv_data, recv_size);
-   // no need to read status again
+   /* no need to read status again */
    read_ok &= fpi_byte_reader_skip(&reader, sizeof(guint16));
    db2_info_t db2_info;
    read_ok &= parse_db2_info(&reader, &db2_info);
@@ -1137,8 +1187,10 @@ gboolean send_db2_format(FpiDeviceSynaTudorMoc *self, GError **error)
 
    gboolean read_ok = TRUE;
    guint new_partition_version = 0;
-   read_ok &= fpi_byte_reader_skip(&reader, 2); // no need to read status again
-   read_ok &= fpi_byte_reader_skip(&reader, 4); // unknown4
+   /* no need to read status again */
+   read_ok &= fpi_byte_reader_skip(&reader, 2);
+   /* skip over unknown4 */
+   read_ok &= fpi_byte_reader_skip(&reader, 4);
    read_ok &= fpi_byte_reader_get_uint32_le(&reader, &new_partition_version);
 
    if (!read_ok) {
@@ -1176,7 +1228,8 @@ gboolean send_db2_delete_object(FpiDeviceSynaTudorMoc *self,
 
    gboolean read_ok = TRUE;
    guint16 num_deleted_objects = 0;
-   read_ok &= fpi_byte_reader_skip(&reader, 2); // no need to read status again
+   /* no need to read status again */
+   read_ok &= fpi_byte_reader_skip(&reader, 2);
    read_ok &= fpi_byte_reader_get_uint16_le(&reader, &num_deleted_objects);
 
    if (!read_ok) {
@@ -1205,8 +1258,9 @@ gboolean send_db2_get_object_list(FpiDeviceSynaTudorMoc *self,
    g_autofree guint8 *recv_data = NULL;
    guint8 send_data[send_size];
 
-   // update num_current_users
+   /* update num_current_users */
    BOOL_CHECK(send_db2_info(self, error));
+
    switch (obj_type) {
    case OBJ_TYPE_USERS:
       recv_size = 4 + 16 * self->storage.num_current_users;
@@ -1230,7 +1284,8 @@ gboolean send_db2_get_object_list(FpiDeviceSynaTudorMoc *self,
    fpi_byte_reader_init(&reader, recv_data, recv_size);
 
    gboolean read_ok = TRUE;
-   read_ok &= fpi_byte_reader_skip(&reader, 2); // no need to read status again
+   /* no need to read status again */
+   read_ok &= fpi_byte_reader_skip(&reader, 2);
    read_ok &= fpi_byte_reader_get_uint16_le(&reader, obj_list_len);
    READ_OK_CHECK(read_ok);
 
@@ -1281,7 +1336,7 @@ gboolean send_db2_get_object_info(FpiDeviceSynaTudorMoc *self,
 
 error:
    if (!ret && *obj_info != NULL) {
-      free(*obj_info);
+      g_free(*obj_info);
       *obj_info = NULL;
    }
    return ret;
@@ -1327,7 +1382,7 @@ gboolean send_db2_get_object_data(FpiDeviceSynaTudorMoc *self,
    g_autofree guint8 *recv_data = NULL;
    guint8 send_data[send_size];
 
-   // update num_current_users
+   /* update num_current_users */
    BOOL_CHECK(send_db2_info(self, error));
    if (obj_type == OBJ_TYPE_USERS) {
       recv_size = 8;
@@ -1350,8 +1405,10 @@ gboolean send_db2_get_object_data(FpiDeviceSynaTudorMoc *self,
    fpi_byte_reader_init(&reader, recv_data, recv_size);
 
    gboolean read_ok = TRUE;
-   read_ok &= fpi_byte_reader_skip(&reader, 2); // no need to read status again
-   read_ok &= fpi_byte_reader_skip(&reader, 2); // skip over unknown
+   /* no need to read status again */
+   read_ok &= fpi_byte_reader_skip(&reader, 2);
+   /* skip over unknown */
+   read_ok &= fpi_byte_reader_skip(&reader, 2);
    read_ok &= fpi_byte_reader_get_uint32_le(&reader, obj_data_size);
    fp_dbg("Received object data of length %u", *obj_data_size);
    read_ok &= fpi_byte_reader_dup_data(&reader, *obj_data_size, obj_data);
@@ -1379,16 +1436,16 @@ gboolean get_event_data(FpiDeviceSynaTudorMoc *self, guint8 *event_buffer,
                                      error)) {
       if ((*error)->code == G_USB_DEVICE_ERROR_TIMED_OUT) {
          fp_dbg("%s in %s", (*error)->message, __FUNCTION__);
-
       } else {
          fp_err("%s: %s: %d: Error in fpi_usb_transfer_submit_sync: %d",
                 __FILE__, __FUNCTION__, __LINE__, (*error)->code);
       }
+
       ret = FALSE;
       goto error;
    }
 
-   fp_dbg("Events raw resp:");
+   fp_dbg("get_event_data raw resp:");
    fp_dbg_large_hex(transfer->buffer, transfer->actual_length);
 
    if (transfer->actual_length > event_buffer_size) {
@@ -1427,7 +1484,7 @@ gboolean wait_for_events_blocking(FpiDeviceSynaTudorMoc *self,
          while (TRUE) {
             if (!get_event_data(self, event_buffer, event_buffer_size, error)) {
                if ((*error)->code == G_USB_DEVICE_ERROR_TIMED_OUT) {
-                  // timeout is expected
+                  /* timeout is not considered an error here */
                   *error = NULL;
                   continue;
                } else {
@@ -1436,9 +1493,8 @@ gboolean wait_for_events_blocking(FpiDeviceSynaTudorMoc *self,
                   goto error;
                }
             }
-            // we will read the events in the next part, here just read the
-            // event sequence number
-
+            /* we will read the events in the next part, here just read the
+             * event sequence number */
             guint16 recv_event_seq_num = FP_READ_UINT16_LE(&event_buffer[6]);
             if (self->events.num_pending != recv_event_seq_num) {
                break;
@@ -1452,6 +1508,56 @@ gboolean wait_for_events_blocking(FpiDeviceSynaTudorMoc *self,
       fp_dbg("Num pending aevents: %d", self->events.num_pending);
       fp_dbg("Recv event mask is: %b, requested is: %b", recv_event_mask,
              event_mask);
+   }
+
+error:
+   return ret;
+}
+
+/*
+ * Sends a get_version command to force the sensor to close its TLS session
+ * -> error 0x315 is expected (its real name is not known) */
+gboolean send_cmd_to_force_close_sensor_tls_session(FpiDeviceSynaTudorMoc *self,
+                                                    GError **error)
+{
+   gboolean ret = TRUE;
+
+   /* deduced name */
+   const guint16 unclosed_tls_session_status = 0x315;
+
+   const gsize send_size = 1;
+   /* we may get a TLS alert message, so increase the recv_size accordingly */
+   gsize recv_size = 38 + WRAP_RESPONSE_ADDITIONAL_SIZE;
+
+   g_autofree guint8 *recv_data = NULL;
+   guint8 send_data[send_size];
+   send_data[0] = VCSFW_CMD_GET_VERSION;
+
+   BOOL_CHECK(synaptics_secure_connect(self, send_data, send_size, &recv_data,
+                                       &recv_size, FALSE, error));
+
+   g_assert(recv_data != NULL);
+
+   FpiByteReader reader;
+   fpi_byte_reader_init(&reader, recv_data, recv_size);
+
+   if (recv_size < 2) {
+      *error = fpi_device_error_new_msg(
+          FP_DEVICE_ERROR_PROTO,
+          "Response to get_version command was too short");
+      ret = FALSE;
+      goto error;
+   }
+
+   guint16 status = FP_READ_UINT16_LE(recv_data);
+   if (sensor_status_is_result_ok(status)) {
+      fp_dbg("TLS force close - sensor was not in TLS session");
+   } else if (status == unclosed_tls_session_status) {
+      fp_dbg("TLS force close - sensor was in TLS status");
+   } else {
+      fp_warn("Device responded with error: 0x%04x aka %s", status,
+              sensor_status_to_string(status));
+      *error = fpi_device_error_new(FP_DEVICE_ERROR_PROTO);
    }
 
 error:

@@ -1,9 +1,7 @@
 #pragma once
 
 #include "fpi-device.h"
-#include "fpi-ssm.h"
 #include <glib.h>
-#include <gnutls/crypto.h>
 #include <gnutls/gnutls.h>
 
 G_DECLARE_FINAL_TYPE(FpiDeviceSynaTudorMoc, fpi_device_synaptics_moc, FPI,
@@ -12,13 +10,12 @@ G_DECLARE_FINAL_TYPE(FpiDeviceSynaTudorMoc, fpi_device_synaptics_moc, FPI,
 #define CERTIFICATE_KEY_SIZE 68
 
 typedef enum {
-   TLS_HANDSHAKE_PREPARE = 0,
-   TLS_HANDSHAKE_START,
-   TLS_HANDSHAKE_END,
-
-   TLS_HANDSHAKE_ALERT,
-   TLS_HANDSHAKE_FAILED,
-   TLS_HANDSHAKE_FINISHED,
+   TLS_HS_STATE_PREPARE = 0,
+   TLS_HS_STATE_START,
+   TLS_HS_STATE_END,
+   TLS_HS_STATE_ALERT,
+   TLS_HS_STATE_FAILED,
+   TLS_HS_STATE_FINISHED,
 } tls_handshake_state_t;
 
 typedef enum {
@@ -78,8 +75,8 @@ typedef struct {
    guint8 compression_method;
    gnutls_mac_algorithm_t mac_algo;
 
-   guint8 client_random[32]; // note: the first 4 bytes are time
-   guint8 server_random[32]; // note: the first 4 bytes are time
+   guint8 client_random[32]; /* note: the first 4 bytes are time */
+   guint8 server_random[32]; /* note: the first 4 bytes are time */
    guint8 derive_input[32 * 2];
    gnutls_datum_t master_secret;
    gnutls_datum_t encryption_key;
@@ -96,8 +93,10 @@ typedef struct {
    gboolean remote_sends_encrypted;
 
    tls_handshake_state_t handshake_state;
+   gnutls_alert_level_t alert_level;
+   gnutls_alert_description_t alert_desc;
 
-   // for hashing
+   /* for hashing */
    guint8 *sent_handshake_msgs;
    gsize sent_handshake_msgs_size;
    gsize sent_handshake_msgs_alloc_size;
@@ -120,6 +119,29 @@ typedef struct {
 } sensor_cert_t;
 
 typedef struct {
+   guint32 build_time;
+   guint32 build_num;
+
+   guint8 version_major;
+   guint8 version_minor;
+   guint8 target;
+   guint8 product_id;
+
+   guint8 silicon_revision;
+   guint8 formal_release;
+   guint8 platform;
+   guint8 patch;
+
+   guint8 serial_number[6];
+   guint16 security;
+   guint8 interface;
+   /* 7 bytes unused */
+   guint8 device_type;
+   /* 2 bytes unused */
+   guint8 provision_state;
+} get_version_t;
+
+typedef struct {
    gboolean present;
 
    sensor_cert_t host_cert;
@@ -135,8 +157,8 @@ typedef struct {
 } pairing_data_t;
 
 typedef struct {
-   guint16 seq_num;     // current host event sequence number
-   guint16 num_pending; // number of pending events which are unread
+   guint16 seq_num;     /* current host event sequence number */
+   guint16 num_pending; /* number of pending events which are unread */
    gboolean read_in_legacy_mode;
 } events_t;
 
@@ -145,8 +167,9 @@ struct _FpiDeviceSynaTudorMoc {
 
    GCancellable *cancellable;
 
+   get_version_t mis_version;
    pairing_data_t pairing_data;
-   tls_t tls;         // TLS session things
-   storage_t storage; // Sensor has storage for prints
+   tls_t tls;         /* TLS session things */
+   storage_t storage; /* sensor storage */
    events_t events;
 };

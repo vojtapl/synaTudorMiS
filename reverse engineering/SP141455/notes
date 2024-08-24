@@ -35,7 +35,7 @@
 
 - 0x01: get version (VCSFW_CMD_GET_VERSION)
     - req: size: 1
-    - resp: size: 38local_18
+    - resp: size: 38
         somewhere: prodcert
         2-5: FW build time
         6-9: FW build num
@@ -49,8 +49,10 @@
         17: patch
         18-23: serial number
         24: security
-        25-33: interface
-        34-36: device type
+        25: interface
+        26-: ?
+        34-35: device type
+        36: ?
         37: provision state (& 0xf)
 
 - 0x05: VCSFW_CMD_RESET
@@ -348,7 +350,7 @@
            2-17: tuid data (used on progress == 100)
            18-21: length, in this case should match 60, else qm struct size mismatch
            22-81: Enroll stat buffer
-              0-_tudorCmdMisEnrollCommit
+              0-:
               2-3: progress
               4-19: tuid (only when progress is 100)
               20-23: quality
@@ -390,12 +392,10 @@
            1-4: 4=finish
         - resp: size: 2
 
-- 0x99: identify match (VCSFW_CMD_IDENTIFY_CONDITIONAL_WBF_MATCH)
-  - in misIdentifyMatchCmd
-     - req: size: 0xd + 0x10*sizeof(smt) + sizeof(smt2)
-        1-4:  subcommand 1
-           1 = VCSFW_CMD_IDENTIFY_WBF_MATCH
-           3 = VCSFW_CMD_IDENTIFY_CONDITIONAL_WBF_MATCH (has different structure)
+- 0x99: identify match (VCSFW_CMD_IDENTIFY_WBF)
+   - subcommand = 1 = VCSFW_CMD_IDENTIFY_WBF_MATCH
+     - req: size: 0xd + 0x10*sizeof(tuid_list) + sizeof(smt2)
+        1-4: subcommand (1 = VCSFW_CMD_IDENTIFY_WBF_MATCH)
         5-8:  numTuidsToMatch
         9-12: sizeof(someDataX)
         13-:  someDataX or tuidsToMatch (only one used)
@@ -410,7 +410,8 @@
            4-
            20-23: ?
            24-
-           28-31: ?
+           28-31:
+           32-35:
         65-: data_y
           -: data_z
             - tags:
@@ -431,10 +432,14 @@
         blob_z:
           size: at offset 5
           at:   at offset 30 + *(offset 4) + sizeof(blob_y)
+   - subcommand = 3 = VCSFW_CMD_IDENTIFY_CONDITIONAL_WBF_MATCH
+      - req: size: 0x19 + 0x10 * numTuidsToMatch + sizeof(smt2)
+         1-4: subcommand (3 = VCSFW_CMD_IDENTIFY_CONDITIONAL_WBF_MATCH)
+         5-: not done, in synaWudfBioUsb110.dll
 
 - 0x9d: get image metrics
   - in getAuthImageMetrics:
-     - image_metrics = 0x10000 (or 0x1 unused) others are considered bad parameter
+     - image_metrics = 0x10000 or 0x1 others are considered bad parameter
         - req: size: 5
            1-4: image metrics
         - resp: size: 14 - 0x1; 70 - 0x10000; 10 - unused in decompiled code
@@ -443,7 +448,9 @@
            6-9: length of data
                 0 = unable to query now
                 4 = in data is finger coverage of IPL
-                8 = in data is image quality and smt ? (sizes 4 and 4)
+                8 = data
+                  0-3: Matcher: image quality
+                  4-7: Matcher: sensor coverage (sizes 4 and 4)
            10-: data
 
 - 0x9e: db2 get db info (VCSFW_CMD_DB2_GET_DB_INFO)
@@ -493,7 +500,8 @@
                 20-33: tuidt
                 34-37:
                 38-41:
-                42-45:
+                42-45: object type
+                  ? if == 1, then is VCSFW_PAYLOAD_TYPE_SIMPLE_AUTHENTICATED?
                 46-49: size of object
 
 - 0xa1: VCSFW_CMD_DB2_GET_OBJECT_DATA
@@ -536,15 +544,17 @@
      - req: size: 21
         1-4: type:  1=users, 2=templates, 3=payloads
         5-: property object id
-     - resp: size: 4
+     - resp: size: 4local_88
         2-3: no of deleted objects
 
 - 0xa4: VCSFW_CMD_DB2_CLEANUP
      - req: size: 2
         1: (1)
+           0x80 = VCSFW_CMD_DB2_CLEANUP_TYPE_BACKGROUND_ERASE_PAUSE
+           0x81 = VCSFW_CMD_DB2_CLEANUP_TYPE_BACKGROUND_ERASE_RESUME
      - resp: size: 8
-        2-3: no of erased slots
-        4-7: new partition count
+        2-3: Number of erased slots
+        4-7: New partition version
 
 - 0xa5: VCSFW_CMD_DB2_FORMAT
   - in tudorCmdFormat
@@ -577,6 +587,9 @@
       2080-2083: size of data from 2084-
       2084-
 
+- 0xa7 SENSOR_CMD_ACE_COMMAND
+
+- 0xa8 SENSOR_CMD_ASYNC_MCS_READ
 
 # TODO:
 - 0xaa: *reset SBL mode* (non-original name VCSFW_CMD_RESET_SBL_MODE)
@@ -589,6 +602,7 @@
     - resp: size: 2
 
 - 0xab: (from synaWudfBioUsb108.dll) VCSFW_CMD_EXTSIG
+   SIG_AL0_PI"
    - req: size 37
       1-4: subcommand
          3 = VCSFW_SUBCMD_EXTSIG_WRITE
@@ -599,39 +613,71 @@
 
 
 - 0xac: *SSO* (VCSFW_CMD_SSO)
+   - req: size: 13
+      1-4: SSO CMD / op code
+            0 - Enable/Disable
+            1 - Enable/Disable
+            3 - SSO Get Status
+            4 - SSO Clear
+            5 - SSO Lock
+            others considered a bad param
+      5-6: 0; 180 for opcode 1
+      7: 0
+      8: 0
+   - resp: size: 2; 10 for opcode 3
+      - opcode 3
+         2-5: SSO time remaining
+         6-7: SSO time remaining
+         8: SSO status, if == 1, then SSO data are available
+         9: SSO counter
 
-- 0xae: OPINFO_GET (VCSFW_CMD_OPINFO_GET)
+
+- 0xae: VCSFW_CMD_OPINFO_GET
     - req: size: 1 + sizeof(paramBlob)
     - resp: size: ?
     - something: VCSFW_OPINFO_GET_CMD_READ_BY_TAGID
 
 
 - 0xaf: VCSFW_CMD_HW_INFO_GET
-  - in query_HW_SBL_info
-    - req: size: 5
-        1-4: 1
-    - resp: size: 10
-        "Query the HW SBL info as following:"
-        "HASH: 0x%x, status: %d"
-        2-5: hash
-        6: status
-        7-: unused
-  - in get_FwHwModuleInfo:
-    - req: size: 5
-        1-4: 0
-    - resp: size: 18
-        "Due to no CONFIG_VERSION iota, read the HW module info from IOTA chain 0 and FIB as following:"
-        "FM%d-%d, HwVer1:%d, HwVer2:%d, PkgInfoMainId:%d, PkgInfoSubId1:%d, PkgInfoSubId2:%d"
-        2-5: FM
-        6-9: HwVer1
-        10-11: HwVer2
-        12-13: PkgInfoMainId
-        14-15: PkgInfoSubId1
-        16: PkgInfoSubId2
-        17:
+      - req: size: 5
+         1-4: subcommand
+         0 = something get FwHwModuleInfo
+         1 = something query HW SBL INFO
+         3 = VCSFW_CMD_HW_INFO_GET_TAG_ID_MFW_INFO
+   - subcommand = 0
+      - resp: size: 18
+         "Due to no CONFIG_VERSION iota, read the HW module info from IOTA chain 0 and FIB as following:"
+         "FM%d-%d, HwVer1:%d, HwVer2:%d, PkgInfoMainId:%d, PkgInfoSubId1:%d, PkgInfoSubId2:%d"
+         2-5: FM
+         6-9: HwVer1
+         10-11: HwVer2
+         12-13: PkgInfoMainId
+         14-15: PkgInfoSubId1
+         16: PkgInfoSubId2
+         17:
+   - subcommand = 1
+      - resp: size: 10
+         "Query the HW SBL info as following:"
+         "HASH: 0x%x, status: %d"
+         2-5: hash
+         6: status
+         7-: Unused
+   - subcommand = 3 = VCSFW_CMD_HW_INFO_GET_TAG_ID_MFW_INFO
+      - resp: size: 18
+         2-5:
+         6-9: MFW info version
+         10-:
+         13-: MFW info prod
+         not done, more info in sunaWudfBioUsb110.dll
 
 - 0xb4: (from synaWudfBioUsb162.dll) VCSFW_CMD_GET_VERSION2
 - 0xe5: (from synaWudfBioUsb162.dll) VCSFW_CMD_EXT_COMMAND
+   - in synaWudfBioUsb110.dll
+   - in tudorCmdAutonomousModeSuppress
+      - req: size: 9
+         1-4: 0
+         5-8: param_2
+      - recv: size: 2
 
 
 ### responses:
@@ -715,6 +761,12 @@ certificate:
       4-7: data
 
    - IOTA 0x2f: PACKED
+   - IOTA ?: matcher iota
+         2 = VCSFW_QM_CONFIG_TYPE_PARAMS
+         3 = VCSFW_QM_CONFIG_TYPE_METRICS_BUFFER
+         4 = VCSFW_QM_CONFIG_TYPE_FINGER_MASK
+         5 = VCSFW_QM_CONFIG_TYPE_NNET_OVERRIDE
+         6 = VCSFW_QM_CONFIG_TYPE_MATCH_THRESHOLD
 
 - iota patch tags:
    3 - metadata
@@ -749,29 +801,22 @@ certificate:
       - sends commands
 
 ### tudorIoctlcodes:
-   1 - not implemented
-   2 - not implemented
-   3 - calls tudorSendAnyCommand
-   4 - SSI_IOCTL_CODE_BL_ENTER
-      - calls _tudorBootLoaderModeEnter
-   5 - SSI_IOCTL_CODE_BL_EXIT
-      - calls tudorBootloaderModeExit
-   6 - SSI_IOCTL_CODE_BL_PATCH_LOAD
-      - downloads BL mode patch
-      - calls tudorCmdDownloadBootLoaderPatch
-   7 - SSI_IOCTL_CODE_IOTA_READ
-   8 - N/A
-   9
-      - calls tudorSecurityDoPair
-   10
-      - calls tudorSecurityDoUnPair
+   0x01 - not implemented
+   0x02 - not implemented
+   0x03 - calls tudorSendAnyCommand
+   0x04 - SSI_IOCTL_CODE_BL_ENTER
+   0x05 - SSI_IOCTL_CODE_BL_EXIT
+   0x06 - SSI_IOCTL_CODE_BL_PATCH_LOAD
+   0x07 - SSI_IOCTL_CODE_IOTA_READ
+   0x08 - N/A
+   0x09 - calls tudorSecurityDoPair
+   0x10 - calls tudorSecurityDoUnPair
    0x14 - SSI_IOCTL_CODE_GET_PIPE_TIMEOUT
    0x15 - SSI_IOCTL_CODE_SET_PIPE_TIMEOUT
    0x16 - sets inBootloaderMode in outData
    0x1d -
    0x22 - SSI_IOCTL_CODE_SET_GET_PIPETIME_OUT
-   0x23 -
-      - calls tudorSecurityUpdatePairedData
+   0x23 - - calls tudorSecurityUpdatePairedData
    0x24 - SSI_IOCTL_CODE_FW_OPINFO_GET
    0x2b - SSI_IOCTL_CODE_FRAME_FINISH
    >100: calls __tudorIoctlExt:
@@ -780,6 +825,15 @@ certificate:
        0x69 - VCSDRV_IOCTL_WRITE_DFT
             - invalid
        others - not implemented
+   - in synaWudfBioUsb110.dll
+      0x0e - SSI_IOCTL_CODE_FRAME_READ, SSI_IOCTL_CODE_FRAME_FINISH
+      0x24 - SSI_IOCTL_CODE_UEFI_IMAGE_PROGRAM
+      0x25 - SSI_IOCTL_CODE_UEFI_IMAGE_READ
+      0x26 - SSI_IOCTL_CODE_UEFI_IMAGE_ERASE
+      0x28 - SSI_IOCTL_RESTORE_HOST_PART_PAIRING_DATA
+      0x2b - SSI_IOCTL_CODE_EXTSIG_SIGNAL_GPIO_WRITE
+      0x2d - SSI_IOCTL_CODE_SET_GET_INTERRUPT_PIPETIME_OUT
+      0x2e - SSI_IOCTL_AUTONOMOUS_MODE_SUPPRESS
 
 ### palUsbDriverIoControl:
    0x01 - HARDWARE_RESET
@@ -877,4 +931,14 @@ certificate:
 0 - ?
 1 - VCSFW_STORAGE_TUDOR_PART_ID_SSFS
 2 - VCSFW_STORAGE_TUDOR_PART_ID_HOST
+4 - uefi partition
 
+### Capture flags
+001 -
+002 -
+004 -
+008 -
+016 -
+032 - VFM_UTIL_FLAG_CAPTURE_RETAIN_AUTO_IMAGE
+064 - VFM_UTIL_FLAG_SKIP_FRAME_ACQUIRE
+128 - SSI_CAPTURE_FLAGS_IMAGE_RETAIN

@@ -24,7 +24,8 @@
 #include "other_constants.h"
 #include <glib.h>
 
-#define CONTAINTER_HEADER_SIZE 6 // id (2) + data_size (4)
+/* id (2) + data_size (4) */
+#define CONTAINTER_HEADER_SIZE 6
 
 typedef enum {
    CONT_TAG_PROPERTY_ID = 4,

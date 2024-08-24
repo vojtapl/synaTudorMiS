@@ -23,7 +23,6 @@
 
 #include "fpi-log.h"
 #include <glib.h>
-#include <stdio.h>
 
 #pragma once
 
@@ -40,7 +39,8 @@
 #define WRITTEN_CHECK(condition)                                               \
    do {                                                                        \
       if (!(condition)) {                                                      \
-         fp_err("Writing error occurred in %d:%s", __LINE__, __FUNCTION__);    \
+         fp_err("%s: %s: %d: writing error occured", __FILE__, __FUNCTION__,   \
+                __LINE__);                                                     \
          *error = fpi_device_error_new_msg(FP_DEVICE_ERROR_GENERAL,            \
                                            "fpi_byte_writer writing error");   \
          ret = FALSE;                                                          \
@@ -50,7 +50,8 @@
 #define READ_OK_CHECK(condition)                                               \
    do {                                                                        \
       if (!(condition)) {                                                      \
-         fp_err("Reading error occurred in %d:%s", __LINE__, __FUNCTION__);    \
+         fp_err("%s: %s: %d: reading error occured", __FILE__, __FUNCTION__,   \
+                __LINE__);                                                     \
          *error = fpi_device_error_new_msg(FP_DEVICE_ERROR_GENERAL,            \
                                            "fpi_byte_reader reading error");   \
          ret = FALSE;                                                          \
@@ -58,43 +59,6 @@
       }                                                                        \
    } while (0)
 
-void reverse_array(guint8 *arr, gsize size)
-{
-   gint start = 0;
-   gint end = size - 1;
-   gint temp;
+void reverse_array(guint8 *arr, gsize size);
 
-   while (start < end) {
-      // Swap the elements at start and end
-      temp = arr[start];
-      arr[start] = arr[end];
-      arr[end] = temp;
-
-      // Move towards the middle
-      start++;
-      end--;
-   }
-}
-
-void fp_dbg_large_hex(const guint8 *arr, const gint size)
-{
-   char *output;
-   if (arr == NULL) {
-      output = "NULL";
-   } else if (size == 0) {
-      output = "array of size 0";
-   } else {
-      output = g_malloc(2 * size + 4); // +4 -> '\t' + 0' + 'x' +...+ '\0'
-      guint char_idx = 0;
-      output[char_idx++] = '\t';
-      output[char_idx++] = '0';
-      output[char_idx++] = 'x';
-      for (int arr_idx = 0; arr_idx < size; arr_idx++) {
-         sprintf(&output[char_idx], "%02x", arr[arr_idx]);
-         char_idx += 2;
-      }
-      output[char_idx] = '\0';
-   }
-
-   fp_dbg("%s", output);
-}
+void fp_dbg_large_hex(const guint8 *arr, const gint size);

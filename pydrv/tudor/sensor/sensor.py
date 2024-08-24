@@ -34,6 +34,7 @@ def load_sensor_key(
         key = f.read()
 
     # Parse x and y (ECC public key)
+    print(f"test====================={key.hex()}")
     key_x = int.from_bytes(key[0:0x44], "little")
     key_y = int.from_bytes(key[0x44:0x88], "little")
 
@@ -193,6 +194,7 @@ class Sensor:
                 raise Exception("No pairing data given")
 
             # Verify sensor certificate
+            print(f"========================{self.pub_key.public_numbers()}")
             self.pub_key.verify(
                 pairing_data.sensor_cert.signature,
                 pairing_data.sensor_cert.signbytes(),

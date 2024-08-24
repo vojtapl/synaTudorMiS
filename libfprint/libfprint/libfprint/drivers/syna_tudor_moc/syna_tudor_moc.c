@@ -22,12 +22,12 @@
  */
 
 #include "communication.c"
-#include "communication.h"
 #include "device.h"
 #include "drivers_api.h"
 #include "syna_tudor_moc.h"
 #include "tls.c"
-#include "tls.h"
+#include <gnutls/abstract.h>
+#include <gnutls/gnutls.h>
 
 static db2_id_t cache_template_id = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
                                      0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -36,16 +36,16 @@ static db2_id_t cache_template_id = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 G_DEFINE_TYPE(FpiDeviceSynaTudorMoc, fpi_device_syna_tudor_moc, FP_TYPE_DEVICE)
 
 static const FpIdEntry id_table[] = {
-    // only 00FF is tested
-    // { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x00C9, },
-    // { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x00D1, },
-    // { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x00E7, },
+    /* { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x00C9, },
+    { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x00D1, },
+    { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x00E7, }, */
+    /* only 00FF is tested */
     {
         .vid = SYNAPTICS_VENDOR_ID,
         .pid = 0x00FF,
     },
-    // { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x0124, },
-    // { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x0169, },
+    /* { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x0124, },
+    { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x0169, }, */
     {.vid = 0, .pid = 0, .driver_data = 0}, /* terminating entry */
 };
 
@@ -186,7 +186,7 @@ static gboolean get_template_id_from_print_data(GVariant *data,
 
    g_autoptr(GVariant) user_id_var = NULL;
    g_autoptr(GVariant) tid_var = NULL;
-   g_autofree const guint8 *tid = NULL;
+   const guint8 *tid = NULL;
 
    g_return_val_if_fail(data != NULL, FALSE);
 
@@ -217,13 +217,15 @@ error:
    return ret;
 }
 
-// open -----------------------------------------------------------------------
+/* open -------------------------------------------------------------------- */
 
 static void syna_tudor_moc_open(FpDevice *device)
 {
    fp_dbg("==================== open start ====================");
    FpiDeviceSynaTudorMoc *self = FPI_DEVICE_SYNA_TUDOR_MOC(device);
    GError *error = NULL;
+   gboolean need_to_establish_tls_session = TRUE;
+   gboolean usb_device_claimed = FALSE;
 
    G_DEBUG_HERE();
 
@@ -235,29 +237,48 @@ static void syna_tudor_moc_open(FpDevice *device)
       goto error;
    }
 
-   gboolean tls_status = FALSE;
-   get_remote_tls_status(self, &tls_status, &error);
-   fp_dbg("remote TLS at start: %d", tls_status);
+   usb_device_claimed = TRUE;
 
    g_usb_device_reset(fpi_device_get_usb_device(device), &error);
 
-   tls_status = FALSE;
-   get_remote_tls_status(self, &tls_status, &error);
-   fp_dbg("remote TLS after reset: %d", tls_status);
+   /* Get and handle TLS statuses for sensor and host */
+   gboolean remote_tls_status = FALSE;
+   get_remote_tls_status(self, &remote_tls_status, &error);
 
-   get_version_t version_data = {0};
-   if (!send_get_version(self, &version_data, &error)) {
+   if (self->tls.established && !remote_tls_status) {
+      fp_warn("Host is in TLS session but sensor is not");
+      self->tls.established = FALSE;
+      need_to_establish_tls_session = TRUE;
+   } else if (!self->tls.established && remote_tls_status) {
+      fp_warn("Sensor is in TLS session but host is not");
+      if (!send_cmd_to_force_close_sensor_tls_session(self, &error)) {
+         goto error;
+      }
+   } else if (self->tls.established && remote_tls_status) {
+      fp_dbg("Host and sensor are already in TLS session");
+      need_to_establish_tls_session = FALSE;
+   }
+
+   remote_tls_status = FALSE;
+   get_remote_tls_status(self, &remote_tls_status, &error);
+   if (remote_tls_status) {
+      error = fpi_device_error_new_msg(
+          FP_DEVICE_ERROR_PROTO, "Unable to get the sensor out of TLS session");
       goto error;
    }
 
-   gboolean in_bootloader_mode =
-       version_data.product_id == 'B' || version_data.product_id == 'C';
+   if (!send_get_version(self, &self->mis_version, &error)) {
+      goto error;
+   }
+
+   gboolean in_bootloader_mode = self->mis_version.product_id == 'B' ||
+                                 self->mis_version.product_id == 'C';
    if (in_bootloader_mode) {
       fp_err("Sensor is in bootloader mode!");
       g_assert(FALSE);
    }
 
-   guint8 provision_state = version_data.provision_state & 0xF;
+   guint8 provision_state = self->mis_version.provision_state & 0xF;
    gboolean is_provisioned = provision_state == PROVISION_STATE_PROVISIONED;
    if (is_provisioned) {
       if (!load_sample_pairing_data(self, &error)) {
@@ -271,8 +292,11 @@ static void syna_tudor_moc_open(FpDevice *device)
          g_assert(FALSE);
       }
 
-      // TODO:
-      // if (!verify_sensor_certificate(self)) {
+      if (!verify_sensor_certificate(self, &error)) {
+         error = fpi_device_error_new_msg(FP_DEVICE_ERROR_GENERAL,
+                                          "Sensor certificate is invalid");
+         goto error;
+      }
 
    } else {
       fp_err("Sensor is not paired");
@@ -280,25 +304,20 @@ static void syna_tudor_moc_open(FpDevice *device)
       g_assert(FALSE);
    }
 
-   establish_tls_session(self, &error);
-
-   tls_status = FALSE;
-   get_remote_tls_status(self, &tls_status, &error);
-   fp_dbg("remote TLS status before sending: %d", tls_status);
-
-   get_version_t version_data2 = {0};
-   if (!send_get_version(self, &version_data2, &error)) {
-      goto error;
+   if (need_to_establish_tls_session) {
+      establish_tls_session(self, &error);
    }
-   tls_status = FALSE;
-   get_remote_tls_status(self, &tls_status, &error);
-   fp_dbg("remote TLS status after sending: %d", tls_status);
 
 error:
+   if (error != NULL && usb_device_claimed) {
+      g_usb_device_release_interface(fpi_device_get_usb_device(device), 0, 0,
+                                     NULL);
+   }
+
    fpi_device_open_complete(FP_DEVICE(self), error);
 }
 
-// close ----------------------------------------------------------------------
+/* close --------------------------------------------------------------------*/
 
 static void syna_tudor_moc_close(FpDevice *device)
 {
@@ -316,31 +335,16 @@ static void syna_tudor_moc_close(FpDevice *device)
    if (self->tls.established) {
       tls_close_session(self, &error);
    }
-   if (self->tls.master_secret.data != NULL) {
-      g_free(self->tls.master_secret.data);
-   }
-   if (self->tls.encryption_key.data != NULL) {
-      g_free(self->tls.encryption_key.data);
-   }
-   if (self->tls.decryption_key.data != NULL) {
-      g_free(self->tls.decryption_key.data);
-   }
-   if (self->tls.encryption_iv.data != NULL) {
-      g_free(self->tls.encryption_iv.data);
-   }
-   if (self->tls.decryption_iv.data != NULL) {
-      g_free(self->tls.decryption_iv.data);
-   }
-   if (self->tls.session_id != NULL) {
-      g_free(self->tls.session_id);
-   }
+
+   deinit_tls(self);
+
+   /* free pairing_data */
    if (self->pairing_data.sensor_cert.sign_data != NULL) {
       g_free(self->pairing_data.sensor_cert.sign_data);
    }
    if (self->pairing_data.host_cert.sign_data != NULL) {
       g_free(self->pairing_data.host_cert.sign_data);
    }
-   gnutls_privkey_deinit(self->pairing_data.private_key);
 
    g_usb_device_release_interface(fpi_device_get_usb_device(FP_DEVICE(self)), 0,
                                   0, &release_error);
@@ -348,13 +352,14 @@ static void syna_tudor_moc_close(FpDevice *device)
    fpi_device_close_complete(device, release_error);
 }
 
-// enroll ---------------------------------------------------------------------
+/* enroll -------------------------------------------------------------------*/
 
 static void syna_tudor_moc_enroll(FpDevice *device)
 {
    FpiDeviceSynaTudorMoc *self = FPI_DEVICE_SYNA_TUDOR_MOC(device);
    guint16 finger_id;
    GError *error = NULL;
+   GError *retry_error = NULL;
 
    G_DEBUG_HERE();
 
@@ -366,7 +371,6 @@ static void syna_tudor_moc_enroll(FpDevice *device)
    gsize user_id_str_len = strlen(user_id_str);
    memcpy(user_id, user_id_str, user_id_str_len);
 
-   // get finger id
    finger_id = fp_print_get_finger(print);
 
    fp_dbg("Trying to enroll print with:");
@@ -378,7 +382,7 @@ static void syna_tudor_moc_enroll(FpDevice *device)
       goto error;
    }
 
-   // TODO: check if finger_id is already enrolled?
+   /* TODO: shoud be checked if finger_id is already enrolled? */
 
    enroll_add_image_t enroll_stats = {0};
    while (enroll_stats.progress != 100) {
@@ -410,12 +414,20 @@ static void syna_tudor_moc_enroll(FpDevice *device)
          if (enroll_stats.redundant != 0) {
             fp_info("Image rejected due to being redundant: %u",
                     enroll_stats.redundant);
+            retry_error = fpi_device_retry_new_msg(FP_DEVICE_RETRY_GENERAL,
+                                                   "Scan is redundant");
          } else {
             fp_info("Image rejected due to bad quality: %u%%",
                     enroll_stats.quality);
+            retry_error = fpi_device_retry_new_msg(FP_DEVICE_RETRY_GENERAL,
+                                                   "Scan has bad quality");
          }
+         fpi_device_enroll_progress(device, enroll_stats.template_cnt, NULL,
+                                    retry_error);
       } else {
          fp_info("Image accepted with quality: %u%%", enroll_stats.quality);
+         fpi_device_enroll_progress(device, enroll_stats.template_cnt, NULL,
+                                    NULL);
       }
    }
 
@@ -455,7 +467,7 @@ error:
    fpi_device_enroll_complete(device, NULL, error);
 }
 
-// verify ---------------------------------------------------------------------
+/* verify ------------------------------------------------------------------ */
 
 static void syna_tudor_moc_verify(FpDevice *device)
 {
@@ -463,7 +475,7 @@ static void syna_tudor_moc_verify(FpDevice *device)
    FpiDeviceSynaTudorMoc *self = FPI_DEVICE_SYNA_TUDOR_MOC(device);
    GError *error = NULL;
    FpPrint *print_to_verify = NULL;
-   g_autoptr(GVariant) fp_data;
+   g_autoptr(GVariant) fp_data = NULL;
 
    G_DEBUG_HERE();
 
@@ -514,7 +526,7 @@ static void syna_tudor_moc_verify(FpDevice *device)
       fp_dbg("\tfinger_id: %d", enrollment_match.finger_id);
 
    } else {
-      // we get no print data on no match
+      /* we get no print data on no match */
       fpi_device_verify_report(device, FPI_MATCH_FAIL, NULL, NULL);
    }
 
@@ -522,7 +534,7 @@ error:
    fpi_device_verify_complete(device, error);
 }
 
-// identify -------------------------------------------------------------------
+/* identify ---------------------------------------------------------------- */
 
 static void syna_tudor_moc_identify(FpDevice *device)
 {
@@ -580,7 +592,7 @@ static void syna_tudor_moc_identify(FpDevice *device)
       }
       fpi_device_identify_report(device, matching, new_scan, NULL);
    } else {
-      // we get no print data on no match
+      /* we get no print data on no match */
       fpi_device_identify_report(device, NULL, NULL, NULL);
    }
 
@@ -588,7 +600,7 @@ error:
    fpi_device_identify_complete(device, error);
 }
 
-// list -----------------------------------------------------------------------
+/* list -------------------------------------------------------------------- */
 
 static void syna_tudor_moc_list(FpDevice *device)
 {
@@ -622,7 +634,7 @@ static void syna_tudor_moc_list(FpDevice *device)
    fpi_device_list_complete(device, g_steal_pointer(&list_result), NULL);
 }
 
-// delete_print ---------------------------------------------------------------
+/* delete_print ------------------------------------------------------------ */
 
 static void syna_tudor_moc_delete_print(FpDevice *device)
 {
@@ -656,7 +668,7 @@ static void syna_tudor_moc_delete_print(FpDevice *device)
    fpi_device_delete_complete(device, NULL);
 }
 
-// clear_storage --------------------------------------------------------------
+/* clear_storage ----------------------------------------------------------- */
 
 static void syna_tudor_moc_clear_storage(FpDevice *device)
 {
@@ -672,28 +684,28 @@ error:
    fpi_device_clear_storage_complete(device, error);
 }
 
-// cancel ---------------------------------------------------------------------
+/* cancel ------------------------------------------------------------------ */
 
-// static void syna_tudor_moc_cancel(FpDevice *device)
-// {
-//    fp_dbg("==================== cancel start ====================");
-// }
+/* static void syna_tudor_moc_cancel(FpDevice *device)
+{
+   fp_dbg("==================== cancel start ====================");
+} */
 
-// suspend --------------------------------------------------------------------
+/* suspend ----------------------------------------------------------------- */
 
-// static void syna_tudor_moc_suspend(FpDevice *device)
-// {
-//    fp_dbg("==================== suspend start ====================");
-// }
+/* static void syna_tudor_moc_suspend(FpDevice *device)
+{
+   fp_dbg("==================== suspend start ====================");
+} */
 
-// resume ---------------------------------------------------------------------
+/* resume ------------------------------------------------------------------ */
 
-// static void syna_tudor_moc_resume(FpDevice *device)
-// {
-//    fp_dbg("==================== resume start ====================");
-// }
+/* static void syna_tudor_moc_resume(FpDevice *device)
+{
+   fp_dbg("==================== resume start ====================");
+} */
 
-// ----------------------------------------------------------------------------
+/* ------------------------------------------------------------------------- */
 
 static void fpi_device_syna_tudor_moc_init(FpiDeviceSynaTudorMoc *self)
 {
@@ -710,28 +722,26 @@ fpi_device_syna_tudor_moc_class_init(FpiDeviceSynaTudorMocClass *klass)
 
    dev_class->type = FP_DEVICE_TYPE_USB;
    dev_class->id_table = id_table;
-   // TODO: features
    dev_class->nr_enroll_stages = SYNA_TUDOR_MOC_DRIVER_NR_ENROLL_STAGES;
    dev_class->scan_type = FP_SCAN_TYPE_PRESS;
 
-   // TODO: set these numbers correctly
    dev_class->temp_hot_seconds = -1;
    dev_class->temp_cold_seconds = -1;
 
-   // dev_class->usb_discover
-   // dev_class->probe
+   /* dev_class->usb_discover */
+   /* dev_class->probe */
    dev_class->open = syna_tudor_moc_open;
    dev_class->close = syna_tudor_moc_close;
    dev_class->enroll = syna_tudor_moc_enroll;
    dev_class->verify = syna_tudor_moc_verify;
    dev_class->identify = syna_tudor_moc_identify;
-   // dev_class->capture
+   /* dev_class->capture */
    dev_class->list = syna_tudor_moc_list;
    dev_class->delete = syna_tudor_moc_delete_print;
    dev_class->clear_storage = syna_tudor_moc_clear_storage;
-   // dev_class->cancel = syna_tudor_moc_cancel;
-   // dev_class->suspend = syna_tudor_moc_suspend;
-   // dev_class->resume = syna_tudor_moc_resume;
+   /* dev_class->cancel = syna_tudor_moc_cancel; */
+   /* dev_class->suspend = syna_tudor_moc_suspend; */
+   /* dev_class->resume = syna_tudor_moc_resume; */
 
    fpi_device_class_auto_initialize_features(dev_class);
 }

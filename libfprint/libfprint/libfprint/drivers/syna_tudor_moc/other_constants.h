@@ -50,7 +50,7 @@ typedef enum {
 } obj_type_t;
 
 typedef guint8 db2_id_t[TEMPLATE_ID_SIZE];
-// NOTE: user_id is used in place of winbio_sid
+/* NOTE: user_id is used in place of winbio_sid */
 typedef guint8 user_id_t[WINBIO_SID_SIZE];
 
 typedef struct {

@@ -89,7 +89,8 @@ gio_dep = dependency('gio-unix-2.0', version: '>=' + glib_min_version)
 gobject_dep = dependency('gobject-2.0', version: '>=' + glib_min_version)
 gusb_dep = dependency('gusb', version: '>= 0.2.0')
 mathlib_dep = cc.find_library('m', required: false)
-gnutls_dep = dependency('gnutls', required:true, version: '>= 3.8.0')
+# gnutls_dep = dependency('gnutls', required: true, version: '>= 3.8.0')
+gnutls_dep = cc.find_library('gnutls', required: true)
 
 # The following dependencies are only used for tests
 sh = find_program('sh', required: true)
@@ -346,7 +347,7 @@ pkgconfig.generate(
     description: 'Generic C API for fingerprint reader access',
     version: meson.project_version(),
     libraries: libfprint,
-    requires: [gio_dep, gobject_dep, gnutls_dep],
+    requires: [gio_dep, gobject_dep],
     subdirs: versioned_libname,
     filebase: versioned_libname,
 )

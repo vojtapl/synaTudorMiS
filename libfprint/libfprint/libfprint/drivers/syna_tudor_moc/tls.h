@@ -30,6 +30,7 @@
 
 #include "device.h"
 #include <glib.h>
+#include <gnutls/gnutls.h>
 
 #define REQUEST_TLS_SESSION_STATUS 0x14
 #define TLS_SESSION_STATUS_DATA_RESP_LEN 2
@@ -72,6 +73,7 @@ typedef enum {
 
 typedef struct {
    guint16 id;
+   gnutls_mac_algorithm_t mac_algo;
 } cipher_suit_t;
 
 typedef struct {
@@ -116,8 +118,11 @@ gboolean tls_unwrap(FpiDeviceSynaTudorMoc *self, guint8 *ctext,
 gboolean get_remote_tls_status(FpiDeviceSynaTudorMoc *self, gboolean *status,
                                GError **error);
 
-gboolean verify_sensor_certificate(FpiDeviceSynaTudorMoc *self,
-                                   gnutls_pubkey_t sensor_pubkey,
-                                   GError **error);
+gboolean verify_sensor_certificate(FpiDeviceSynaTudorMoc *self, GError **error);
 
 gboolean load_sample_pairing_data(FpiDeviceSynaTudorMoc *self, GError **error);
+
+void deinit_tls(FpiDeviceSynaTudorMoc *self);
+
+gboolean send_cmd_to_force_close_sensor_tls_session(FpiDeviceSynaTudorMoc *self,
+                                                    GError **error);

@@ -26,9 +26,9 @@
 #include "fpi-device.h"
 #include "fpi-log.h"
 #include "other_constants.h"
-#include "utils.h"
+#include "utils.c"
 
-// #define container_debug
+/* #define container_debug */
 
 gboolean serialize_container(container_item_t *cont, guint cont_cnt,
                              guint8 **serialized, gsize *serialized_size)
@@ -99,7 +99,7 @@ gboolean deserialize_container(const guint8 *serialized,
    }
 
    if (!read_ok && *cont != NULL) {
-      // free container data
+      /* free container data */
       for (int i = 0; i < *cont_item_cnt; ++i) {
          if (cont[i]->data != NULL) {
 
@@ -189,7 +189,7 @@ gboolean get_enrollment_data_from_serialized_container(const guint8 *data,
       ret = FALSE;
       goto error;
    }
-   // finger id is guint8, so no need to memcpy
+   /* finger id is guint8, so no need to memcpy */
    enrollment->finger_id = container_array[finger_id_idx].data[0];
 
 error:
