@@ -45,3 +45,13 @@ class CmdUpdate(Command):
             print("Successfully applied specified update files")
         else:
             raise Exception("Invalid mode")
+
+@cmd("bootloader_mode_enter")
+class BootloaderModeEnter(Command):
+    def run(self, ctx: CmdContext, args: list):
+        ctx.sensor.bootloader.enter_bootloader_mode()
+
+@cmd("bootloader_mode_exit")
+class BootloaderModeExit(Command):
+    def run(self, ctx: CmdContext, args: list):
+        ctx.sensor.bootloader.exit_bootloader_mode()

@@ -102,7 +102,6 @@ class SensorPairingData:
             int.from_bytes(bio.read(0x44), "little"), ecc.SECP256R1()
         )
 
-
         # Load host certificate
         host_cert = SensorCertificate.frombytes(bio.read(400))
 
@@ -118,20 +117,11 @@ class SensorPairingData:
             int.from_bytes(PRIV_KEY, "little"), ecc.SECP256R1()
         )
 
-        print("ppppppppppppppppppppppppppppppppppppppppppppppppp")
-        print(f"loaded private key: {hex(priv_key.private_numbers().private_value)}")
-        print(f"loaded public key x: {hex(priv_key.public_key().public_numbers().x)}")
-        print(f"loaded public key y: {hex(priv_key.public_key().public_numbers().y)}")
-
         # Load host certificate
         host_cert = SensorCertificate.frombytes(RECV_HOST_CERT)
 
         # Load sensor certificate
         sensor_cert = SensorCertificate.frombytes(SENSOR_CERT)
-
-        print("sssssssssssssssssssssssssssssssssssssssssssssssss")
-        print(f"loaded public key x: {hex(sensor_cert.pub_key.public_numbers().x)}")
-        print(f"loaded public key y: {hex(sensor_cert.pub_key.public_numbers().y)}")
 
         return SensorPairingData(priv_key, host_cert, sensor_cert)
 

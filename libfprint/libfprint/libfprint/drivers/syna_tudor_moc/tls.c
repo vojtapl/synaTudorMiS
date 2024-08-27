@@ -39,21 +39,8 @@
 
 // #define TLS_DEBUG
 
-#define GNUTLS_CHECK(func_call)                                                \
-   do {                                                                        \
-      gint gnutls_ret = (func_call);                                           \
-      if (gnutls_ret != GNUTLS_E_SUCCESS) {                                    \
-         fp_err("GnuTLS error in " #func_call ": %s",                          \
-                gnutls_strerror(gnutls_ret));                                  \
-         *error = fpi_device_error_new_msg(FP_DEVICE_ERROR_PROTO,              \
-                                           "GnuTLS error: %s",                 \
-                                           gnutls_strerror(gnutls_ret));       \
-         ret = FALSE;                                                          \
-         goto error;                                                           \
-      }                                                                        \
-   } while (0)
-
-/*===========================================================================*/
+/* ============================================================================
+ * Supported ciphersuites and extensions */
 
 /* the only ciphersuite which seemed to be usable */
 static cipher_suit_t tls_ecdh_ecdsa_with_aes_256_gcm_sha384 = {
@@ -70,67 +57,6 @@ static extension_t ec_point_formats = {
     .id = 0xb, .len = 2, .data = ec_point_formats_data};
 
 /*===========================================================================*/
-/* SECP256R1 sensor keys converted to big-endian (gnutls expects big endian) */
-static guint8 pubkey_v10_1_x[32] = {
-    0xcb, 0x65, 0x62, 0x93, 0xb9, 0x70, 0x18, 0x06, 0xae, 0x3b, 0x1a,
-    0x52, 0x08, 0xe4, 0x69, 0xf4, 0x65, 0xa6, 0xa5, 0x19, 0x5b, 0xd8,
-    0xb7, 0xe3, 0x9f, 0x23, 0x65, 0x06, 0x11, 0xdc, 0xdf, 0xdc};
-static gnutls_datum_t pubkey_v10_1_x_datum = {.data = pubkey_v10_1_x,
-                                              .size = sizeof(pubkey_v10_1_x)};
-
-static guint8 pubkey_v10_1_y[32] = {
-    0xa7, 0x00, 0x42, 0x4e, 0xe0, 0x97, 0xb3, 0xc1, 0x59, 0xbe, 0x79,
-    0x10, 0x89, 0x50, 0x2f, 0x40, 0xba, 0x57, 0x1e, 0xca, 0x91, 0xb1,
-    0x06, 0xb4, 0x88, 0x1f, 0x19, 0x63, 0x7e, 0x44, 0xbf, 0xdc};
-static gnutls_datum_t pubkey_v10_1_y_datum = {.data = pubkey_v10_1_y,
-                                              .size = sizeof(pubkey_v10_1_y)};
-
-static guint8 pubkey_v10_1_kf_x[32] = {
-    0x33, 0xd6, 0x20, 0x8c, 0xa5, 0xf5, 0xda, 0x82, 0x4b, 0x46, 0xea,
-    0x1c, 0xa2, 0x5e, 0x67, 0x32, 0x7e, 0xfc, 0x0c, 0x4c, 0xe9, 0x37,
-    0xd9, 0xd8, 0x44, 0x12, 0x0d, 0x6c, 0xc0, 0x8b, 0xfe, 0x5d};
-static gnutls_datum_t pubkey_v10_1_kf_x_datum = {
-    .data = pubkey_v10_1_kf_x, .size = sizeof(pubkey_v10_1_kf_x)};
-static guint8 pubkey_v10_1_kf_y[32] = {
-    0xb9, 0x55, 0xe1, 0x81, 0xfc, 0x4b, 0xf6, 0xc6, 0x2b, 0x91, 0xaf,
-    0xcd, 0xf3, 0xb6, 0x1e, 0xc7, 0x18, 0xdc, 0xe7, 0x08, 0x47, 0x42,
-    0xc4, 0x1f, 0x57, 0xc1, 0xf0, 0x77, 0x7c, 0x34, 0xa0, 0xfd};
-static gnutls_datum_t pubkey_v10_1_kf_y_datum = {
-    .data = pubkey_v10_1_kf_y, .size = sizeof(pubkey_v10_1_kf_y)};
-
-/*===========================================================================*/
-
-static void
-event_mask_to_event_buffer(guint32 event_mask,
-                           sensor_event_type_t event_buffer[NUM_EVENTS])
-{
-   guint event_num = 0;
-   if ((event_mask & NO_EVENTS) != 0) {
-      event_buffer[event_num++] = NO_EVENTS;
-   } else if ((event_mask & NO_EVENTS) != 0) {
-      event_buffer[event_num++] = NO_EVENTS;
-   } else if ((event_mask & EV_FINGER_DOWN) != 0) {
-      event_buffer[event_num++] = EV_FINGER_DOWN;
-   } else if ((event_mask & EV_FINGER_UP) != 0) {
-      event_buffer[event_num++] = EV_FINGER_UP;
-   } else if ((event_mask & EV_3) != 0) {
-      event_buffer[event_num++] = EV_3;
-   } else if ((event_mask & EV_4) != 0) {
-      event_buffer[event_num++] = EV_4;
-   } else if ((event_mask & EV_5) != 0) {
-      event_buffer[event_num++] = EV_5;
-   } else if ((event_mask & EV_6) != 0) {
-      event_buffer[event_num++] = EV_6;
-   } else if ((event_mask & EV_7) != 0) {
-      event_buffer[event_num++] = EV_7;
-   } else if ((event_mask & EV_8) != 0) {
-      event_buffer[event_num++] = EV_8;
-   } else if ((event_mask & EV_9) != 0) {
-      event_buffer[event_num++] = EV_9;
-   } else if ((event_mask & EV_FRAME_READY) != 0) {
-      event_buffer[event_num++] = EV_FRAME_READY;
-   }
-}
 
 static gboolean write_record_header(FpiByteWriter *writer,
                                     const record_t *record)
@@ -211,6 +137,7 @@ static gboolean decrypt_record(FpiDeviceSynaTudorMoc *self,
    fp_dbg("GCM IV:");
    fp_dbg_large_hex(gcm_iv.data, gcm_iv.size);
    fp_dbg("decryption key:");
+   /**/
    fp_dbg_large_hex(self->tls.decryption_key.data,
                     self->tls.decryption_key.size);
 #endif
@@ -435,12 +362,14 @@ error:
    return ret;
 }
 
-static gboolean parse_certificate(guint8 *data, gsize len, sensor_cert_t *cert)
+gboolean parse_certificate(const guint8 *data, const gsize len, cert_t *cert)
 {
    if (len != CERTIFICATE_SIZE) {
       fp_err("Received certificate with incorrect length: %lu", len);
       return FALSE;
    }
+
+   const guint8 *to_copy = NULL;
 
    gboolean read_ok = TRUE;
    FpiByteReader reader;
@@ -452,22 +381,32 @@ static gboolean parse_certificate(guint8 *data, gsize len, sensor_cert_t *cert)
 
    /* memcpy as we use variable length arrays for storage */
    g_assert(sizeof(cert->pubkey_x) == CERTIFICATE_KEY_SIZE);
-   const guint8 *pubkey_x_data;
-   read_ok &= fpi_byte_reader_get_data(&reader, sizeof(cert->pubkey_x),
-                                       &pubkey_x_data);
-   memcpy(cert->pubkey_x, pubkey_x_data, sizeof(cert->pubkey_x));
+   read_ok &=
+       fpi_byte_reader_get_data(&reader, sizeof(cert->pubkey_x), &to_copy);
+   if (read_ok) {
+      memcpy(cert->pubkey_x, to_copy, sizeof(cert->pubkey_x));
+   }
 
    g_assert(sizeof(cert->pubkey_y) == CERTIFICATE_KEY_SIZE);
-   const guint8 *pubkey_y_data;
-   read_ok &= fpi_byte_reader_get_data(&reader, sizeof(cert->pubkey_y),
-                                       &pubkey_y_data);
-   memcpy(cert->pubkey_y, pubkey_y_data, sizeof(cert->pubkey_y));
+   read_ok &=
+       fpi_byte_reader_get_data(&reader, sizeof(cert->pubkey_y), &to_copy);
+   if (read_ok) {
+      memcpy(cert->pubkey_y, to_copy, sizeof(cert->pubkey_y));
+   }
 
-   read_ok &= fpi_byte_reader_skip(&reader, 1);
+   read_ok &= fpi_byte_reader_get_uint8(&reader, &cert->padding);
    read_ok &= fpi_byte_reader_get_uint8(&reader, &cert->cert_type);
    read_ok &= fpi_byte_reader_get_uint16_le(&reader, &cert->sign_size);
    read_ok &=
-       fpi_byte_reader_dup_data(&reader, cert->sign_size, &cert->sign_data);
+       fpi_byte_reader_get_data(&reader, sizeof(cert->sign_data), &to_copy);
+   if (read_ok) {
+      memcpy(cert->sign_data, to_copy, sizeof(cert->sign_data));
+   }
+
+   /* check for completion */
+   if (read_ok) {
+      g_assert(fpi_byte_reader_get_pos(&reader) == CERTIFICATE_SIZE);
+   }
 
    return read_ok;
 }
@@ -503,10 +442,9 @@ static gboolean get_client_hello_record(FpiDeviceSynaTudorMoc *self,
                                        sizeof(client_hello->random));
 
    /* write session id */
-   written &=
-       fpi_byte_writer_put_uint8(&writer, sizeof(client_hello->session_id));
+   written &= fpi_byte_writer_put_uint8(&writer, SESSION_ID_LEN);
    written &= fpi_byte_writer_put_data(&writer, client_hello->session_id,
-                                       sizeof(client_hello->session_id));
+                                       SESSION_ID_LEN);
 
    /* write cipher cuites */
    guint16 cipher_suite_id_list_total_len =
@@ -558,7 +496,7 @@ gboolean get_remote_tls_status(FpiDeviceSynaTudorMoc *self, gboolean *status,
                                GError **error)
 {
    gboolean ret = TRUE;
-   FpiUsbTransfer *transfer = fpi_usb_transfer_new(FP_DEVICE(self));
+   g_autoptr(FpiUsbTransfer) transfer = fpi_usb_transfer_new(FP_DEVICE(self));
 
    fpi_usb_transfer_fill_control(
        transfer, G_USB_DEVICE_DIRECTION_DEVICE_TO_HOST,
@@ -579,14 +517,13 @@ gboolean get_remote_tls_status(FpiDeviceSynaTudorMoc *self, gboolean *status,
           *status ? "established" : "not established");
 
 error:
-   fpi_usb_transfer_unref(transfer);
    return ret;
 }
 
 static void update_handshake_messages_data(FpiDeviceSynaTudorMoc *self,
                                            const guint8 *data, const gsize size)
 {
-   /* NOTE: do not update with finished messages */
+   /* NOTE: per decompiled code do not update with *finished messages* */
    gsize remaining_alloc_size = self->tls.sent_handshake_msgs_alloc_size -
                                 self->tls.sent_handshake_msgs_size;
 
@@ -704,16 +641,13 @@ static gboolean init_client_hello(FpiDeviceSynaTudorMoc *self,
 #endif
 
    /* copy session id from self */
-   g_assert(self->tls.session_id != NULL);
-   memcpy(&client_hello->session_id, self->tls.session_id,
-          sizeof(client_hello->session_id));
+   memcpy(&client_hello->session_id, self->tls.session_id, SESSION_ID_LEN);
 
-   /* TODO: changeme - add cupported ciphersuites to self
-    * Set cipher suites to 0xC02E, as others seem to not work
-    * -> for now hardcode everything per this
-    * */
+   /* only ciphersuite which seemed to work is 0xC02E
+    * -> for now hardcode everything per this */
    client_hello->cipher_suit_cnt = 1;
    client_hello->cipher_suits = &tls_ecdh_ecdsa_with_aes_256_gcm_sha384;
+
    client_hello->extension_cnt = 2;
    client_hello->extensions =
        g_malloc(client_hello->extension_cnt * sizeof(extension_t));
@@ -736,7 +670,9 @@ static gboolean parse_and_process_server_hello(FpiDeviceSynaTudorMoc *self,
    g_assert(self != NULL && reader != NULL);
 
    gboolean ret = TRUE;
+
    guint32 read_start_pos = fpi_byte_reader_get_pos(reader);
+   const guint8 *to_copy = NULL;
 
    guint8 version_major;
    ret &= fpi_byte_reader_get_uint8(reader, &version_major);
@@ -753,11 +689,10 @@ static gboolean parse_and_process_server_hello(FpiDeviceSynaTudorMoc *self,
    }
 
    /* read current time and server random */
-   const guint8 *recv_random = NULL;
    ret &= fpi_byte_reader_get_data(reader, sizeof(self->tls.server_random),
-                                   &recv_random);
+                                   &to_copy);
    if (ret) {
-      memcpy(&self->tls.server_random, recv_random,
+      memcpy(&self->tls.server_random, to_copy,
              sizeof(self->tls.server_random));
 #ifdef TLS_DEBUG
       fp_dbg("received server_random:");
@@ -766,9 +701,18 @@ static gboolean parse_and_process_server_hello(FpiDeviceSynaTudorMoc *self,
    }
 
    /* read session id */
-   ret &= fpi_byte_reader_get_uint8(reader, &self->tls.session_id_len);
-   ret &= fpi_byte_reader_dup_data(reader, self->tls.session_id_len,
-                                   &self->tls.session_id);
+   guint8 session_id_len = 0;
+   ret &= fpi_byte_reader_get_uint8(reader, &session_id_len);
+   if (ret && session_id_len != SESSION_ID_LEN) {
+      *error = fpi_device_error_new_msg(
+          FP_DEVICE_ERROR_PROTO,
+          "Invalid session_id length: expected: %d, got: %d", SESSION_ID_LEN,
+          session_id_len);
+   }
+   ret &= fpi_byte_reader_get_data(reader, SESSION_ID_LEN, &to_copy);
+   if (ret) {
+      memcpy(self->tls.session_id, to_copy, SESSION_ID_LEN);
+   }
 
    /* read cipher cuites */
    ret &= fpi_byte_reader_get_uint16_be(reader, &self->tls.ciphersuit);
@@ -909,9 +853,9 @@ static gboolean record_version_matches_clients(FpiDeviceSynaTudorMoc *self,
 {
    if (record->version_major != self->tls.version_major ||
        record->version_minor != self->tls.version_minor) {
-      fp_warn("Invalid received record version: %d.%d, expected: %d.%d",
-              record->version_major, record->version_minor,
-              self->tls.version_major, self->tls.version_minor);
+      fp_err("Invalid received record version: %d.%d, expected: %d.%d",
+             record->version_major, record->version_minor,
+             self->tls.version_major, self->tls.version_minor);
       self->tls.handshake_state = TLS_HS_STATE_ALERT;
       self->tls.alert_level = GNUTLS_AL_WARNING;
       self->tls.alert_desc = GNUTLS_A_ILLEGAL_PARAMETER;
@@ -1058,21 +1002,18 @@ static gboolean append_client_certificate(FpiDeviceSynaTudorMoc *self,
    /* add header */
    written &= fpi_byte_writer_put_uint8(writer, HS_CERTIFICATE);
    /* 8 = 2*3 (for size) + 2 (for padding?) */
-   guint32 cert_msg_size = 8 + self->pairing_data.host_cert_bytes_len;
+   guint32 cert_msg_size = 8 + sizeof(cert_t);
    written &= fpi_byte_writer_put_uint24_be(writer, cert_msg_size);
 
-   /* add size twice for some reason*/
-   written &= fpi_byte_writer_put_uint24_be(
-       writer, self->pairing_data.host_cert_bytes_len);
-   written &= fpi_byte_writer_put_uint24_be(
-       writer, self->pairing_data.host_cert_bytes_len);
+   /* add size twice for some reason */
+   written &= fpi_byte_writer_put_uint24_be(writer, CERTIFICATE_SIZE);
+   written &= fpi_byte_writer_put_uint24_be(writer, CERTIFICATE_SIZE);
    /* add the padding? */
    written &= fpi_byte_writer_put_uint16_be(writer, 0);
 
    /* add the certificate itself*/
-   written &=
-       fpi_byte_writer_put_data(writer, self->pairing_data.host_cert_bytes,
-                                self->pairing_data.host_cert_bytes_len);
+   written &= fpi_byte_writer_put_data(
+       writer, (guint8 *)&self->pairing_data.host_cert, CERTIFICATE_SIZE);
 
    return written;
 }
@@ -1109,30 +1050,30 @@ static gboolean append_client_key_exchange_to_record(
 #endif
 
    /* uncompressed format */
-   guint x_offset = x.size - ECC_PUBKEY_SIZE;
-   guint y_offset = y.size - ECC_PUBKEY_SIZE;
+   guint x_offset = x.size - ECC_KEY_SIZE;
+   guint y_offset = y.size - ECC_KEY_SIZE;
 
 #ifdef TLS_DEBUG
    if (x_offset != 0) {
       fp_dbg("x point data before:");
       fp_dbg_large_hex(x.data, x.size);
       fp_dbg("x point data after:");
-      fp_dbg_large_hex(x.data + x_offset, ECC_PUBKEY_SIZE);
+      fp_dbg_large_hex(x.data + x_offset, ECC_KEY_SIZE);
       fp_dbg("");
    }
    if (y_offset != 0) {
-      fp_dbg("y size if %d > ECC_PUBKEY_SIZE -> offset = %d", y.size, y_offset);
+      fp_dbg("y size if %d > ECC_KEY_SIZE -> offset = %d", y.size, y_offset);
       fp_dbg("y point data before:");
       fp_dbg_large_hex(y.data, y.size);
       fp_dbg("y point data after:");
-      fp_dbg_large_hex(y.data + y_offset, ECC_PUBKEY_SIZE);
+      fp_dbg_large_hex(y.data + y_offset, ECC_KEY_SIZE);
       fp_dbg("");
    }
 #endif
 
    ret &= fpi_byte_writer_put_uint8(writer, 0x4);
-   ret &= fpi_byte_writer_put_data(writer, x.data + x_offset, ECC_PUBKEY_SIZE);
-   ret &= fpi_byte_writer_put_data(writer, y.data + y_offset, ECC_PUBKEY_SIZE);
+   ret &= fpi_byte_writer_put_data(writer, x.data + x_offset, ECC_KEY_SIZE);
+   ret &= fpi_byte_writer_put_data(writer, y.data + y_offset, ECC_KEY_SIZE);
 
 error:
    if (x.data != NULL) {
@@ -1541,7 +1482,10 @@ error:
    return ret;
 }
 
-gboolean tls_close_session(FpiDeviceSynaTudorMoc *self, GError **error)
+static gboolean send_tls_alert(FpiDeviceSynaTudorMoc *self,
+                               gnutls_alert_level_t alert_level,
+                               gnutls_alert_description_t alert_desc,
+                               GError **error)
 {
    gboolean ret = TRUE;
 
@@ -1557,23 +1501,21 @@ gboolean tls_close_session(FpiDeviceSynaTudorMoc *self, GError **error)
    };
 
    guint8 msg[record_to_encrypt.msg_len];
-   msg[0] = GNUTLS_AL_WARNING;
-   msg[1] = GNUTLS_A_CLOSE_NOTIFY;
+   msg[0] = alert_level;
+   msg[1] = alert_desc;
    record_to_encrypt.msg = msg;
 
    gsize encrypted_size = 0;
    BOOL_CHECK(encrypt_record(self, &record_to_encrypt, &encrypted,
                              &encrypted_size, error));
 
-   /* turn if off now, as we do not want the encrypted command to be wrapped */
-   self->tls.established = FALSE;
-
    const gsize send_size = RECORD_HEADER_SIZE + encrypted_size;
    send_data = g_malloc(send_size);
 
-   gboolean written = TRUE;
    FpiByteWriter writer;
    fpi_byte_writer_init_with_data(&writer, send_data, send_size, FALSE);
+
+   gboolean written = TRUE;
    written &= write_record_header(&writer, &record_to_encrypt);
    written &= fpi_byte_writer_put_uint16_be_inline(&writer, encrypted_size);
    written &= fpi_byte_writer_put_data(&writer, encrypted, encrypted_size);
@@ -1590,6 +1532,20 @@ error:
    return ret;
 }
 
+gboolean tls_close_session(FpiDeviceSynaTudorMoc *self, GError **error)
+{
+   gboolean ret = TRUE;
+
+   /* turn if off now, as we do not want the encrypted command to be wrapped */
+   self->tls.established = FALSE;
+
+   BOOL_CHECK(
+       send_tls_alert(self, GNUTLS_AL_WARNING, GNUTLS_A_CLOSE_NOTIFY, error));
+
+error:
+   return ret;
+}
+
 /* Establish session funcitons ============================================= */
 
 static gboolean tls_handshake_state_prepare(FpiDeviceSynaTudorMoc *self)
@@ -1598,8 +1554,6 @@ static gboolean tls_handshake_state_prepare(FpiDeviceSynaTudorMoc *self)
 
    self->tls.version_major = TLS_PROTOCOL_VERSION_MAJOR;
    self->tls.version_minor = TLS_PROTOCOL_VERSION_MINOR;
-   self->tls.session_id_len = TLS_SESSION_ID_LEN;
-   self->tls.session_id = g_malloc0(self->tls.session_id_len);
    self->tls.remote_sends_encrypted = FALSE;
    self->tls.sent_handshake_msgs = NULL;
    self->tls.sent_handshake_msgs_size = 0;
@@ -1615,28 +1569,22 @@ gboolean load_sample_pairing_data(FpiDeviceSynaTudorMoc *self, GError **error)
    gboolean ret = TRUE;
 
    /* load sample certificates for now */
-   self->pairing_data.sensor_cert_bytes = sample_sensor_cert;
-   self->pairing_data.sensor_cert_bytes_len = sizeof(sample_sensor_cert);
-
-   BOOL_CHECK(parse_certificate(self->pairing_data.sensor_cert_bytes,
-                                self->pairing_data.sensor_cert_bytes_len,
+   BOOL_CHECK(parse_certificate(sample_sensor_cert, CERTIFICATE_SIZE,
                                 &self->pairing_data.sensor_cert));
 
-   self->pairing_data.host_cert_bytes = sample_recv_host_cert;
-   self->pairing_data.host_cert_bytes_len = sizeof(sample_recv_host_cert);
-
-   BOOL_CHECK(parse_certificate(self->pairing_data.host_cert_bytes,
-                                self->pairing_data.host_cert_bytes_len,
+   BOOL_CHECK(parse_certificate(sample_recv_host_cert, CERTIFICATE_SIZE,
                                 &self->pairing_data.host_cert));
-   fp_dbg("Private key import success");
 
+   g_assert(!self->pairing_data.private_key_initialized);
    GNUTLS_CHECK(gnutls_privkey_init(&self->pairing_data.private_key));
+   self->pairing_data.private_key_initialized = TRUE;
 
    /* load sample private key for now */
    GNUTLS_CHECK(gnutls_privkey_import_ecc_raw(
        self->pairing_data.private_key, GNUTLS_ECC_CURVE_SECP256R1,
        &sample_privkey_x_datum, &sample_privkey_y_datum,
        &sample_privkey_k_datum));
+   self->pairing_data.private_key_initialized = TRUE;
 
    GNUTLS_CHECK(gnutls_privkey_verify_params(self->pairing_data.private_key));
 
@@ -1691,6 +1639,9 @@ static gboolean calculate_premaster_secret(FpiDeviceSynaTudorMoc *self,
    gboolean ret = TRUE;
    gboolean pubkey_initialized = FALSE;
 
+   g_autofree guint8 *pubkey_x_data = g_malloc(ECC_KEY_SIZE);
+   g_autofree guint8 *pubkey_y_data = g_malloc(ECC_KEY_SIZE);
+
    /* get sensor pubkey */
    gnutls_pubkey_t sensor_pubkey;
    GNUTLS_CHECK(gnutls_pubkey_init(&sensor_pubkey));
@@ -1701,12 +1652,11 @@ static gboolean calculate_premaster_secret(FpiDeviceSynaTudorMoc *self,
 
    /* NOTE: the keys are stored in little endian - reverse them as gnutls seems
     to expect big endian */
-   gnutls_datum_t pubkey_x = {.size = ECC_PUBKEY_SIZE,
-                              .data = self->pairing_data.sensor_cert.pubkey_x};
+   gnutls_datum_t pubkey_x = {.size = ECC_KEY_SIZE, .data = pubkey_x_data};
+   gnutls_datum_t pubkey_y = {.size = ECC_KEY_SIZE, .data = pubkey_y_data};
+   memcpy(pubkey_x.data, self->pairing_data.sensor_cert.pubkey_x, ECC_KEY_SIZE);
+   memcpy(pubkey_y.data, self->pairing_data.sensor_cert.pubkey_y, ECC_KEY_SIZE);
    reverse_array(pubkey_x.data, pubkey_x.size);
-
-   gnutls_datum_t pubkey_y = {.size = ECC_PUBKEY_SIZE,
-                              .data = self->pairing_data.sensor_cert.pubkey_y};
    reverse_array(pubkey_y.data, pubkey_y.size);
 
    GNUTLS_CHECK(gnutls_pubkey_import_ecc_raw(
@@ -1963,7 +1913,10 @@ gboolean establish_tls_session(FpiDeviceSynaTudorMoc *self, GError **error)
          fp_dbg("\t TLS alert: level = %d; description = %d = %s",
                 self->tls.alert_level, self->tls.alert_desc,
                 gnutls_alert_get_strname(self->tls.alert_desc));
-         // FIXME: send alert and receive response
+         if (!send_tls_alert(self, self->tls.alert_level, self->tls.alert_desc,
+                             error)) {
+            fp_warn("Unable to send TLS alert");
+         }
          self->tls.handshake_state += 1; /* TLS_HS_STATE_FAILED */
          break;
 
@@ -1977,8 +1930,12 @@ gboolean establish_tls_session(FpiDeviceSynaTudorMoc *self, GError **error)
          /* reset state for later calling of this function */
          self->tls.handshake_state = TLS_HS_STATE_PREPARE;
 
-         *error = fpi_device_error_new_msg(FP_DEVICE_ERROR_PROTO,
-                                           "TLS handshake failed");
+         /* propagate error if present */
+         if (*error != NULL) {
+            *error = fpi_device_error_new_msg(FP_DEVICE_ERROR_PROTO,
+                                              "TLS handshake failed");
+         }
+
          ret = FALSE;
          goto error;
          break;
@@ -2000,6 +1957,82 @@ error:
    return ret;
 }
 
+/* ============================================================================
+ * Sensor public keys for Sensor certificate verificaiton
+ * SECP256R1 keys converted to big-endian (gnutls expects big endian) */
+typedef struct {
+   gnutls_datum_t x;
+   gnutls_datum_t y;
+
+   gboolean keyflag;
+   guint8 fw_version_major;
+   guint8 fw_version_minor;
+} sensor_pub_key_t;
+
+static guint8 pubkey_v10_1_x[ECC_KEY_SIZE] = {
+    0xcb, 0x65, 0x62, 0x93, 0xb9, 0x70, 0x18, 0x06, 0xae, 0x3b, 0x1a,
+    0x52, 0x08, 0xe4, 0x69, 0xf4, 0x65, 0xa6, 0xa5, 0x19, 0x5b, 0xd8,
+    0xb7, 0xe3, 0x9f, 0x23, 0x65, 0x06, 0x11, 0xdc, 0xdf, 0xdc};
+static guint8 pubkey_v10_1_y[ECC_KEY_SIZE] = {
+    0xa7, 0x00, 0x42, 0x4e, 0xe0, 0x97, 0xb3, 0xc1, 0x59, 0xbe, 0x79,
+    0x10, 0x89, 0x50, 0x2f, 0x40, 0xba, 0x57, 0x1e, 0xca, 0x91, 0xb1,
+    0x06, 0xb4, 0x88, 0x1f, 0x19, 0x63, 0x7e, 0x44, 0xbf, 0xdc};
+sensor_pub_key_t pubkey_v10_1 = {
+    .x = (gnutls_datum_t){.data = pubkey_v10_1_x, .size = ECC_KEY_SIZE},
+    .y = (gnutls_datum_t){.data = pubkey_v10_1_y, .size = ECC_KEY_SIZE},
+    .fw_version_major = 10,
+    .fw_version_minor = 1,
+    .keyflag = FALSE,
+};
+
+static guint8 pubkey_v10_1_kf_x[ECC_KEY_SIZE] = {
+    0x33, 0xd6, 0x20, 0x8c, 0xa5, 0xf5, 0xda, 0x82, 0x4b, 0x46, 0xea,
+    0x1c, 0xa2, 0x5e, 0x67, 0x32, 0x7e, 0xfc, 0x0c, 0x4c, 0xe9, 0x37,
+    0xd9, 0xd8, 0x44, 0x12, 0x0d, 0x6c, 0xc0, 0x8b, 0xfe, 0x5d};
+static guint8 pubkey_v10_1_kf_y[ECC_KEY_SIZE] = {
+    0xb9, 0x55, 0xe1, 0x81, 0xfc, 0x4b, 0xf6, 0xc6, 0x2b, 0x91, 0xaf,
+    0xcd, 0xf3, 0xb6, 0x1e, 0xc7, 0x18, 0xdc, 0xe7, 0x08, 0x47, 0x42,
+    0xc4, 0x1f, 0x57, 0xc1, 0xf0, 0x77, 0x7c, 0x34, 0xa0, 0xfd};
+sensor_pub_key_t pubkey_v10_1_kf = {
+    .x = (gnutls_datum_t){.data = pubkey_v10_1_kf_x, .size = ECC_KEY_SIZE},
+    .y = (gnutls_datum_t){.data = pubkey_v10_1_kf_y, .size = ECC_KEY_SIZE},
+    .fw_version_major = 10,
+    .fw_version_minor = 1,
+    .keyflag = TRUE,
+};
+
+static gboolean
+sensor_pub_key_compatibility_check(FpiDeviceSynaTudorMoc *self,
+                                   sensor_pub_key_t *sensor_pubkey,
+                                   GError **error)
+{
+   gboolean ret = TRUE;
+
+   gboolean key_flag = (self->mis_version.security & 0x20) != 0;
+   if (sensor_pubkey->keyflag != key_flag) {
+      ret = FALSE;
+      *error = fpi_device_error_new_msg(FP_DEVICE_ERROR_NOT_SUPPORTED,
+                                        "Sensor pubkey keyflag does not match");
+   } else if (sensor_pubkey->fw_version_major !=
+              self->mis_version.version_major) {
+      ret = FALSE;
+      *error = fpi_device_error_new_msg(FP_DEVICE_ERROR_NOT_SUPPORTED,
+                                        "Sensor pubkey fw_version_major does "
+                                        "not match - expected: %d, got: %d",
+                                        sensor_pubkey->fw_version_major,
+                                        self->mis_version.version_major);
+   } else if (sensor_pubkey->fw_version_minor !=
+              self->mis_version.version_minor) {
+      ret = FALSE;
+      *error = fpi_device_error_new_msg(FP_DEVICE_ERROR_NOT_SUPPORTED,
+                                        "Sensor pubkey fw_version_minor does "
+                                        "not match - expected: %d, got: %d",
+                                        sensor_pubkey->fw_version_minor,
+                                        self->mis_version.version_minor);
+   }
+   return ret;
+}
+
 gboolean verify_sensor_certificate(FpiDeviceSynaTudorMoc *self, GError **error)
 {
    gboolean ret = TRUE;
@@ -2013,21 +2046,22 @@ gboolean verify_sensor_certificate(FpiDeviceSynaTudorMoc *self, GError **error)
    pubkey_initialized = TRUE;
 
    fp_dbg("Sensor certificate verify key_flag: %d", key_flag);
+   sensor_pub_key_t sensor_pub_key;
    if (key_flag) {
-      GNUTLS_CHECK(gnutls_pubkey_import_ecc_raw(
-          pubkey, GNUTLS_ECC_CURVE_SECP256R1, &pubkey_v10_1_kf_x_datum,
-          &pubkey_v10_1_kf_y_datum));
+      sensor_pub_key = pubkey_v10_1_kf;
    } else {
-      GNUTLS_CHECK(gnutls_pubkey_import_ecc_raw(
-          pubkey, GNUTLS_ECC_CURVE_SECP256R1, &pubkey_v10_1_x_datum,
-          &pubkey_v10_1_y_datum));
+      sensor_pub_key = pubkey_v10_1;
    }
 
+   BOOL_CHECK(sensor_pub_key_compatibility_check(self, &sensor_pub_key, error));
+   GNUTLS_CHECK(gnutls_pubkey_import_ecc_raw(pubkey, GNUTLS_ECC_CURVE_SECP256R1,
+                                             &sensor_pub_key.x,
+                                             &sensor_pub_key.y));
    GNUTLS_CHECK(gnutls_pubkey_verify_params(pubkey));
 
    /* everything up to signature */
    gnutls_datum_t data = {.size = CERTIFICATE_SIZE_WITHOUT_SIGNATURE,
-                          .data = self->pairing_data.sensor_cert_bytes};
+                          .data = (guint8 *)&self->pairing_data.sensor_cert};
    gnutls_datum_t signature = {.size = self->pairing_data.sensor_cert.sign_size,
                                .data =
                                    self->pairing_data.sensor_cert.sign_data};
@@ -2043,6 +2077,8 @@ error:
    }
    return ret;
 }
+
+/* ========================================================================= */
 
 void deinit_tls(FpiDeviceSynaTudorMoc *self)
 {
@@ -2061,9 +2097,214 @@ void deinit_tls(FpiDeviceSynaTudorMoc *self)
    if (self->tls.decryption_iv.data != NULL) {
       g_free(self->tls.decryption_iv.data);
    }
-   if (self->tls.session_id != NULL) {
-      g_free(self->tls.session_id);
+}
+
+void free_pairing_data(FpiDeviceSynaTudorMoc *self)
+{
+   if (self->pairing_data.private_key_initialized) {
+      gnutls_privkey_deinit(self->pairing_data.private_key);
+   }
+}
+
+gboolean handle_tls_statuses_for_sensor_and_host(FpiDeviceSynaTudorMoc *self,
+                                                 GError **error)
+{
+   gboolean ret = TRUE;
+
+   /* Get and handle TLS statuses for sensor and host */
+   gboolean remote_tls_status = FALSE;
+   BOOL_CHECK(get_remote_tls_status(self, &remote_tls_status, error));
+
+   if (self->tls.established && !remote_tls_status) {
+      fp_warn("Host is in TLS session but sensor is not");
+      self->tls.established = FALSE;
+
+   } else if (!self->tls.established && remote_tls_status) {
+      fp_warn("Sensor is in TLS session but host is not");
+      BOOL_CHECK(send_cmd_to_force_close_sensor_tls_session(self, error));
+
+      /* check for success */
+      remote_tls_status = FALSE;
+      BOOL_CHECK(get_remote_tls_status(self, &remote_tls_status, error));
+      if (remote_tls_status) {
+         *error = fpi_device_error_new_msg(
+             FP_DEVICE_ERROR_PROTO,
+             "Unable to get the sensor out of TLS session");
+         goto error;
+      }
+
+   } else if (self->tls.established && remote_tls_status) {
+      fp_dbg("Host and sensor are already in TLS session");
    }
 
-   gnutls_privkey_deinit(self->pairing_data.private_key);
+error:
+   return ret;
+}
+
+static gboolean sensor_supports_advanced_security(FpiDeviceSynaTudorMoc *self)
+{
+   return (self->mis_version.security & 0x100) != 0;
+}
+
+/* Pairing functions ======================================================= */
+
+static gboolean generate_hs_priv_key(gnutls_privkey_t *privkey, GError **error)
+{
+   gboolean ret = TRUE;
+   gboolean privkey_initialized = FALSE;
+   g_return_val_if_fail(privkey != NULL, FALSE);
+
+   /* TODO: figure out how to import an ecc key with only k parameter */
+   /* guint8 secret[] = {0x71, 0x7c, 0xd7, 0x2d, 0x09, 0x62, 0xbc, 0x4a,
+                      0x28, 0x46, 0x13, 0x8d, 0xbb, 0x2c, 0x24, 0x19};
+   gnutls_datum_t secret_datum = {.data = secret, .size = sizeof(secret)};
+   const guint8 seed[] = {0x25, 0x12, 0xa7, 0x64, 0x07, 0x06, 0x5f, 0x38, 0x38,
+                          0x46, 0x13, 0x9d, 0x4b, 0xec, 0x20, 0x33, 0xaa, 0xaa};
+   const char *label = "HS_KEY_PAIR_GEN";
+
+   g_autofree guint8 *output = NULL;
+   const gsize output_len = 32;
+   BOOL_CHECK(tls_prf(secret_datum, GNUTLS_MAC_SHA256, label, seed,
+                      sizeof(seed), &output, output_len, error)); */
+
+   /* gnutls expects big-endian, while output is in little */
+   /* reverse_array(output, output_len);
+   gnutls_datum_t k = {.data = output, .size = output_len};
+
+   GNUTLS_CHECK(gnutls_privkey_init(privkey));
+   privkey_initialized = TRUE;
+
+   GNUTLS_CHECK(gnutls_privkey_import_ecc_raw(
+       *privkey, GNUTLS_ECC_CURVE_SECP256R1, NULL, NULL, &k)); */
+
+   /* HS_KEY_PAIR_GEN result, then converted to big-endian as expected by gnutls
+    */
+   guint8 k[ECC_KEY_SIZE] = {0xe8, 0xa2, 0xa2, 0xb6, 0x65, 0x62, 0x54, 0xd6,
+                             0xac, 0xb0, 0xef, 0x47, 0x9c, 0xae, 0x41, 0x40,
+                             0xc7, 0xe8, 0xe2, 0x60, 0xdb, 0x3f, 0x64, 0x2e,
+                             0x35, 0xd4, 0x09, 0x9c, 0x01, 0xb3, 0x6a, 0x86};
+   gnutls_datum_t k_datum = {.data = k, .size = ECC_KEY_SIZE};
+   guint8 x[ECC_KEY_SIZE] = {0x89, 0xe5, 0x41, 0x30, 0x0c, 0xcf, 0x1a, 0x03,
+                             0xe6, 0x25, 0xc4, 0x3d, 0xf7, 0x25, 0xc5, 0x95,
+                             0x78, 0x7a, 0x71, 0xcb, 0x03, 0x5b, 0x4b, 0x7c,
+                             0x06, 0xd3, 0x51, 0x71, 0x42, 0x2e, 0x50, 0x57};
+   gnutls_datum_t x_datum = {.data = x, .size = ECC_KEY_SIZE};
+   guint8 y[ECC_KEY_SIZE] = {0xeb, 0x05, 0x00, 0x8f, 0x22, 0xaa, 0x2b, 0xc6,
+                             0xfe, 0x0b, 0xf9, 0x08, 0x03, 0xa0, 0xe7, 0x3a,
+                             0x2e, 0xb2, 0x8c, 0xfd, 0x0c, 0x72, 0xa5, 0xf6,
+                             0x73, 0x35, 0xc0, 0x61, 0x22, 0x6e, 0xff, 0xec};
+   gnutls_datum_t y_datum = {.data = y, .size = ECC_KEY_SIZE};
+
+   GNUTLS_CHECK(gnutls_privkey_init(privkey));
+   privkey_initialized = TRUE;
+
+   GNUTLS_CHECK(gnutls_privkey_import_ecc_raw(
+       *privkey, GNUTLS_ECC_CURVE_SECP256R1, &x_datum, &y_datum, &k_datum));
+
+error:
+   if (!ret && privkey_initialized) {
+      gnutls_privkey_deinit(*privkey);
+   }
+   return ret;
+}
+
+static gboolean create_host_certificate(FpiDeviceSynaTudorMoc *self,
+                                        guint8 *host_certificate,
+                                        GError **error)
+{
+   gboolean ret = TRUE;
+
+   /* get public key */
+   gnutls_pubkey_t pubkey;
+   GNUTLS_CHECK(gnutls_pubkey_init(&pubkey));
+   GNUTLS_CHECK(gnutls_pubkey_import_privkey(pubkey,
+                                             self->pairing_data.private_key,
+                                             GNUTLS_KEY_DIGITAL_SIGNATURE, 0));
+
+   gnutls_datum_t x;
+   gnutls_datum_t y;
+   GNUTLS_CHECK(gnutls_pubkey_export_ecc_raw(pubkey, NULL, &x, &y));
+
+   /* as the size of public key x and y is up to 68 we need to zero the unused
+    * bytes */
+   FpiByteWriter writer;
+   fpi_byte_writer_init_with_data(&writer, host_certificate, CERTIFICATE_SIZE,
+                                  FALSE);
+
+   gboolean written = TRUE;
+   written &= fpi_byte_writer_put_uint16_le(&writer, CERTIFICATE_MAGIC);
+   written &= fpi_byte_writer_put_uint16_le(&writer, CERTIFICATE_CURVE);
+
+   reverse_array(x.data, x.size);
+   written &= fpi_byte_writer_put_data(&writer, x.data, x.size);
+   /* add zeros as padding */
+   written &= fpi_byte_writer_fill(&writer, 0, 68 - x.size);
+   reverse_array(y.data, y.size);
+   written &= fpi_byte_writer_put_data(&writer, y.data, y.size);
+   /* add zeros as padding */
+   written &= fpi_byte_writer_fill(&writer, 0, 68 - y.size);
+   /* add padding */
+   written &= fpi_byte_writer_put_uint8(&writer, 0);
+   /* put certificate type */
+   written &= fpi_byte_writer_put_uint8(&writer, 0);
+   WRITTEN_CHECK(written);
+
+   g_assert(fpi_byte_writer_get_pos(&writer) ==
+            CERTIFICATE_SIZE_WITHOUT_SIGNATURE);
+
+   gnutls_privkey_t hs_privkey;
+   BOOL_CHECK(generate_hs_priv_key(&hs_privkey, error));
+
+   gnutls_datum_t to_sign = {.data = host_certificate,
+                             .size = CERTIFICATE_SIZE_WITHOUT_SIGNATURE};
+   gnutls_datum_t signature;
+   GNUTLS_CHECK(gnutls_privkey_sign_data(hs_privkey, GNUTLS_DIG_SHA256, 0,
+                                         &to_sign, &signature));
+   g_assert(signature.size <= SIGNATURE_SIZE);
+
+   written &= fpi_byte_writer_put_uint16_le(&writer, signature.size);
+
+   written &= fpi_byte_writer_put_data(&writer, signature.data, signature.size);
+   /* add zeros as padding */
+   written &= fpi_byte_writer_fill(&writer, 0, SIGNATURE_SIZE - signature.size);
+   WRITTEN_CHECK(written);
+   g_assert(fpi_byte_writer_get_pos(&writer) == CERTIFICATE_SIZE);
+
+error:
+   return ret;
+}
+
+gboolean pair(FpiDeviceSynaTudorMoc *self, GError **error)
+{
+   gboolean ret = TRUE;
+
+   g_autofree guint8 *host_certificate = g_malloc(CERTIFICATE_SIZE);
+
+   if (self->mis_version.provision_state != PROVISION_STATE_PROVISIONED) {
+      fp_warn("Skipping pairing: sensor is already paired or insecure");
+      goto error;
+   }
+
+   if (!sensor_supports_advanced_security(self)) {
+      fp_warn("Skipping pairing: only advanced security is supporeted");
+      goto error;
+   }
+
+   fp_dbg("Pairing sensor");
+
+   /* Create keypair */
+   GNUTLS_CHECK(gnutls_privkey_init(&self->pairing_data.private_key));
+   self->pairing_data.private_key_initialized = TRUE;
+   GNUTLS_CHECK(gnutls_privkey_generate(
+       self->pairing_data.private_key, GNUTLS_PK_ECDSA,
+       GNUTLS_CURVE_TO_BITS(GNUTLS_ECC_CURVE_SECP256R1), 0));
+
+   /* we create it already serialized, as we do not need it in struct form */
+   BOOL_CHECK(create_host_certificate(self, host_certificate, error));
+
+   /* saves received certificates to self */
+   BOOL_CHECK(send_pair(self, host_certificate, error));
+
+error:
+   return ret;
 }

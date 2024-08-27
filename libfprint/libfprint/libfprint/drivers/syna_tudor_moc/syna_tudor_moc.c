@@ -24,10 +24,13 @@
 #include "communication.c"
 #include "device.h"
 #include "drivers_api.h"
+#include "fpi-log.h"
 #include "syna_tudor_moc.h"
 #include "tls.c"
 #include <gnutls/abstract.h>
 #include <gnutls/gnutls.h>
+
+/* #define STORAGE_ENABLED */
 
 static db2_id_t cache_template_id = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
                                      0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -36,16 +39,16 @@ static db2_id_t cache_template_id = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 G_DEFINE_TYPE(FpiDeviceSynaTudorMoc, fpi_device_syna_tudor_moc, FP_TYPE_DEVICE)
 
 static const FpIdEntry id_table[] = {
-    /* { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x00C9, },
-    { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x00D1, },
-    { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x00E7, }, */
+    // { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x00C9, },
+    // { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x00D1, },
+    // { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x00E7, },
     /* only 00FF is tested */
     {
         .vid = SYNAPTICS_VENDOR_ID,
         .pid = 0x00FF,
     },
-    /* { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x0124, },
-    { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x0169, }, */
+    // { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x0124, },
+    // { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x0169, },
     {.vid = 0, .pid = 0, .driver_data = 0}, /* terminating entry */
 };
 
@@ -224,8 +227,9 @@ static void syna_tudor_moc_open(FpDevice *device)
    fp_dbg("==================== open start ====================");
    FpiDeviceSynaTudorMoc *self = FPI_DEVICE_SYNA_TUDOR_MOC(device);
    GError *error = NULL;
-   gboolean need_to_establish_tls_session = TRUE;
    gboolean usb_device_claimed = FALSE;
+   /* debug check */
+   g_assert(sizeof(cert_t) == 400);
 
    G_DEBUG_HERE();
 
@@ -236,61 +240,49 @@ static void syna_tudor_moc_open(FpDevice *device)
                                      &error)) {
       goto error;
    }
-
    usb_device_claimed = TRUE;
 
    g_usb_device_reset(fpi_device_get_usb_device(device), &error);
 
-   /* Get and handle TLS statuses for sensor and host */
-   gboolean remote_tls_status = FALSE;
-   get_remote_tls_status(self, &remote_tls_status, &error);
-
-   if (self->tls.established && !remote_tls_status) {
-      fp_warn("Host is in TLS session but sensor is not");
-      self->tls.established = FALSE;
-      need_to_establish_tls_session = TRUE;
-   } else if (!self->tls.established && remote_tls_status) {
-      fp_warn("Sensor is in TLS session but host is not");
-      if (!send_cmd_to_force_close_sensor_tls_session(self, &error)) {
-         goto error;
-      }
-   } else if (self->tls.established && remote_tls_status) {
-      fp_dbg("Host and sensor are already in TLS session");
-      need_to_establish_tls_session = FALSE;
-   }
-
-   remote_tls_status = FALSE;
-   get_remote_tls_status(self, &remote_tls_status, &error);
-   if (remote_tls_status) {
-      error = fpi_device_error_new_msg(
-          FP_DEVICE_ERROR_PROTO, "Unable to get the sensor out of TLS session");
+   /* If last session was not properly closed, sending any unencrypted command
+    * will result in error */
+   if (!handle_tls_statuses_for_sensor_and_host(self, &error)) {
       goto error;
    }
 
+   /* get MiS version */
    if (!send_get_version(self, &self->mis_version, &error)) {
       goto error;
    }
 
-   gboolean in_bootloader_mode = self->mis_version.product_id == 'B' ||
-                                 self->mis_version.product_id == 'C';
-   if (in_bootloader_mode) {
-      fp_err("Sensor is in bootloader mode!");
-      g_assert(FALSE);
+   if (sensor_is_in_bootloader_mode(self)) {
+      if (!exit_bootloader_mode(self, &error)) {
+         goto error;
+      }
    }
 
    guint8 provision_state = self->mis_version.provision_state & 0xF;
    gboolean is_provisioned = provision_state == PROVISION_STATE_PROVISIONED;
    if (is_provisioned) {
+#ifdef STORAGE_ENABLED
+      /* NOTE: this is not ideal as some errors should be handled differently */
+      if (!host_partition_load_pairing_data(self, &error)) {
+         fp_err("Unable to load pairing data");
+         fp_dbg("Trying to pair");
+         if (!pair(self, &error)) {
+            fp_err("Unable to pair");
+            goto error;
+         }
+      }
+#else
       if (!load_sample_pairing_data(self, &error)) {
          fp_err("Error while loading sample pairing data");
          goto error;
       }
+#endif
 
-      if (!self->pairing_data.present) {
-         fp_err("No present pairing_data - need to pair / read from storage!");
-         fp_err("\t-> Not implemented");
-         g_assert(FALSE);
-      }
+      /* pairing data should be present now */
+      BUG_ON(!self->pairing_data.present);
 
       if (!verify_sensor_certificate(self, &error)) {
          error = fpi_device_error_new_msg(FP_DEVICE_ERROR_GENERAL,
@@ -299,14 +291,27 @@ static void syna_tudor_moc_open(FpDevice *device)
       }
 
    } else {
-      fp_err("Sensor is not paired");
-      fp_err("\t-> Not implemented");
-      g_assert(FALSE);
+      /* If sensor is not paired, then the sample pairing data will not work,
+       * this is why this is not using STORAGE_ENABLED */
+      fp_warn("Sensor is not paired");
+      if (!pair(self, &error)) {
+         goto error;
+      }
    }
 
-   if (need_to_establish_tls_session) {
-      establish_tls_session(self, &error);
+   if (!self->tls.established) {
+      if (!establish_tls_session(self, &error)) {
+         goto error;
+      }
    }
+
+#ifdef STORAGE_ENABLED
+   if (!self->pairing_data.loaded_from_storage &&
+       !host_partition_store_pairing_data(self, &error)) {
+      fp_err("Unable to store pairing data");
+      goto error;
+   }
+#endif
 
 error:
    if (error != NULL && usb_device_claimed) {
@@ -337,14 +342,7 @@ static void syna_tudor_moc_close(FpDevice *device)
    }
 
    deinit_tls(self);
-
-   /* free pairing_data */
-   if (self->pairing_data.sensor_cert.sign_data != NULL) {
-      g_free(self->pairing_data.sensor_cert.sign_data);
-   }
-   if (self->pairing_data.host_cert.sign_data != NULL) {
-      g_free(self->pairing_data.host_cert.sign_data);
-   }
+   free_pairing_data(self);
 
    g_usb_device_release_interface(fpi_device_get_usb_device(FP_DEVICE(self)), 0,
                                   0, &release_error);
@@ -515,9 +513,6 @@ static void syna_tudor_moc_verify(FpDevice *device)
    fp_dbg("Identify matched: %d", matched);
 
    if (matched) {
-      FpPrint *new_scan = fp_print_from_enrollment(self, &enrollment_match);
-      fpi_device_verify_report(device, FPI_MATCH_SUCCESS, new_scan, error);
-
       fp_dbg("Identify cmd matched enrollment with data:");
       fp_dbg("\tuser_id");
       fp_dbg_large_hex(enrollment_match.user_id, sizeof(user_id_t));
@@ -525,13 +520,15 @@ static void syna_tudor_moc_verify(FpDevice *device)
       fp_dbg_large_hex(enrollment_match.template_id, DB2_ID_SIZE);
       fp_dbg("\tfinger_id: %d", enrollment_match.finger_id);
 
+      FpPrint *new_scan = fp_print_from_enrollment(self, &enrollment_match);
+      fpi_device_verify_report(device, FPI_MATCH_SUCCESS, new_scan, error);
    } else {
       /* we get no print data on no match */
       fpi_device_verify_report(device, FPI_MATCH_FAIL, NULL, NULL);
    }
 
 error:
-   fpi_device_verify_complete(device, error);
+   fpi_device_verify_complete(device, NULL);
 }
 
 /* identify ---------------------------------------------------------------- */

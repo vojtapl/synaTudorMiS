@@ -17,7 +17,7 @@ class CmdDB2Info(Command):
     """
 
     def run(self, ctx: CmdContext, args: list):
-        ctx.sensor.frame_capturer.db2_get_info(print=True)
+        ctx.sensor.db2_get_info(print=True)
 
 
 @cmd("db2_get_object_list")
@@ -37,7 +37,7 @@ class CmdDB2GetObjectList(Command):
             obj_id = eval(args[1])
 
         obj_type = int(args[0])
-        ctx.sensor.frame_capturer.get_object_list(obj_type, obj_id)
+        ctx.sensor.get_object_list(obj_type, obj_id)
 
 
 @cmd("db2_get_object_info")
@@ -53,7 +53,7 @@ class CmdDB2GetObjectInfo(Command):
         obj_type = int(args[0])
         # TODO: find a better way to  convert
         obj_id = eval(args[1])
-        print(ctx.sensor.frame_capturer.get_object_info(obj_type, obj_id))
+        print(ctx.sensor.get_object_info(obj_type, obj_id))
 
 
 @cmd("db2_get_all_object_info")
@@ -72,7 +72,7 @@ class CmdDB2GetAllObjectInfo(Command):
             obj_id = eval(args[1])
 
         obj_type = int(args[0])
-        ctx.sensor.frame_capturer.get_all_object_info(obj_type, obj_id)
+        ctx.sensor.get_all_object_info(obj_type, obj_id)
 
 
 @cmd("db2_get_object_data")
@@ -88,7 +88,7 @@ class CmdDB2GetObjectData(Command):
         obj_type = int(args[0])
         # TODO: find a better way to  convert
         obj_id = eval(args[1])
-        print(ctx.sensor.frame_capturer.get_object_data(obj_type, obj_id))
+        print(ctx.sensor.get_object_data(obj_type, obj_id))
 
 
 @cmd("db2_get_all_object_data")
@@ -107,7 +107,7 @@ class CmdDB2GetAllObjectData(Command):
             obj_id = eval(args[1])
 
         obj_type = int(args[0])
-        ctx.sensor.frame_capturer.get_all_object_data(obj_type, obj_id)
+        ctx.sensor.get_all_object_data(obj_type, obj_id)
 
 
 @cmd("db2_delete_object")
@@ -122,7 +122,7 @@ class CmdDB2DeleteObject(Command):
 
         obj_type = int(args[0])
         obj_id = eval(args[1])
-        ctx.sensor.frame_capturer.db2_delete_object(obj_type, obj_id)
+        ctx.sensor.db2_delete_object(obj_type, obj_id)
 
 
 @cmd("db2_cleanup")
@@ -132,7 +132,7 @@ class CmdCleanup(Command):
     """
 
     def run(self, ctx: CmdContext, args: list):
-        ctx.sensor.frame_capturer.db2_cleanup()
+        ctx.sensor.db2_cleanup()
 
 
 @cmd("db2_format")
@@ -142,7 +142,7 @@ class CmdForamt(Command):
     """
 
     def run(self, ctx: CmdContext, args: list):
-        ctx.sensor.frame_capturer.db2_format()
+        ctx.sensor.db2_format()
 
 
 @cmd("delete_enrollment")
@@ -156,7 +156,7 @@ class CmdDeleteEnrollment(Command):
             raise Exception("No tuid")
 
         tuid = eval(args[0])
-        ctx.sensor.frame_capturer.delete_enrollment(tuid)
+        ctx.sensor.delete_enrollment(tuid)
 
 
 @cmd("get_cache")
@@ -167,7 +167,7 @@ class CmdGetCache(Command):
     """
 
     def run(self, ctx: CmdContext, args: list):
-        cache = ctx.sensor.frame_capturer.get_enrollment_cache()
+        cache = ctx.sensor.get_enrollment_cache()
         if len(cache) == 0:
             print("cache is empty")
         else:
@@ -186,7 +186,7 @@ class CmdGetCommonProptery(Command):
     """
 
     def run(self, ctx: CmdContext, args: list):
-        common_prop = ctx.sensor.frame_capturer.get_common_property()
+        common_prop = ctx.sensor.get_common_property()
         print(f"common_property: {common_prop}")
 
 
@@ -200,7 +200,7 @@ class CmdStorageFormat(Command):
     """
 
     def run(self, ctx: CmdContext, args: list):
-        ctx.sensor.frame_capturer.storage_part_format()
+        ctx.sensor.storage_part_format()
 
 
 @cmd("storage_get_info")
@@ -210,7 +210,7 @@ class CmdStorageGetInfo(Command):
     """
 
     def run(self, ctx: CmdContext, args: list):
-        ctx.sensor.frame_capturer.storage_get_info()
+        ctx.sensor.storage_get_info()
 
 
 # Host partition --------------------------------------------------------------
@@ -223,7 +223,7 @@ class CmdReadHostPartition(Command):
     """
 
     def run(self, ctx: CmdContext, args: list):
-        print(ctx.sensor.frame_capturer.host_partition_read())
+        print(ctx.sensor.host_partition_read())
 
 
 @cmd("host_partition_decode")
@@ -234,7 +234,7 @@ class CmdHostPartitionDecode(Command):
     """
 
     def run(self, ctx: CmdContext, args: list):
-        ctx.sensor.frame_capturer.host_partition_decode()
+        ctx.sensor.host_partition_decode()
 
 
 @cmd("host_partition_write_pairing_data")
@@ -247,7 +247,7 @@ class CmdHostPartitionWritePairingData(Command):
         if ctx.pairing_data is None:
             raise ValueError("No pairing data present!")
 
-        ctx.sensor.frame_capturer.host_partition_write_pairing_data(ctx.pairing_data)
+        ctx.sensor.host_partition_write_pairing_data(ctx.pairing_data)
 
 
 @cmd("host_partition_read_pairing_data")
@@ -263,7 +263,7 @@ class CmdHostPartitionReadPairingData(Command):
             if resp != "y":
                 return
 
-        ctx.pairing_data = ctx.sensor.frame_capturer.host_partition_read_pairing_data()
+        ctx.pairing_data = ctx.sensor.host_partition_read_pairing_data()
 
         if ctx.pairing_data is not None:
             print("Host partition data read successfully")

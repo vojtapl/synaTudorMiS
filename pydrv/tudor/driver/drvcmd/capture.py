@@ -21,7 +21,7 @@ class CmdEnroll(Command):
             [tudor.sensor.SensorEventType.EV_FINGER_UP]
         )
 
-        ctx.sensor.frame_capturer.enroll()
+        ctx.sensor.enroll()
 
 
 @cmd("verify")
@@ -47,7 +47,7 @@ class CmdVerify(Command):
         )
 
 
-        ctx.sensor.frame_capturer.auth(tuid)
+        ctx.sensor.auth(tuid)
 
 @cmd("identify")
 class CmdIdentify(Command):
@@ -66,4 +66,4 @@ class CmdIdentify(Command):
             [tudor.sensor.SensorEventType.EV_FINGER_UP]
         )
 
-        ctx.sensor.frame_capturer.auth()
+        ctx.sensor.auth()

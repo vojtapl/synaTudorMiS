@@ -69,6 +69,12 @@
 #define SENSOR_FW_CMD_HEADER_LEN 1
 #define SENSOR_FW_REPLY_HEADER_LEN 2
 #define DB2_ID_SIZE 16
+#define REQUEST_DFT_WRITE 0x15
+
+#define PRODUCT_ID_BOOTLOADER_1 'B'
+#define PRODUCT_ID_BOOTLOADER_2 'C'
+
+#define CERTIFICATE_SIZE 400
 
 /* Commands ================================================================ */
 
@@ -131,6 +137,11 @@ typedef enum {
    VCSFW_CMD_IDENTIFY_WBF_MATCH = 1,
    VCSFW_CMD_IDENTIFY_CONDITIONAL_WBF_MATCH = 3,
 } identify_subcmd_t;
+
+typedef enum {
+   VCSFW_STORAGE_TUDOR_PART_ID_SSFS = 1,
+   VCSFW_STORAGE_TUDOR_PART_ID_HOST = 2,
+} storage_partition_t;
 
 /* Response structs ======================================================== */
 
@@ -247,3 +258,22 @@ gboolean get_event_data(FpiDeviceSynaTudorMoc *self, guint8 *event_buffer,
 
 gboolean wait_for_events_blocking(FpiDeviceSynaTudorMoc *self,
                                   guint32 event_mask, GError **error);
+
+gboolean sensor_is_in_bootloader_mode(FpiDeviceSynaTudorMoc *self);
+
+gboolean exit_bootloader_mode(FpiDeviceSynaTudorMoc *self, GError **error);
+
+gboolean send_pair(FpiDeviceSynaTudorMoc *self, guint8 *host_cert_bytes,
+                   GError **error);
+
+gboolean read_host_partition(FpiDeviceSynaTudorMoc *self, guint8 **data,
+                             guint32 *data_size, GError **error);
+
+gboolean write_host_partition(FpiDeviceSynaTudorMoc *self, guint8 *data,
+                              gsize data_size, GError **error);
+
+gboolean host_partition_store_pairing_data(FpiDeviceSynaTudorMoc *self,
+                                           GError **error);
+
+gboolean host_partition_load_pairing_data(FpiDeviceSynaTudorMoc *self,
+                                          GError **error);

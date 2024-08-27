@@ -707,6 +707,7 @@
     other -> 0x0ca = VCS_RESULT_SENSOR_MALFUNCTIONED
     others received:
         0x315 - smt reseting sensor and then connecting again
+        0x44f - smt pair
         0x47a
         0x4b6
         0x687 - smt like access error

@@ -10,7 +10,6 @@ from .update import *
 from .pair import *
 from .init import *
 from .event import *
-from .capture import *
 from .storage import *
 from .bmkt import *
 from .test import *

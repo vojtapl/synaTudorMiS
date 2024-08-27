@@ -35,7 +35,6 @@
 #define REQUEST_TLS_SESSION_STATUS 0x14
 #define TLS_SESSION_STATUS_DATA_RESP_LEN 2
 #define TLS_SESSION_STATUS_TIMEOUT_MS 1000
-#define TLS_SESSION_ID_LEN 7
 
 #define VERIFY_DATA_SIZE 12
 
@@ -43,9 +42,10 @@
 #define TLS_PROTOCOL_VERSION_MINOR 3
 
 #define RECORD_HEADER_SIZE 5
-#define CERTIFICATE_SIZE 400
+#define ECC_KEY_SIZE 32
 #define CERTIFICATE_SIZE_WITHOUT_SIGNATURE 142
-#define ECC_PUBKEY_SIZE 32
+#define CERTIFICATE_MAGIC 0x5f3f
+#define CERTIFICATE_CURVE 23
 
 #define MASTER_SECRET_SIZE 48
 #define AES_GCM_KEY_SIZE 32
@@ -87,7 +87,7 @@ typedef struct {
    guint8 version_minor;
    guint32 current_timestamp;
    guint8 random[28];
-   guint8 session_id[7];
+   guint8 session_id[SESSION_ID_LEN];
 
    cipher_suit_t *cipher_suits;
    guint cipher_suit_cnt;
@@ -126,3 +126,12 @@ void deinit_tls(FpiDeviceSynaTudorMoc *self);
 
 gboolean send_cmd_to_force_close_sensor_tls_session(FpiDeviceSynaTudorMoc *self,
                                                     GError **error);
+
+gboolean handle_tls_statuses_for_sensor_and_host(FpiDeviceSynaTudorMoc *self,
+                                                 GError **error);
+
+void free_pairing_data(FpiDeviceSynaTudorMoc *self);
+
+gboolean pair(FpiDeviceSynaTudorMoc *self, GError **error);
+
+gboolean parse_certificate(const guint8 *data, const gsize len, cert_t *cert);

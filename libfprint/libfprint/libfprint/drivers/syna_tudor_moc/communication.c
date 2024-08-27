@@ -26,6 +26,7 @@
 #include "fpi-byte-reader.h"
 #include "fpi-byte-writer.h"
 #include "fpi-usb-transfer.h"
+#include "gnutls/abstract.h"
 #include "tls.h"
 #include "utils.h"
 #include <glib.h>
@@ -1559,6 +1560,633 @@ gboolean send_cmd_to_force_close_sensor_tls_session(FpiDeviceSynaTudorMoc *self,
               sensor_status_to_string(status));
       *error = fpi_device_error_new(FP_DEVICE_ERROR_PROTO);
    }
+
+error:
+   return ret;
+}
+
+static gboolean write_dft(FpiDeviceSynaTudorMoc *self, guint8 *data,
+                          gsize data_size, GError **error)
+{
+   gboolean ret = TRUE;
+
+   fp_dbg("---> DFT");
+   fp_dbg_large_hex(data, data_size);
+
+   /* Send data */
+   g_autoptr(FpiUsbTransfer) transfer = fpi_usb_transfer_new(FP_DEVICE(self));
+   fpi_usb_transfer_fill_control(
+       transfer, G_USB_DEVICE_DIRECTION_HOST_TO_DEVICE,
+       G_USB_DEVICE_REQUEST_TYPE_VENDOR, G_USB_DEVICE_RECIPIENT_DEVICE,
+       REQUEST_DFT_WRITE, 0, 0, data_size);
+
+   transfer->short_is_error = FALSE;
+   memcpy(transfer->buffer, data, data_size);
+
+   BOOL_CHECK(fpi_usb_transfer_submit_sync(
+       transfer, USB_TRANSFER_WAIT_TIMEOUT_MS, error));
+
+error:
+   return ret;
+}
+
+gboolean sensor_is_in_bootloader_mode(FpiDeviceSynaTudorMoc *self)
+{
+   return self->mis_version.product_id == PRODUCT_ID_BOOTLOADER_1 ||
+          self->mis_version.product_id == PRODUCT_ID_BOOTLOADER_2;
+}
+
+static gboolean send_bootloader_mode_exit(FpiDeviceSynaTudorMoc *self,
+                                          GError **error)
+{
+   gboolean ret = TRUE;
+
+   fp_dbg("Exiting bootloader mode");
+
+   guint8 to_send[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+   BOOL_CHECK(write_dft(self, to_send, sizeof(to_send), error));
+
+   g_usb_device_reset(fpi_device_get_usb_device(FP_DEVICE(self)), error);
+
+error:
+   return ret;
+}
+
+static gboolean send_bootloader_mode_enter(FpiDeviceSynaTudorMoc *self,
+                                           GError **error)
+{
+   gboolean ret = TRUE;
+
+   fp_dbg("Entering bootloader mode");
+
+   guint8 to_send[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00};
+   BOOL_CHECK(write_dft(self, to_send, sizeof(to_send), error));
+   g_usb_device_reset(fpi_device_get_usb_device(FP_DEVICE(self)), error);
+
+error:
+   return ret;
+}
+
+gboolean exit_bootloader_mode(FpiDeviceSynaTudorMoc *self, GError **error)
+{
+   gboolean ret = TRUE;
+
+   BOOL_CHECK(send_bootloader_mode_exit(self, error));
+   /* update MiS version data which contain if sensor is in bootloader mode */
+   BOOL_CHECK(send_get_version(self, &self->mis_version, error));
+
+   if (sensor_is_in_bootloader_mode(self)) {
+      *error = fpi_device_error_new_msg(
+          FP_DEVICE_ERROR_PROTO, "Unable to get sensor out of bootloader mode, "
+                                 "it may not have a valid firmware");
+      ret = FALSE;
+   }
+
+error:
+   return ret;
+}
+
+gboolean send_pair(FpiDeviceSynaTudorMoc *self, guint8 *send_host_cert_bytes,
+                   GError **error)
+{
+   g_return_val_if_fail(send_host_cert_bytes != NULL, FALSE);
+
+   gboolean ret = TRUE;
+
+   const gsize send_len = 1 + CERTIFICATE_SIZE;
+   /* 2 * CERTIFICATE_SIZE + status_header_len */
+   gsize recv_len = 802;
+   g_autofree guint8 *recv_data = NULL;
+   g_autofree guint8 *to_send = g_malloc(send_len);
+
+   to_send[0] = VCSFW_CMD_PAIR;
+   memcpy(&to_send[1], send_host_cert_bytes, CERTIFICATE_SIZE);
+   BOOL_CHECK(synaptics_secure_connect(self, to_send, send_len, &recv_data,
+                                       &recv_len, TRUE, error));
+
+   FpiByteReader reader;
+   fpi_byte_reader_init(&reader, recv_data, recv_len);
+   gboolean read_ok = TRUE;
+   /* no need to read status again */
+   read_ok &= fpi_byte_reader_skip(&reader, 2);
+   const guint8 *recv_host_cert_bytes = NULL;
+   read_ok &= fpi_byte_reader_get_data(&reader, CERTIFICATE_SIZE,
+                                       &recv_host_cert_bytes);
+   const guint8 *sensor_cert_bytes = NULL;
+   read_ok &=
+       fpi_byte_reader_get_data(&reader, CERTIFICATE_SIZE, &sensor_cert_bytes);
+   READ_OK_CHECK(read_ok);
+
+   BOOL_CHECK(parse_certificate(recv_host_cert_bytes, CERTIFICATE_SIZE,
+                                &self->pairing_data.host_cert));
+   BOOL_CHECK(parse_certificate(sensor_cert_bytes, CERTIFICATE_SIZE,
+                                &self->pairing_data.sensor_cert));
+
+   if (self->pairing_data.private_key_initialized) {
+      self->pairing_data.present = TRUE;
+   } else {
+      *error = fpi_device_error_new_msg(
+          FP_DEVICE_ERROR_GENERAL,
+          "Private key is not initialized when it should be");
+      ret = FALSE;
+   }
+
+error:
+   return ret;
+}
+
+/* Storage functions ======================================================= */
+
+static gboolean send_storage_read(FpiDeviceSynaTudorMoc *self,
+                                  storage_partition_t partition, gsize offset,
+                                  gsize read_size, guint8 **data,
+                                  guint32 *data_size, GError **error)
+{
+   gboolean ret = TRUE;
+
+   const gsize send_len = 13;
+   gsize recv_len = 8 + read_size;
+   g_autofree guint8 *recv_data = NULL;
+   guint8 to_send[send_len];
+
+   *data = NULL;
+
+   /* unused parameters */
+   const guint16 param_2 = 0;
+
+   FpiByteWriter writer;
+   fpi_byte_writer_init_with_data(&writer, to_send, send_len, FALSE);
+
+   gboolean written = TRUE;
+   written &= fpi_byte_writer_put_uint8(&writer, VCSFW_CMD_STORAGE_PART_READ);
+   written &= fpi_byte_writer_put_uint8(&writer, partition);
+   written &= fpi_byte_writer_put_uint8(&writer, param_2);
+   written &= fpi_byte_writer_put_uint16_le(&writer, 0xffff);
+   written &= fpi_byte_writer_put_uint32_le(&writer, offset);
+   written &= fpi_byte_writer_put_uint32_le(&writer, read_size);
+   WRITTEN_CHECK(written);
+
+   BOOL_CHECK(synaptics_secure_connect(self, to_send, send_len, &recv_data,
+                                       &recv_len, TRUE, error));
+
+   FpiByteReader reader;
+   fpi_byte_reader_init(&reader, recv_data, recv_len);
+
+   gboolean read_ok = TRUE;
+   /* no need to read status again */
+   read_ok &= fpi_byte_reader_skip(&reader, 2);
+   read_ok &= fpi_byte_reader_get_uint32_le(&reader, data_size);
+   /* skip over unused / unknown */
+   read_ok &= fpi_byte_reader_skip(&reader, 2);
+   read_ok &= fpi_byte_reader_dup_data(&reader, *data_size, data);
+   READ_OK_CHECK(read_ok);
+
+error:
+   return ret;
+}
+
+gboolean read_host_partition(FpiDeviceSynaTudorMoc *self, guint8 **data,
+                             guint32 *data_size, GError **error)
+{
+   return send_storage_read(self, VCSFW_STORAGE_TUDOR_PART_ID_HOST, 0, 0x1000,
+                            data, data_size, error);
+}
+
+static gboolean send_storage_write(FpiDeviceSynaTudorMoc *self,
+                                   storage_partition_t partition, gsize offset,
+                                   guint8 *data, gsize data_size,
+                                   GError **error)
+{
+   gboolean ret = TRUE;
+
+   g_return_val_if_fail(self->tls.established, FALSE);
+
+   const gsize send_len = 13 + data_size;
+   gsize recv_len = 6;
+   g_autofree guint8 *recv_data = NULL;
+   g_autofree guint8 *to_send = g_malloc(send_len);
+
+   /* unused parameters */
+   const guint16 param_2 = 0;
+
+   FpiByteWriter writer;
+   fpi_byte_writer_init_with_data(&writer, to_send, send_len, FALSE);
+
+   gboolean written = TRUE;
+   written &= fpi_byte_writer_put_uint8(&writer, VCSFW_CMD_STORAGE_PART_WRITE);
+   written &= fpi_byte_writer_put_uint8(&writer, partition);
+   written &= fpi_byte_writer_put_uint8(&writer, param_2);
+   written &= fpi_byte_writer_put_uint16_le(&writer, 0xffff);
+   written &= fpi_byte_writer_put_uint32_le(&writer, offset);
+   written &= fpi_byte_writer_put_uint32_le(&writer, data_size);
+   written &= fpi_byte_writer_put_data(&writer, data, data_size);
+   WRITTEN_CHECK(written);
+
+   BOOL_CHECK(synaptics_secure_connect(self, to_send, send_len, &recv_data,
+                                       &recv_len, TRUE, error));
+
+   FpiByteReader reader;
+   fpi_byte_reader_init(&reader, recv_data, recv_len);
+
+   gboolean read_ok = TRUE;
+   /* no need to read status again */
+   read_ok &= fpi_byte_reader_skip(&reader, 2);
+   guint32 written_size = 0;
+   read_ok &= fpi_byte_reader_get_uint32_le(&reader, &written_size);
+   READ_OK_CHECK(read_ok);
+
+   if (written_size != data_size) {
+      *error = fpi_device_error_new_msg(
+          FP_DEVICE_ERROR_GENERAL,
+          "Written_size: %u does not match data_to_write_size: %lu",
+          written_size, data_size);
+      ret = FALSE;
+      goto error;
+   }
+
+error:
+   return ret;
+}
+
+gboolean write_host_partition(FpiDeviceSynaTudorMoc *self, guint8 *data,
+                              gsize data_size, GError **error)
+{
+   return send_storage_write(self, VCSFW_STORAGE_TUDOR_PART_ID_HOST, 0, data,
+                             data_size, error);
+}
+
+/* ========================================================================= */
+
+static gboolean serialize_private_key(FpiDeviceSynaTudorMoc *self,
+                                      FpiByteWriter *writer, GError **error)
+{
+   gboolean ret = TRUE;
+
+   if (!self->pairing_data.private_key_initialized) {
+      *error = fpi_device_error_new_msg(
+          FP_DEVICE_ERROR_GENERAL,
+          "Unable to save a private_key which is not initialized");
+      ret = FALSE;
+      goto error;
+   }
+   gnutls_datum_t x;
+   gnutls_datum_t y;
+   gnutls_datum_t k;
+   /* as we use only one curve, there is no need to store it */
+   GNUTLS_CHECK(gnutls_privkey_export_ecc_raw2(self->pairing_data.private_key,
+                                               NULL, &x, &y, &k,
+                                               GNUTLS_EXPORT_FLAG_NO_LZ));
+
+   guint32 total_size = 3 * sizeof(guint32) + x.size + y.size + k.size;
+   ret &= fpi_byte_writer_put_uint32_le(writer, total_size);
+
+   ret &= fpi_byte_writer_put_uint32_le(writer, x.size);
+   ret &= fpi_byte_writer_put_data(writer, x.data, x.size);
+
+   ret &= fpi_byte_writer_put_uint32_le(writer, y.size);
+   ret &= fpi_byte_writer_put_data(writer, y.data, y.size);
+
+   ret &= fpi_byte_writer_put_uint32_le(writer, k.size);
+   ret &= fpi_byte_writer_put_data(writer, k.data, k.size);
+
+error:
+   return ret;
+}
+
+/* Serialize pairing data as a container */
+static gboolean serialize_pairing_data(FpiDeviceSynaTudorMoc *self,
+                                       guint8 **serialized_data,
+                                       gsize *serialized_size, GError **error)
+{
+   gboolean ret = TRUE;
+
+   FpiByteWriter writer;
+   fpi_byte_writer_init(&writer);
+
+   gboolean written = TRUE;
+
+   /* write version tag */
+   written &= fpi_byte_writer_put_uint16_le(&writer, PAIR_DATA_TAG_VERSION);
+   written &= fpi_byte_writer_put_uint32_le(&writer, sizeof(pair_data_version));
+   written &= fpi_byte_writer_put_uint16_le(&writer, pair_data_version);
+
+   /* write host certificate tag */
+   written &= fpi_byte_writer_put_uint16_le(&writer, PAIR_DATA_TAG_HOST_CERT);
+   written &= fpi_byte_writer_put_uint32_le(&writer, CERTIFICATE_SIZE);
+   written &= fpi_byte_writer_put_data(
+       &writer, (guint8 *)&self->pairing_data.host_cert, CERTIFICATE_SIZE);
+
+   /* write private key tag */
+   written &= fpi_byte_writer_put_uint16_le(&writer, PAIR_DATA_TAG_PRIVATE_KEY);
+   written &= serialize_private_key(self, &writer, error);
+
+   /* write sensor certificate tag */
+   written &= fpi_byte_writer_put_uint16_le(&writer, PAIR_DATA_TAG_SENSOR_CERT);
+   written &= fpi_byte_writer_put_uint32_le(&writer, CERTIFICATE_SIZE);
+   written &= fpi_byte_writer_put_data(
+       &writer, (guint8 *)&self->pairing_data.sensor_cert, CERTIFICATE_SIZE);
+
+   WRITTEN_CHECK(written);
+
+   *serialized_size = fpi_byte_writer_get_pos(&writer);
+   *serialized_data = fpi_byte_writer_reset_and_get_data(&writer);
+
+   g_assert(*serialized_data != NULL);
+
+#ifdef COMM_DEBUG
+   fp_dbg("Serialized pairing data data:");
+   fp_dbg_large_hex(*serialized_data, *serialized_size);
+#endif
+
+error:
+   return ret;
+}
+
+static gboolean host_partition_serialize(FpiDeviceSynaTudorMoc *self,
+                                         guint8 **serialized,
+                                         gsize *serialized_size, GError **error)
+{
+   gboolean ret = TRUE;
+
+   g_autofree guint8 *serialized_pairing_data = NULL;
+   gsize serialized_pairing_data_size = 0;
+
+   const guint container_cnt = 2;
+   hash_container_item_t container[container_cnt];
+
+   guint8 host_data_version_serialized[sizeof(host_data_version)];
+   FP_WRITE_UINT32_LE(host_data_version_serialized, host_data_version);
+
+   container[0].cont.id = HOST_DATA_TAG_VERSION;
+   container[0].cont.data = host_data_version_serialized;
+   container[0].cont.data_size = sizeof(host_data_version);
+   BOOL_CHECK(hash_container_add_hash(&container[0], error));
+
+   BOOL_CHECK(serialize_pairing_data(self, &serialized_pairing_data,
+                                     &serialized_pairing_data_size, error));
+
+   container[1].cont.id = HOST_DATA_TAG_PAIRED_DATA;
+   container[1].cont.data = serialized_pairing_data;
+   container[1].cont.data_size = serialized_pairing_data_size;
+   BOOL_CHECK(hash_container_add_hash(&container[1], error));
+
+   BOOL_CHECK(serialize_hash_container(container, container_cnt, serialized,
+                                       serialized_size));
+
+#ifdef COMM_DEBUG
+   fp_dbg("Serialized host partition data:");
+   fp_dbg_large_hex(*serialized, *serialized_size);
+#endif
+
+error:
+   return ret;
+}
+
+static gboolean check_host_data_version(hash_container_item_t *hash_cont,
+                                        GError **error)
+{
+   gboolean ret = TRUE;
+
+   if (hash_cont->cont.data_size != sizeof(host_data_version)) {
+      *error = fpi_device_error_new_msg(
+          FP_DEVICE_ERROR_GENERAL, "Invalid host data version tag length: %d",
+          hash_cont->cont.data_size);
+      ret = FALSE;
+      goto error;
+   }
+
+   guint32 recv_version = FP_READ_UINT32_LE(hash_cont->cont.data);
+   if (recv_version != host_data_version) {
+      *error = fpi_device_error_new_msg(FP_DEVICE_ERROR_GENERAL,
+                                        "Invalid host data version: %d",
+                                        recv_version);
+      ret = FALSE;
+      goto error;
+   }
+
+error:
+   return ret;
+}
+
+static gboolean check_pairing_data_version(container_item_t *cont,
+                                           GError **error)
+{
+   gboolean ret = TRUE;
+
+   if (cont->data_size != sizeof(pair_data_version)) {
+      *error = fpi_device_error_new_msg(
+          FP_DEVICE_ERROR_GENERAL, "Stored pairing data has invalid length: %d",
+          cont->data_size);
+      ret = FALSE;
+      goto error;
+   }
+
+   guint16 recv_pair_data_version = FP_READ_UINT16_LE(cont->data);
+   if (recv_pair_data_version != pair_data_version) {
+      *error = fpi_device_error_new_msg(
+          FP_DEVICE_ERROR_GENERAL,
+          "Stored pairing data has invalid version: %d",
+          recv_pair_data_version);
+      ret = FALSE;
+      goto error;
+   }
+
+error:
+   return ret;
+}
+
+static gboolean load_host_cert(FpiDeviceSynaTudorMoc *self,
+                               container_item_t *cont, GError **error)
+{
+   gboolean ret = TRUE;
+
+   if (cont->data_size != CERTIFICATE_SIZE) {
+      *error = fpi_device_error_new_msg(
+          FP_DEVICE_ERROR_GENERAL,
+          "Stored host certificate has invalid size: %d", cont->data_size);
+      ret = FALSE;
+      goto error;
+   }
+
+   BOOL_CHECK(parse_certificate(cont->data, CERTIFICATE_SIZE,
+                                &self->pairing_data.host_cert));
+
+error:
+   return ret;
+}
+
+static gboolean load_sensor_cert(FpiDeviceSynaTudorMoc *self,
+                                 container_item_t *cont, GError **error)
+{
+   gboolean ret = TRUE;
+
+   if (cont->data_size != CERTIFICATE_SIZE) {
+      *error = fpi_device_error_new_msg(
+          FP_DEVICE_ERROR_GENERAL,
+          "Stored sensor certificate has invalid size: %d", cont->data_size);
+      ret = FALSE;
+      goto error;
+   }
+
+   BOOL_CHECK(parse_certificate(cont->data, CERTIFICATE_SIZE,
+                                &self->pairing_data.sensor_cert));
+
+error:
+   return ret;
+}
+
+static gboolean load_privkey(FpiDeviceSynaTudorMoc *self,
+                             container_item_t *cont, GError **error)
+{
+   gboolean ret = TRUE;
+
+   gnutls_datum_t x = {.data = NULL};
+   gnutls_datum_t y = {.data = NULL};
+   gnutls_datum_t k = {.data = NULL};
+
+   if (self->pairing_data.private_key_initialized) {
+      fp_warn("Overwriting stored private key");
+   } else {
+      gnutls_privkey_init(&self->pairing_data.private_key);
+      self->pairing_data.private_key_initialized = TRUE;
+   }
+
+   FpiByteReader reader;
+   fpi_byte_reader_init(&reader, cont->data, cont->data_size);
+
+   ret &= fpi_byte_reader_get_uint32_le(&reader, &x.size);
+   ret &= fpi_byte_reader_dup_data(&reader, x.size, &x.data);
+
+   ret &= fpi_byte_reader_get_uint32_le(&reader, &y.size);
+   ret &= fpi_byte_reader_dup_data(&reader, y.size, &y.data);
+
+   ret &= fpi_byte_reader_get_uint32_le(&reader, &k.size);
+   ret &= fpi_byte_reader_dup_data(&reader, k.size, &k.data);
+
+   /* as we use only one curve, there is no need to read it */
+   GNUTLS_CHECK(gnutls_privkey_import_ecc_raw(
+       self->pairing_data.private_key, GNUTLS_ECC_CURVE_SECP256R1, &x, &y, &k));
+   GNUTLS_CHECK(gnutls_privkey_verify_params(self->pairing_data.private_key));
+
+error:
+   if (x.data != NULL) {
+      g_free(x.data);
+   }
+   if (y.data != NULL) {
+      g_free(y.data);
+   }
+   if (k.data != NULL) {
+      g_free(k.data);
+   }
+   return ret;
+}
+
+static gboolean deserialize_pairing_data(FpiDeviceSynaTudorMoc *self,
+                                         hash_container_item_t *hash_cont,
+                                         GError **error)
+{
+   gboolean ret = TRUE;
+
+   g_autofree container_item_t *cont = NULL;
+   guint cont_cnt = 0;
+   BOOL_CHECK(deserialize_container(
+       hash_cont->cont.data, hash_cont->cont.data_size, &cont, &cont_cnt));
+
+   guint version_tag_idx = 0;
+   guint host_cert_tag_idx = 0;
+   guint privkey_tag_idx = 0;
+   guint sensor_cert_tag_idx = 0;
+
+   if (self->pairing_data.present) {
+      fp_warn("Overwriting currently present pairing_data");
+      /* we do not want to accept partial loading of pairing data */
+      self->pairing_data.present = FALSE;
+   }
+
+   BOOL_CHECK(get_container_with_id_index(cont, cont_cnt, PAIR_DATA_TAG_VERSION,
+                                          &version_tag_idx));
+   BOOL_CHECK(get_container_with_id_index(
+       cont, cont_cnt, PAIR_DATA_TAG_HOST_CERT, &host_cert_tag_idx));
+   BOOL_CHECK(get_container_with_id_index(
+       cont, cont_cnt, PAIR_DATA_TAG_PRIVATE_KEY, &privkey_tag_idx));
+   BOOL_CHECK(get_container_with_id_index(
+       cont, cont_cnt, PAIR_DATA_TAG_SENSOR_CERT, &sensor_cert_tag_idx));
+
+   BOOL_CHECK(check_pairing_data_version(&cont[version_tag_idx], error));
+
+   BOOL_CHECK(load_host_cert(self, &cont[host_cert_tag_idx], error));
+   BOOL_CHECK(load_privkey(self, &cont[privkey_tag_idx], error));
+   BOOL_CHECK(load_sensor_cert(self, &cont[sensor_cert_tag_idx], error));
+
+   self->pairing_data.present = TRUE;
+
+error:
+   return ret;
+}
+
+static gboolean host_partition_deserialize(FpiDeviceSynaTudorMoc *self,
+                                           guint8 *serialized,
+                                           gsize serialized_size,
+                                           GError **error)
+{
+   gboolean ret = TRUE;
+
+   hash_container_item_t *hash_cont = NULL;
+   guint cont_cnt = 0;
+
+   BOOL_CHECK(deserialize_hash_container(serialized, serialized_size,
+                                         &hash_cont, &cont_cnt, error));
+
+   guint host_data_version_idx = 0;
+   BOOL_CHECK(get_hash_container_with_id_index(
+       hash_cont, cont_cnt, HOST_DATA_TAG_VERSION, &host_data_version_idx));
+
+   guint host_data_pairing_data_idx = 0;
+   BOOL_CHECK(get_hash_container_with_id_index(hash_cont, cont_cnt,
+                                               HOST_DATA_TAG_PAIRED_DATA,
+                                               &host_data_pairing_data_idx));
+
+   BOOL_CHECK(
+       check_host_data_version(&hash_cont[host_data_version_idx], error));
+
+   BOOL_CHECK(deserialize_pairing_data(
+       self, &hash_cont[host_data_pairing_data_idx], error));
+
+error:
+   return ret;
+}
+
+gboolean host_partition_store_pairing_data(FpiDeviceSynaTudorMoc *self,
+                                           GError **error)
+{
+   gboolean ret = TRUE;
+
+   g_autofree guint8 *serialized = NULL;
+   gsize serialized_size = 0;
+
+   BOOL_CHECK(
+       host_partition_serialize(self, &serialized, &serialized_size, error));
+
+   BOOL_CHECK(write_host_partition(self, serialized, serialized_size, error));
+
+error:
+   return ret;
+}
+
+gboolean host_partition_load_pairing_data(FpiDeviceSynaTudorMoc *self,
+                                          GError **error)
+{
+   gboolean ret = TRUE;
+
+   g_autofree guint8 *serialized = NULL;
+   guint32 serialized_size = 0;
+
+   BOOL_CHECK(read_host_partition(self, &serialized, &serialized_size, error));
+
+   BOOL_CHECK(
+       host_partition_deserialize(self, serialized, serialized_size, error));
+
+   self->pairing_data.loaded_from_storage = TRUE;
 
 error:
    return ret;

@@ -25,7 +25,7 @@ class CmdResetSblMode(Command):
         else:
             is_mode_2 = True
 
-        ctx.sensor.frame_capturer.reset_sbl_mode(is_mode_2)
+        ctx.sensor.reset_sbl_mode(is_mode_2)
 
 
 @cmd("reset_with_param")
@@ -39,4 +39,4 @@ class CmdResetSblModeParam(Command):
             print("no param given, aborting")
         else:
             param = int(args[0])
-            ctx.sensor.frame_capturer.reset_with_param(param)
+            ctx.sensor.reset_with_param(param)

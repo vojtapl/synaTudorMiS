@@ -7,7 +7,9 @@
 G_DECLARE_FINAL_TYPE(FpiDeviceSynaTudorMoc, fpi_device_synaptics_moc, FPI,
                      DEVICE_SYNA_TUDOR_MOC, FpDevice)
 
+#define SESSION_ID_LEN 7
 #define CERTIFICATE_KEY_SIZE 68
+#define SIGNATURE_SIZE 256
 
 typedef enum {
    TLS_HS_STATE_PREPARE = 0,
@@ -45,28 +47,8 @@ typedef enum {
 } tls_certificate_type_t;
 
 typedef struct {
-   guint16 status;
-   guint32 payload_len;
-   guint8 *payload;
-} msg_resp_t;
-
-typedef struct {
-   guint32 payload_len;
-   guint8 *payload;
-} msg_send_t;
-
-typedef void (*CmdMsgCallback)(FpiDeviceSynaTudorMoc *self, msg_resp_t *resp,
-                               GError *error);
-
-typedef struct {
-   msg_send_t send;
-   msg_resp_t resp;
-} transmission_ssm_data;
-
-typedef struct {
    gboolean established;
-   guint8 *session_id;
-   guint8 session_id_len;
+   guint8 session_id[SESSION_ID_LEN];
 
    guint8 version_major;
    guint8 version_minor;
@@ -108,15 +90,18 @@ typedef struct {
    guint16 num_current_payloads;
 } storage_t;
 
+#pragma pack(push, 1)
 typedef struct {
    guint16 magic;
    guint16 curve;
    guint8 pubkey_x[CERTIFICATE_KEY_SIZE];
    guint8 pubkey_y[CERTIFICATE_KEY_SIZE];
+   guint8 padding;
    guint8 cert_type;
    guint16 sign_size;
-   guint8 *sign_data;
-} sensor_cert_t;
+   guint8 sign_data[SIGNATURE_SIZE];
+} cert_t;
+#pragma pack(pop)
 
 typedef struct {
    guint32 build_time;
@@ -143,16 +128,12 @@ typedef struct {
 
 typedef struct {
    gboolean present;
+   gboolean loaded_from_storage; /* check for storing of pairing data */
 
-   sensor_cert_t host_cert;
-   sensor_cert_t sensor_cert;
+   cert_t sensor_cert;
+   cert_t host_cert;
 
-   guint8 *sensor_cert_bytes;
-   gsize sensor_cert_bytes_len;
-
-   guint8 *host_cert_bytes;
-   gsize host_cert_bytes_len;
-
+   gboolean private_key_initialized;
    gnutls_privkey_t private_key;
 } pairing_data_t;
 

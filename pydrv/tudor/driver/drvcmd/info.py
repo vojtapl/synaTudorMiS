@@ -62,7 +62,7 @@ class CmdPrintStartInfo(Command):
     """
 
     def run(self, ctx: CmdContext, args: list):
-        ctx.sensor.frame_capturer.print_start_info()
+        ctx.sensor.print_start_info()
 
 
 @cmd("hw_info_get")
@@ -76,4 +76,13 @@ class CmdHwInfoGet(Command):
             raise Exception("No type given")
 
         info_type = int(args[0])
-        print(ctx.sensor.frame_capturer.hw_info_get(info_type))
+        print(ctx.sensor.hw_info_get(info_type))
+
+@cmd("get_version")
+class CmdHwInfoGet(Command):
+    """
+    Usage: get_version
+    """
+
+    def run(self, ctx: CmdContext, args: list):
+        ctx.sensor.get_version()

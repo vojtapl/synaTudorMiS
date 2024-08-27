@@ -23,6 +23,7 @@
 
 #include "fpi-log.h"
 #include <glib.h>
+#include <gnutls/gnutls.h>
 
 #pragma once
 
@@ -36,6 +37,7 @@
          goto error;                                                           \
       }                                                                        \
    } while (0)
+
 #define WRITTEN_CHECK(condition)                                               \
    do {                                                                        \
       if (!(condition)) {                                                      \
@@ -47,6 +49,7 @@
          goto error;                                                           \
       }                                                                        \
    } while (0)
+
 #define READ_OK_CHECK(condition)                                               \
    do {                                                                        \
       if (!(condition)) {                                                      \
@@ -54,6 +57,20 @@
                 __LINE__);                                                     \
          *error = fpi_device_error_new_msg(FP_DEVICE_ERROR_GENERAL,            \
                                            "fpi_byte_reader reading error");   \
+         ret = FALSE;                                                          \
+         goto error;                                                           \
+      }                                                                        \
+   } while (0)
+
+#define GNUTLS_CHECK(func_call)                                                \
+   do {                                                                        \
+      gint gnutls_ret = (func_call);                                           \
+      if (gnutls_ret != GNUTLS_E_SUCCESS) {                                    \
+         fp_err("GnuTLS error in " #func_call ": %s",                          \
+                gnutls_strerror(gnutls_ret));                                  \
+         *error = fpi_device_error_new_msg(FP_DEVICE_ERROR_PROTO,              \
+                                           "GnuTLS error: %s",                 \
+                                           gnutls_strerror(gnutls_ret));       \
          ret = FALSE;                                                          \
          goto error;                                                           \
       }                                                                        \
