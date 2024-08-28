@@ -28,6 +28,7 @@
 #include "fpi-byte-writer.h"
 #include "fpi-usb-transfer.h"
 #include "sample_pairing_data.h"
+#include "sensor_keys.h"
 #include "tls.h"
 #include "utils.h"
 #include <gio/gio.h>
@@ -39,8 +40,7 @@
 
 // #define TLS_DEBUG
 
-/* ============================================================================
- * Supported ciphersuites and extensions */
+/* Supported ciphersuites and extensions =================================== */
 
 /* the only ciphersuite which seemed to be usable */
 static cipher_suit_t tls_ecdh_ecdsa_with_aes_256_gcm_sha384 = {
@@ -125,19 +125,18 @@ static gboolean decrypt_record(FpiDeviceSynaTudorMoc *self,
    gnutls_datum_t gcm_iv = {.data = NULL, .size = 0};
    g_assert(self->tls.decryption_iv.size != 0);
    gcm_iv.size = sizeof(nonce) + self->tls.decryption_iv.size;
-   gcm_iv.data = g_malloc(gcm_iv.size * sizeof(*gcm_iv.data));
+   gcm_iv.data = g_malloc(gcm_iv.size);
    memcpy(gcm_iv.data, self->tls.decryption_iv.data,
           self->tls.decryption_iv.size);
    FP_WRITE_UINT64_BE(gcm_iv.data + self->tls.decryption_iv.size, nonce);
 
 #ifdef TLS_DEBUG
-   fp_dbg("decryption nonce: %lu", nonce);
-   fp_dbg("decryption IV:");
+   fp_dbg("\tdecryption nonce: %lu", nonce);
+   fp_dbg("\tdecryption IV:");
    fp_dbg_large_hex(self->tls.decryption_iv.data, self->tls.decryption_iv.size);
-   fp_dbg("GCM IV:");
+   fp_dbg("\tGCM IV:");
    fp_dbg_large_hex(gcm_iv.data, gcm_iv.size);
-   fp_dbg("decryption key:");
-   /**/
+   fp_dbg("\tdecryption key:");
    fp_dbg_large_hex(self->tls.decryption_key.data,
                     self->tls.decryption_key.size);
 #endif
@@ -447,10 +446,10 @@ static gboolean get_client_hello_record(FpiDeviceSynaTudorMoc *self,
                                        SESSION_ID_LEN);
 
    /* write cipher cuites */
-   guint16 cipher_suite_id_list_total_len =
+   guint16 cipher_suite_id_array_total_len =
        client_hello->cipher_suit_cnt * sizeof(guint16);
    written &=
-       fpi_byte_writer_put_uint16_be(&writer, cipher_suite_id_list_total_len);
+       fpi_byte_writer_put_uint16_be(&writer, cipher_suite_id_array_total_len);
    for (int i = 0; i < client_hello->cipher_suit_cnt; ++i) {
       written &= fpi_byte_writer_put_uint16_be(
           &writer, client_hello->cipher_suits[i].id);
@@ -649,8 +648,7 @@ static gboolean init_client_hello(FpiDeviceSynaTudorMoc *self,
    client_hello->cipher_suits = &tls_ecdh_ecdsa_with_aes_256_gcm_sha384;
 
    client_hello->extension_cnt = 2;
-   client_hello->extensions =
-       g_malloc(client_hello->extension_cnt * sizeof(extension_t));
+   client_hello->extensions = g_new(extension_t, client_hello->extension_cnt);
    memcpy(&client_hello->extensions[0], &supported_groups, sizeof(extension_t));
    memcpy(&client_hello->extensions[1], &ec_point_formats, sizeof(extension_t));
 
@@ -741,6 +739,81 @@ error:
    return ret;
 }
 
+static gboolean
+parse_and_process_certificate_request(FpiDeviceSynaTudorMoc *self,
+                                      FpiByteReader *reader,
+                                      const guint msg_len, GError **error)
+{
+   gboolean ret = TRUE;
+
+   if (msg_len != 4) {
+      *error = fpi_device_error_new_msg(
+          FP_DEVICE_ERROR_GENERAL,
+          "Unexpected msg_len of certificate request received: %d", msg_len);
+      ret = FALSE;
+      goto error;
+   }
+
+   guint8 num_requested_certs = 0;
+   ret &= fpi_byte_reader_get_uint8(reader, &num_requested_certs);
+
+   if (ret && num_requested_certs != 1) {
+      *error = fpi_device_error_new_msg(
+          FP_DEVICE_ERROR_GENERAL,
+          "Requested an unimplemented number of certificates: %d",
+          num_requested_certs);
+      ret = FALSE;
+      goto error;
+   }
+
+   guint8 certificate_type = 0;
+   ret &= fpi_byte_reader_get_uint8(reader, &certificate_type);
+   /* skip over garbage bytes */
+   ret &= fpi_byte_reader_skip(reader, 2);
+
+   READ_OK_CHECK(ret);
+
+   fp_dbg("Requested certificate of type: 0x%x", certificate_type);
+   self->tls.requested_cert = certificate_type;
+   self->tls.handshake_state = TLS_HS_STATE_END;
+
+error:
+   return ret;
+}
+
+static gboolean parse_and_process_hs_finished(FpiDeviceSynaTudorMoc *self,
+                                              FpiByteReader *reader,
+                                              const guint msg_len,
+                                              GError **error)
+{
+   gboolean ret = TRUE;
+
+   if (self->tls.handshake_state != TLS_HS_STATE_END) {
+      *error = fpi_device_error_new_msg(
+          FP_DEVICE_ERROR_GENERAL,
+          "Unexpected recieval of handshake finished message - "
+          "handshake state is %d",
+          self->tls.handshake_state);
+      ret = FALSE;
+   }
+   gboolean verify_matches = FALSE;
+   BOOL_CHECK(check_server_finished_verify_data(self, reader, msg_len,
+                                                &verify_matches, error));
+   if (!verify_matches) {
+      *error = fpi_device_error_new_msg(
+          FP_DEVICE_ERROR_PROTO,
+          "Server verify message does not match the one expected");
+      ret = FALSE;
+      goto error;
+   }
+   fp_dbg("Server verify message matches");
+   self->tls.established = TRUE;
+   self->tls.handshake_state = TLS_HS_STATE_FINISHED;
+
+error:
+   return ret;
+}
+
 static gboolean parse_and_process_handshake_record(FpiDeviceSynaTudorMoc *self,
                                                    record_t *record,
                                                    GError **error)
@@ -772,26 +845,8 @@ static gboolean parse_and_process_handshake_record(FpiDeviceSynaTudorMoc *self,
          break;
       case HS_CERTIFICATE_REQUEST:
          fp_dbg("received certificate request");
-         g_assert(msg_len == 4);
-         guint8 num_requested_certs = 0;
-         read_ok &= fpi_byte_reader_get_uint8(&reader, &num_requested_certs);
-         if (num_requested_certs != 1) {
-            fp_err("Requested an unimplemented number of certificates: %d",
-                   num_requested_certs);
-            *error = fpi_device_error_new_msg(
-                FP_DEVICE_ERROR_GENERAL,
-                "unimplemented number of certificates requested");
-            ret = FALSE;
-            goto error;
-         }
-         guint8 certificate_type = 0;
-         read_ok &= fpi_byte_reader_get_uint8(&reader, &certificate_type);
-         /* skip over garbage bytes */
-         read_ok &= fpi_byte_reader_skip(&reader, 2);
-
-         fp_dbg("Requested certificate of type: 0x%x", certificate_type);
-         self->tls.requested_cert = certificate_type;
-         self->tls.handshake_state = TLS_HS_STATE_END;
+         BOOL_CHECK(parse_and_process_certificate_request(self, &reader,
+                                                          msg_len, error));
          break;
 
       case HS_SERVER_HELLO_DONE:
@@ -809,27 +864,8 @@ static gboolean parse_and_process_handshake_record(FpiDeviceSynaTudorMoc *self,
 
       case HS_FINISHED:
          fp_dbg("received handshake finished");
-         if (self->tls.handshake_state != TLS_HS_STATE_END) {
-            *error = fpi_device_error_new_msg(
-                FP_DEVICE_ERROR_GENERAL,
-                "Unexpected recieval of handshake finished message - "
-                "handshake state is %d",
-                self->tls.handshake_state);
-            ret = FALSE;
-         }
-         gboolean verify_matches = FALSE;
-         BOOL_CHECK(check_server_finished_verify_data(self, &reader, msg_len,
-                                                      &verify_matches, error));
-         if (!verify_matches) {
-            *error = fpi_device_error_new_msg(
-                FP_DEVICE_ERROR_PROTO,
-                "Server verify message does not match the one expected");
-            ret = FALSE;
-            goto error;
-         }
-         fp_dbg("Server verify message matches");
-         self->tls.established = TRUE;
-         self->tls.handshake_state = TLS_HS_STATE_FINISHED;
+         BOOL_CHECK(
+             parse_and_process_hs_finished(self, &reader, msg_len, error));
          cont = FALSE;
          break;
 
@@ -1159,7 +1195,7 @@ static gboolean encrypt_record(FpiDeviceSynaTudorMoc *self,
    /* create GCM IV = encryption_iv + nonce */
    g_assert(self->tls.encryption_iv.size != 0);
    gcm_iv.size = sizeof(nonce) + self->tls.encryption_iv.size;
-   gcm_iv.data = g_malloc(gcm_iv.size * sizeof(*gcm_iv.data));
+   gcm_iv.data = g_malloc(gcm_iv.size);
    memcpy(gcm_iv.data, self->tls.encryption_iv.data,
           self->tls.encryption_iv.size);
    FP_WRITE_UINT64_BE(gcm_iv.data + self->tls.encryption_iv.size, nonce);
@@ -1369,7 +1405,6 @@ static gboolean tls_aead_encryption_algorithm_init(FpiDeviceSynaTudorMoc *self,
    self->tls.cipher_alg = GNUTLS_CIPHER_AES_256_GCM;
 
    ret = generate_and_store_aead_keys(self, error);
-   return TRUE;
 
    return ret;
 }
@@ -1957,50 +1992,7 @@ error:
    return ret;
 }
 
-/* ============================================================================
- * Sensor public keys for Sensor certificate verificaiton
- * SECP256R1 keys converted to big-endian (gnutls expects big endian) */
-typedef struct {
-   gnutls_datum_t x;
-   gnutls_datum_t y;
-
-   gboolean keyflag;
-   guint8 fw_version_major;
-   guint8 fw_version_minor;
-} sensor_pub_key_t;
-
-static guint8 pubkey_v10_1_x[ECC_KEY_SIZE] = {
-    0xcb, 0x65, 0x62, 0x93, 0xb9, 0x70, 0x18, 0x06, 0xae, 0x3b, 0x1a,
-    0x52, 0x08, 0xe4, 0x69, 0xf4, 0x65, 0xa6, 0xa5, 0x19, 0x5b, 0xd8,
-    0xb7, 0xe3, 0x9f, 0x23, 0x65, 0x06, 0x11, 0xdc, 0xdf, 0xdc};
-static guint8 pubkey_v10_1_y[ECC_KEY_SIZE] = {
-    0xa7, 0x00, 0x42, 0x4e, 0xe0, 0x97, 0xb3, 0xc1, 0x59, 0xbe, 0x79,
-    0x10, 0x89, 0x50, 0x2f, 0x40, 0xba, 0x57, 0x1e, 0xca, 0x91, 0xb1,
-    0x06, 0xb4, 0x88, 0x1f, 0x19, 0x63, 0x7e, 0x44, 0xbf, 0xdc};
-sensor_pub_key_t pubkey_v10_1 = {
-    .x = (gnutls_datum_t){.data = pubkey_v10_1_x, .size = ECC_KEY_SIZE},
-    .y = (gnutls_datum_t){.data = pubkey_v10_1_y, .size = ECC_KEY_SIZE},
-    .fw_version_major = 10,
-    .fw_version_minor = 1,
-    .keyflag = FALSE,
-};
-
-static guint8 pubkey_v10_1_kf_x[ECC_KEY_SIZE] = {
-    0x33, 0xd6, 0x20, 0x8c, 0xa5, 0xf5, 0xda, 0x82, 0x4b, 0x46, 0xea,
-    0x1c, 0xa2, 0x5e, 0x67, 0x32, 0x7e, 0xfc, 0x0c, 0x4c, 0xe9, 0x37,
-    0xd9, 0xd8, 0x44, 0x12, 0x0d, 0x6c, 0xc0, 0x8b, 0xfe, 0x5d};
-static guint8 pubkey_v10_1_kf_y[ECC_KEY_SIZE] = {
-    0xb9, 0x55, 0xe1, 0x81, 0xfc, 0x4b, 0xf6, 0xc6, 0x2b, 0x91, 0xaf,
-    0xcd, 0xf3, 0xb6, 0x1e, 0xc7, 0x18, 0xdc, 0xe7, 0x08, 0x47, 0x42,
-    0xc4, 0x1f, 0x57, 0xc1, 0xf0, 0x77, 0x7c, 0x34, 0xa0, 0xfd};
-sensor_pub_key_t pubkey_v10_1_kf = {
-    .x = (gnutls_datum_t){.data = pubkey_v10_1_kf_x, .size = ECC_KEY_SIZE},
-    .y = (gnutls_datum_t){.data = pubkey_v10_1_kf_y, .size = ECC_KEY_SIZE},
-    .fw_version_major = 10,
-    .fw_version_minor = 1,
-    .keyflag = TRUE,
-};
-
+/* ========================================================================= */
 static gboolean
 sensor_pub_key_compatibility_check(FpiDeviceSynaTudorMoc *self,
                                    sensor_pub_key_t *sensor_pubkey,

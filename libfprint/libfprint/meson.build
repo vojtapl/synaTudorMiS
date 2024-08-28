@@ -160,7 +160,7 @@ endian_independent_drivers = virtual_drivers + [
     'nb1010',
     'realtek',
     'synaptics',
-    'syna_tudor_moc',
+    # 'syna_tudor_moc',
     'upeksonly',
     'upektc',
     'upektc_img',

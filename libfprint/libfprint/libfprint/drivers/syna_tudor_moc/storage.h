@@ -1,3 +1,4 @@
+
 /*
  * Synaptics Tudor Match-In-Sensor driver for libfprint
  *
@@ -23,10 +24,11 @@
 
 #pragma once
 
-#define SYNAPTICS_VENDOR_ID 0x06cb
+#include "device.h"
+#include <glib.h>
 
-#define FP_COMPONENT "syna_tudor_moc"
-#define SYNA_TUDOR_MOC_DRIVER_FULLNAME "Synaptics Tudor Match-In-Sensor"
-#define SYNA_TUDOR_MOC_DRIVER_NR_ENROLL_STAGES 10
+gboolean host_partition_store_pairing_data(FpiDeviceSynaTudorMoc *self,
+                                           GError **error);
 
-#define IMAGE_QUALITY_THRESHOLD 50
+gboolean host_partition_load_pairing_data(FpiDeviceSynaTudorMoc *self,
+                                          GError **error);

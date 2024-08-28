@@ -64,17 +64,23 @@
 
 /* others ================================================================== */
 
-#define WRAP_RESPONSE_ADDITIONAL_SIZE 0x45
-#define MATCH_STATS_SIZE 36
-#define SENSOR_FW_CMD_HEADER_LEN 1
-#define SENSOR_FW_REPLY_HEADER_LEN 2
-#define DB2_ID_SIZE 16
 #define REQUEST_DFT_WRITE 0x15
 
 #define PRODUCT_ID_BOOTLOADER_1 'B'
 #define PRODUCT_ID_BOOTLOADER_2 'C'
 
+/* sizes =================================================================== */
+
 #define CERTIFICATE_SIZE 400
+
+#define MIS_IMAGE_METRICS_IPL_FINGER_COVERAGE_DATA_SIZE 4
+#define MIS_IMAGE_METRICS_IMG_QUALITY_DATA_SIZE 8
+
+#define MATCH_STATS_SIZE 36
+
+#define WRAP_RESPONSE_ADDITIONAL_SIZE 0x45
+#define SENSOR_FW_CMD_HEADER_LEN 1
+#define SENSOR_FW_REPLY_HEADER_LEN 2
 
 /* Commands ================================================================ */
 
@@ -143,10 +149,21 @@ typedef enum {
    VCSFW_STORAGE_TUDOR_PART_ID_HOST = 2,
 } storage_partition_t;
 
+typedef enum {
+   CAPTURE_FLAGS_AUTH = 7,
+   CAPTURE_FLAGS_ENROLL = 15,
+} capture_flags_t;
+
+typedef enum {
+   MIS_IMAGE_METRICS_IPL_FINGER_COVERAGE = 0x1,
+   MIS_IMAGE_METRICS_IMG_QUALITY = 0x10000,
+} img_metrics_t;
+
 /* Response structs ======================================================== */
 
 typedef struct {
    guint16 progress;
+   db2_id_t template_id;
    guint32 quality;
    guint32 redundant;
    guint32 rejected;
@@ -154,9 +171,7 @@ typedef struct {
    guint16 enroll_quality;
    guint32 status;
    guint32 smt_like_has_fixed_pattern;
-   db2_id_t template_id;
-
-} enroll_add_image_t;
+} enroll_stats_t;
 
 typedef struct {
    db2_id_t template_id;
@@ -190,15 +205,15 @@ typedef struct {
 gboolean send_get_version(FpiDeviceSynaTudorMoc *self, get_version_t *resp,
                           GError **error);
 
-gboolean send_frame_acq(FpiDeviceSynaTudorMoc *self, guint8 frame_flags,
-                        GError **error);
+gboolean send_frame_acq(FpiDeviceSynaTudorMoc *self,
+                        capture_flags_t frame_flags, GError **error);
 
 gboolean send_frame_finish(FpiDeviceSynaTudorMoc *self, GError **error);
 
 gboolean send_enroll_start(FpiDeviceSynaTudorMoc *self, GError **error);
 
 gboolean send_enroll_add_image(FpiDeviceSynaTudorMoc *self,
-                               enroll_add_image_t *resp, GError **error);
+                               enroll_stats_t *resp, GError **error);
 
 gboolean send_enroll_commit(FpiDeviceSynaTudorMoc *self,
                             guint8 *enroll_commit_data,
@@ -211,7 +226,7 @@ gboolean send_identify_match(FpiDeviceSynaTudorMoc *self,
                              gsize number_of_template_ids, gboolean *matched,
                              enrollment_t *match, GError **error);
 
-gboolean send_get_image_metrics(FpiDeviceSynaTudorMoc *self, guint32 type,
+gboolean send_get_image_metrics(FpiDeviceSynaTudorMoc *self, img_metrics_t type,
                                 guint32 *recv_value, GError **error);
 
 gboolean send_event_config(FpiDeviceSynaTudorMoc *self, guint32 event_mask,
@@ -231,39 +246,40 @@ gboolean send_db2_info(FpiDeviceSynaTudorMoc *self, GError **error);
 
 gboolean send_db2_format(FpiDeviceSynaTudorMoc *self, GError **error);
 
-gboolean add_enrollment(FpiDeviceSynaTudorMoc *self, guint8 *user_id,
-                        guint8 finger_id, db2_id_t template_id, GError **error);
+gboolean add_enrollment(FpiDeviceSynaTudorMoc *self, const guint8 *user_id,
+                        const guint8 finger_id, const db2_id_t template_id,
+                        GError **error);
 
 gboolean send_db2_delete_object(FpiDeviceSynaTudorMoc *self,
-                                obj_type_t obj_type, db2_id_t *obj_id,
-                                GError **error);
+                                const obj_type_t obj_type,
+                                const db2_id_t *obj_id, GError **error);
 
 gboolean send_db2_get_object_list(FpiDeviceSynaTudorMoc *self,
-                                  obj_type_t obj_type, db2_id_t obj_id,
-                                  db2_id_t **obj_list, guint16 *obj_list_len,
-                                  GError **error);
+                                  const obj_type_t obj_type,
+                                  const db2_id_t obj_id, db2_id_t **obj_array,
+                                  guint16 *obj_array_len, GError **error);
 
 gboolean send_db2_get_object_info(FpiDeviceSynaTudorMoc *self,
-                                  obj_type_t obj_type, db2_id_t obj_id,
-                                  guint8 **obj_info, gsize *obj_info_size,
-                                  GError **error);
+                                  const obj_type_t obj_type,
+                                  const db2_id_t obj_id, guint8 **obj_info,
+                                  gsize *obj_info_size, GError **error);
 
 gboolean send_db2_get_object_data(FpiDeviceSynaTudorMoc *self,
-                                  obj_type_t obj_type, db2_id_t obj_id,
-                                  guint8 **obj_data, guint *obj_data_size,
-                                  GError **error);
+                                  const obj_type_t obj_type,
+                                  const db2_id_t obj_id, guint8 **obj_data,
+                                  guint *obj_data_size, GError **error);
 
 gboolean get_event_data(FpiDeviceSynaTudorMoc *self, guint8 *event_buffer,
-                        gsize event_buffer_size, GError **error);
+                        const gsize event_buffer_size, GError **error);
 
 gboolean wait_for_events_blocking(FpiDeviceSynaTudorMoc *self,
-                                  guint32 event_mask, GError **error);
+                                  const guint32 event_mask, GError **error);
 
 gboolean sensor_is_in_bootloader_mode(FpiDeviceSynaTudorMoc *self);
 
 gboolean exit_bootloader_mode(FpiDeviceSynaTudorMoc *self, GError **error);
 
-gboolean send_pair(FpiDeviceSynaTudorMoc *self, guint8 *host_cert_bytes,
+gboolean send_pair(FpiDeviceSynaTudorMoc *self, const guint8 *host_cert_bytes,
                    GError **error);
 
 gboolean read_host_partition(FpiDeviceSynaTudorMoc *self, guint8 **data,

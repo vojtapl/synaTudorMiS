@@ -101,37 +101,37 @@ static gboolean get_enrollments(FpiDeviceSynaTudorMoc *self,
    gboolean ret = TRUE;
 
    guint allocated_enrollments_cnt = 5;
-   *enrollments = g_malloc_n(allocated_enrollments_cnt, sizeof(enrollment_t));
+   *enrollments = g_new(enrollment_t, allocated_enrollments_cnt);
 
-   guint16 template_id_list_len = 0;
-   g_autofree db2_id_t *template_id_list = NULL;
-   g_autofree db2_id_t *payload_list = NULL;
+   guint16 template_id_array_len = 0;
+   g_autofree db2_id_t *template_id_array = NULL;
+   g_autofree db2_id_t *payload_array = NULL;
 
    BOOL_CHECK(send_db2_get_object_list(self, OBJ_TYPE_TEMPLATES,
-                                       cache_template_id, &template_id_list,
-                                       &template_id_list_len, error));
-   if (template_id_list_len == 0) {
-      fp_dbg("received empty template_id_list");
+                                       cache_template_id, &template_id_array,
+                                       &template_id_array_len, error));
+   if (template_id_array_len == 0) {
+      fp_dbg("received empty template_id_array");
       goto error;
    }
 
-   for (int i = 0; i < template_id_list_len; ++i) {
-      guint16 payload_list_len = 0;
+   for (int i = 0; i < template_id_array_len; ++i) {
+      guint16 payload_array_len = 0;
       fp_dbg("Getting payloads for template_id:");
-      fp_dbg_large_hex(template_id_list[i], DB2_ID_SIZE);
+      fp_dbg_large_hex(template_id_array[i], DB2_ID_SIZE);
       BOOL_CHECK(send_db2_get_object_list(self, OBJ_TYPE_PAYLOADS,
-                                          template_id_list[i], &payload_list,
-                                          &payload_list_len, error));
-      if (payload_list_len == 0) {
+                                          template_id_array[i], &payload_array,
+                                          &payload_array_len, error));
+      if (payload_array_len == 0) {
          fp_warn("No payload data for enrollment with template_id:");
-         fp_dbg_large_hex(template_id_list[i], DB2_ID_SIZE);
+         fp_dbg_large_hex(template_id_array[i], DB2_ID_SIZE);
          continue;
       }
 
-      for (int j = 0; j < payload_list_len; ++j) {
+      for (int j = 0; j < payload_array_len; ++j) {
          fp_dbg("Getting enrollment data for payload_id:");
-         fp_dbg_large_hex(payload_list[j], DB2_ID_SIZE);
-         BOOL_CHECK(get_enrollment_data(self, payload_list[j],
+         fp_dbg_large_hex(payload_array[j], DB2_ID_SIZE);
+         BOOL_CHECK(get_enrollment_data(self, payload_array[j],
                                         &((*enrollments)[*enrollments_cnt]),
                                         error));
          *enrollments_cnt += 1;
@@ -142,9 +142,9 @@ static gboolean get_enrollments(FpiDeviceSynaTudorMoc *self,
                                        sizeof(enrollment_t));
          }
       }
-      if (payload_list != NULL) {
-         g_free(payload_list);
-         payload_list = NULL;
+      if (payload_array != NULL) {
+         g_free(payload_array);
+         payload_array = NULL;
       }
    }
 
@@ -382,7 +382,7 @@ static void syna_tudor_moc_enroll(FpDevice *device)
 
    /* TODO: shoud be checked if finger_id is already enrolled? */
 
-   enroll_add_image_t enroll_stats = {0};
+   enroll_stats_t enroll_stats = {0};
    while (enroll_stats.progress != 100) {
       if (!send_event_config(self, EV_FINGER_UP, &error)) {
          goto error;
@@ -597,7 +597,7 @@ error:
    fpi_device_identify_complete(device, error);
 }
 
-/* list -------------------------------------------------------------------- */
+/* array -------------------------------------------------------------------- */
 
 static void syna_tudor_moc_list(FpDevice *device)
 {

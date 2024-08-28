@@ -34,25 +34,37 @@
 // #define CONTAINER_DEBUG
 
 /* Container =============================================================== */
+
+static gsize get_serialized_container_size(container_item_t *cont,
+                                           guint cont_cnt)
+{
+   g_return_val_if_fail(cont != NULL, 0);
+
+   gsize size = 0;
+   for (int i = 0; i < cont_cnt; ++i) {
+      size += cont[i].data_size + CONTAINTER_HEADER_SIZE;
+   }
+
+   return size;
+}
+
 gboolean serialize_container(container_item_t *cont, guint cont_cnt,
                              guint8 **serialized, gsize *serialized_size)
 {
-   for (int i = 0; i < cont_cnt; ++i) {
-      *serialized_size += cont[i].data_size + CONTAINTER_HEADER_SIZE;
-   }
-
-   *serialized = g_malloc(*serialized_size);
-
    gboolean read_ok = TRUE;
+
+   *serialized_size = get_serialized_container_size(cont, cont_cnt);
    FpiByteWriter writer;
-   fpi_byte_writer_init_with_data(&writer, *serialized, *serialized_size,
-                                  FALSE);
+   fpi_byte_writer_init_with_size(&writer, *serialized_size, TRUE);
+
    for (int i = 0; i < cont_cnt; ++i) {
       read_ok &= fpi_byte_writer_put_uint16_le(&writer, cont[i].id);
       read_ok &= fpi_byte_writer_put_uint32_le(&writer, cont[i].data_size);
       read_ok &=
           fpi_byte_writer_put_data(&writer, cont[i].data, cont[i].data_size);
    }
+
+   *serialized = fpi_byte_writer_reset_and_get_data(&writer);
 
    if (!read_ok && *serialized != NULL) {
       g_free(*serialized);
@@ -68,7 +80,7 @@ gboolean deserialize_container(const guint8 *serialized,
    guint allocated_cont_item_cnt = 5;
    *cont_item_cnt = 0;
 
-   *cont = g_malloc(allocated_cont_item_cnt * sizeof(container_item_t));
+   *cont = g_new(container_item_t, allocated_cont_item_cnt);
 
    gboolean read_ok = TRUE;
    FpiByteReader reader;
@@ -209,6 +221,21 @@ error:
 
 /* Hash Container ========================================================== */
 
+static gsize
+get_serialized_hash_container_size(hash_container_item_t *hash_cont,
+                                   guint cont_cnt)
+{
+   g_return_val_if_fail(hash_cont != NULL, 0);
+
+   gsize size = 0;
+   for (int i = 0; i < cont_cnt; ++i) {
+      size +=
+          hash_cont[i].cont.data_size + CONTAINTER_HEADER_SIZE + SHA256_SIZE;
+   }
+
+   return size;
+}
+
 static gboolean get_container_hash(container_item_t *cont,
                                    guint8 sha256_hash[SHA256_SIZE],
                                    GError **error)
@@ -280,17 +307,11 @@ gboolean serialize_hash_container(hash_container_item_t *hash_cont,
                                   guint cont_cnt, guint8 **serialized,
                                   gsize *serialized_size)
 {
-   for (int i = 0; i < cont_cnt; ++i) {
-      *serialized_size +=
-          hash_cont[i].cont.data_size + HASH_CONTAINTER_HEADER_SIZE;
-   }
-
-   *serialized = g_malloc(*serialized_size);
+   *serialized_size = get_serialized_hash_container_size(hash_cont, cont_cnt);
 
    gboolean read_ok = TRUE;
    FpiByteWriter writer;
-   fpi_byte_writer_init_with_data(&writer, *serialized, *serialized_size,
-                                  FALSE);
+   fpi_byte_writer_init_with_size(&writer, *serialized_size, TRUE);
    for (int i = 0; i < cont_cnt; ++i) {
       read_ok &= fpi_byte_writer_put_uint16_le(&writer, hash_cont[i].cont.id);
       read_ok &=
@@ -300,6 +321,8 @@ gboolean serialize_hash_container(hash_container_item_t *hash_cont,
       read_ok &= fpi_byte_writer_put_data(&writer, hash_cont[i].sha256_hash,
                                           SHA256_SIZE);
    }
+
+   *serialized = fpi_byte_writer_reset_and_get_data(&writer);
 
    if (!read_ok && *serialized != NULL) {
       g_free(*serialized);
@@ -318,8 +341,7 @@ gboolean deserialize_hash_container(const guint8 *serialized,
    guint allocated_cont_item_cnt = 5;
    *cont_item_cnt = 0;
 
-   *hash_cont =
-       g_malloc(allocated_cont_item_cnt * sizeof(hash_container_item_t));
+   *hash_cont = g_new(hash_container_item_t, allocated_cont_item_cnt);
 
    const guint8 *to_copy = NULL;
    FpiByteReader reader;
