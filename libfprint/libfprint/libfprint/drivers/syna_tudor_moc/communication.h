@@ -246,9 +246,8 @@ gboolean send_db2_info(FpiDeviceSynaTudorMoc *self, GError **error);
 
 gboolean send_db2_format(FpiDeviceSynaTudorMoc *self, GError **error);
 
-gboolean add_enrollment(FpiDeviceSynaTudorMoc *self, const guint8 *user_id,
-                        const guint8 finger_id, const db2_id_t template_id,
-                        GError **error);
+gboolean add_enrollment(FpiDeviceSynaTudorMoc *self, guint8 *user_id,
+                        guint8 finger_id, db2_id_t template_id, GError **error);
 
 gboolean send_db2_delete_object(FpiDeviceSynaTudorMoc *self,
                                 const obj_type_t obj_type,

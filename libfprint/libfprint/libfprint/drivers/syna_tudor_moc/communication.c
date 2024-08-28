@@ -289,7 +289,6 @@ static gboolean synaptics_secure_connect_send(FpiDeviceSynaTudorMoc *self,
    memcpy(transfer->buffer, wrapped_data, wrapped_size);
    BOOL_CHECK(fpi_usb_transfer_submit_sync(
        transfer, USB_TRANSFER_WAIT_TIMEOUT_MS, error));
-   fpi_usb_transfer_unref(transfer);
 
 error:
    if (self->tls.established && wrapped_data != NULL) {
@@ -358,7 +357,6 @@ static gboolean synaptics_secure_connect_recv(FpiDeviceSynaTudorMoc *self,
    }
 
 error:
-   fpi_usb_transfer_unref(transfer);
    if (!ret && *recv_data != NULL) {
       g_free(*recv_data);
       *recv_data = NULL;
@@ -1293,8 +1291,8 @@ error:
 /* VCSFW_CMD_DB2_DELETE_OBJECT ============================================= */
 
 gboolean send_db2_delete_object(FpiDeviceSynaTudorMoc *self,
-                                obj_type_t obj_type, db2_id_t *obj_id,
-                                GError **error)
+                                const obj_type_t obj_type,
+                                const db2_id_t *obj_id, GError **error)
 {
    gboolean ret = TRUE;
 
@@ -1349,12 +1347,14 @@ static gsize get_object_list_recv_size(FpiDeviceSynaTudorMoc *self,
       return 4 + 16 * self->storage.num_current_payloads;
       break;
    }
+
+   return 0;
 }
 
 gboolean send_db2_get_object_list(FpiDeviceSynaTudorMoc *self,
-                                  obj_type_t obj_type, db2_id_t obj_id,
-                                  db2_id_t **obj_array, guint16 *obj_array_len,
-                                  GError **error)
+                                  const obj_type_t obj_type,
+                                  const db2_id_t obj_id, db2_id_t **obj_array,
+                                  guint16 *obj_array_len, GError **error)
 {
    gboolean ret = TRUE;
 
