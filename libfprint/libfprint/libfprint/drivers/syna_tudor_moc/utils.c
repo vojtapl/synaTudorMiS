@@ -21,6 +21,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "fpi-device.h"
 #include "utils.h"
 #include <stdio.h>
 
@@ -66,4 +67,22 @@ void fp_dbg_large_hex(const guint8 *arr, const gint size)
       output[char_idx] = '\0';
       fp_dbg("%s", output);
    }
+}
+
+GError *set_and_report_error(FpDeviceError device_error, const gchar *msg, ...)
+{
+   va_list args;
+   g_autofree gchar *formatted_msg = NULL;
+   va_start(args, msg);
+
+   // Create a formatted error message
+   formatted_msg = g_strdup_vprintf(msg, args);
+
+   // Now pass the formatted message to the error functions
+   GError *error = fpi_device_error_new_msg(device_error, "%s", msg);
+   fp_err("%s", formatted_msg);
+
+   va_end(args);
+
+   return error;
 }

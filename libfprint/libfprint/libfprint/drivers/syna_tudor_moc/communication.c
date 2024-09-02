@@ -287,7 +287,7 @@ static gboolean synaptics_secure_connect_send(FpiDeviceSynaTudorMoc *self,
    /* TODO: do I understand this correctly */
    transfer->short_is_error = FALSE;
    memcpy(transfer->buffer, wrapped_data, wrapped_size);
-   BOOL_CHECK(fpi_usb_transfer_submit_sync(
+   BOOL_CHECK_WITH_REPORT(fpi_usb_transfer_submit_sync(
        transfer, USB_TRANSFER_WAIT_TIMEOUT_MS, error));
 
 error:
@@ -318,12 +318,12 @@ static gboolean synaptics_secure_connect_recv(FpiDeviceSynaTudorMoc *self,
    /* receive data */
    transfer = fpi_usb_transfer_new(FP_DEVICE(self));
    fpi_usb_transfer_fill_bulk(transfer, USB_EP_REPLY, *recv_len);
-   BOOL_CHECK(fpi_usb_transfer_submit_sync(
+   BOOL_CHECK_WITH_REPORT(fpi_usb_transfer_submit_sync(
        transfer, USB_TRANSFER_WAIT_TIMEOUT_MS, error));
 
    if (transfer->actual_length < status_header_len) {
-      fp_warn("Response transfer was too short");
-      *error = fpi_device_error_new(FP_DEVICE_ERROR_PROTO);
+      *error = set_and_report_error(FP_DEVICE_ERROR_PROTO,
+                                    "Response transfer was too short");
       ret = FALSE;
       goto error;
    }
@@ -349,9 +349,9 @@ static gboolean synaptics_secure_connect_recv(FpiDeviceSynaTudorMoc *self,
 
    status = FP_READ_UINT16_LE(*recv_data);
    if ((check_status) && !sensor_status_is_result_ok(status)) {
-      fp_warn("Device responded with status: 0x%04x aka %s", status,
-              sensor_status_to_string(status));
-      *error = fpi_device_error_new(FP_DEVICE_ERROR_PROTO);
+      *error = set_and_report_error(
+          FP_DEVICE_ERROR_PROTO, "Device responded with status: 0x%04x aka %s",
+          status, sensor_status_to_string(status));
       ret = FALSE;
       goto error;
    }
@@ -472,7 +472,7 @@ gboolean send_get_version(FpiDeviceSynaTudorMoc *self, get_version_t *resp,
    read_ok &= parse_get_version(&reader, resp);
 
    if (!read_ok) {
-      *error = fpi_device_error_new_msg(
+      *error = set_and_report_error(
           FP_DEVICE_ERROR_PROTO,
           "Transfer in version response to version query was too short");
       ret = FALSE;
@@ -539,9 +539,9 @@ gboolean send_frame_acq(FpiDeviceSynaTudorMoc *self,
       } else {
          fp_warn("Received status 0x%04x aka %s", status,
                  sensor_status_to_string(status));
-         *error = fpi_device_error_new_msg(
-             FP_DEVICE_ERROR_PROTO, "Received status 0x%04x aka %s", status,
-             sensor_status_to_string(status));
+         *error = set_and_report_error(FP_DEVICE_ERROR_PROTO,
+                                       "Received status 0x%04x aka %s", status,
+                                       sensor_status_to_string(status));
          ret = FALSE;
          goto error;
       }
@@ -682,7 +682,7 @@ gboolean send_enroll_add_image(FpiDeviceSynaTudorMoc *self,
        fpi_byte_reader_get_data(&reader, DB2_ID_SIZE, &template_id_offset);
    read_ok &= fpi_byte_reader_get_uint32_le(&reader, &enroll_stat_buffer_size);
    if (read_ok && enroll_stat_buffer_size != 60) {
-      *error = fpi_device_error_new_msg(
+      *error = set_and_report_error(
           FP_DEVICE_ERROR_GENERAL,
           "qm struct size mismatch - expected: %u, got: %u", 60,
           enroll_stat_buffer_size);
@@ -1022,8 +1022,9 @@ gboolean send_event_config(FpiDeviceSynaTudorMoc *self, guint32 event_mask,
                                        &recv_size, TRUE, error));
 
    if (recv_size < 66) {
-      fp_warn("Transfer in version response to version query was too short");
-      *error = fpi_device_error_new(FP_DEVICE_ERROR_PROTO);
+      *error = set_and_report_error(
+          FP_DEVICE_ERROR_PROTO,
+          "Transfer in version response to version query was too short");
       goto error;
    }
 
@@ -1088,8 +1089,8 @@ gboolean send_event_read(FpiDeviceSynaTudorMoc *self, guint32 *recv_event_mask,
             self->events.read_in_legacy_mode = TRUE;
             continue;
          } else {
-            *error = fpi_device_error_new_msg(
-                FP_DEVICE_ERROR_PROTO, "received status: 0x%04x", status);
+            *error = set_and_report_error(FP_DEVICE_ERROR_PROTO,
+                                          "received status: 0x%04x", status);
 
             ret = FALSE;
             goto error;
@@ -1116,9 +1117,10 @@ gboolean send_event_read(FpiDeviceSynaTudorMoc *self, guint32 *recv_event_mask,
       }
 
       if (!read_ok) {
-         fp_warn("Transfer in version response to event read query was too "
-                 "short");
-         *error = fpi_device_error_new(FP_DEVICE_ERROR_PROTO);
+         *error = set_and_report_error(
+             FP_DEVICE_ERROR_PROTO,
+             "Transfer in version response to event read query was too "
+             "short");
          ret = FALSE;
          goto error;
       }
@@ -1276,7 +1278,7 @@ gboolean send_db2_format(FpiDeviceSynaTudorMoc *self, GError **error)
    read_ok &= fpi_byte_reader_get_uint32_le(&reader, &new_partition_version);
 
    if (!read_ok) {
-      *error = fpi_device_error_new_msg(
+      *error = set_and_report_error(
           FP_DEVICE_ERROR_PROTO,
           "Transfer in version response to version query was too short");
       goto error;
@@ -1319,7 +1321,7 @@ gboolean send_db2_delete_object(FpiDeviceSynaTudorMoc *self,
    read_ok &= fpi_byte_reader_get_uint16_le(&reader, &num_deleted_objects);
 
    if (!read_ok) {
-      *error = fpi_device_error_new_msg(
+      *error = set_and_report_error(
           FP_DEVICE_ERROR_PROTO,
           "Transfer in to version DB2 delete object was too short");
       goto error;
@@ -1645,9 +1647,9 @@ gboolean send_cmd_to_force_close_sensor_tls_session(FpiDeviceSynaTudorMoc *self,
    fpi_byte_reader_init(&reader, recv_data, recv_size);
 
    if (recv_size < 2) {
-      *error = fpi_device_error_new_msg(
-          FP_DEVICE_ERROR_PROTO,
-          "Response to get_version command was too short");
+      *error =
+          set_and_report_error(FP_DEVICE_ERROR_PROTO,
+                               "Response to get_version command was too short");
       ret = FALSE;
       goto error;
    }
@@ -1658,9 +1660,9 @@ gboolean send_cmd_to_force_close_sensor_tls_session(FpiDeviceSynaTudorMoc *self,
    } else if (status == unclosed_tls_session_status) {
       fp_dbg("TLS force close - sensor was in TLS status");
    } else {
-      fp_warn("Device responded with error: 0x%04x aka %s", status,
-              sensor_status_to_string(status));
-      *error = fpi_device_error_new(FP_DEVICE_ERROR_PROTO);
+      *error = set_and_report_error(
+          FP_DEVICE_ERROR_PROTO, "Device responded with error: 0x%04x aka %s",
+          status, sensor_status_to_string(status));
    }
 
 error:
@@ -1685,7 +1687,7 @@ static gboolean write_dft(FpiDeviceSynaTudorMoc *self, guint8 *data,
    transfer->short_is_error = FALSE;
    memcpy(transfer->buffer, data, data_size);
 
-   BOOL_CHECK(fpi_usb_transfer_submit_sync(
+   BOOL_CHECK_WITH_REPORT(fpi_usb_transfer_submit_sync(
        transfer, USB_TRANSFER_WAIT_TIMEOUT_MS, error));
 
 error:
@@ -1740,7 +1742,7 @@ gboolean exit_bootloader_mode(FpiDeviceSynaTudorMoc *self, GError **error)
    BOOL_CHECK(send_get_version(self, &self->mis_version, error));
 
    if (sensor_is_in_bootloader_mode(self)) {
-      *error = fpi_device_error_new_msg(
+      *error = set_and_report_error(
           FP_DEVICE_ERROR_PROTO, "Unable to get sensor out of bootloader mode, "
                                  "it may not have a valid firmware");
       ret = FALSE;
@@ -1792,7 +1794,7 @@ gboolean send_pair(FpiDeviceSynaTudorMoc *self,
    if (self->pairing_data.private_key_initialized) {
       self->pairing_data.present = TRUE;
    } else {
-      *error = fpi_device_error_new_msg(
+      *error = set_and_report_error(
           FP_DEVICE_ERROR_GENERAL,
           "Private key is not initialized when it should be");
       ret = FALSE;
@@ -1906,7 +1908,7 @@ static gboolean send_storage_write(FpiDeviceSynaTudorMoc *self,
    READ_OK_CHECK(read_ok);
 
    if (written_size != data_size) {
-      *error = fpi_device_error_new_msg(
+      *error = set_and_report_error(
           FP_DEVICE_ERROR_GENERAL,
           "Written_size: %u does not match data_to_write_size: %lu",
           written_size, data_size);

@@ -1,0 +1,230 @@
+From ad0199b571bb051df107da380eb635ed99c98f79 Mon Sep 17 00:00:00 2001
+From: Benjamin Berg <bberg@redhat.com>
+Date: Tue, 12 Jul 2022 16:34:27 +0200
+Subject: [PATCH] device: Load/store persistent data from device
+
+New libfprint version from 1.95.0 will support persistent data that
+should be stored. Add support to this to fprintd by storing it into a
+separate per-device file on disk.
+
+The data is placed into a 0-persistent subdirectory as it needs to
+co-exist with arbirary usernames and those are not permitted to start
+with a number.
+---
+ meson.build        |  2 +-
+ src/device.c       |  8 ++++++
+ src/file_storage.c | 70 ++++++++++++++++++++++++++++++++++++++++++++++
+ src/file_storage.h |  5 ++++
+ src/main.c         |  2 ++
+ src/storage.h      | 22 ++++++++++-----
+ 6 files changed, 101 insertions(+), 8 deletions(-)
+
+diff --git a/meson.build b/meson.build
+index 859bcf2c..38b5e9fa 100644
+--- a/meson.build
++++ b/meson.build
+@@ -64,7 +64,7 @@ add_project_arguments(common_cflags, language: 'c')
+ host_system = host_machine.system()
+ # NOTE: Bump gdbus-codegen min version once we can depend on 2.64!
+ glib_min_version = '2.56'
+-libfprint_min_version = '1.94.0'
++libfprint_min_version = '1.95.0'
+
+ glib_version_def = 'GLIB_VERSION_@0@_@1@'.format(
+     glib_min_version.split('.')[0], glib_min_version.split('.')[1])
+diff --git a/src/device.c b/src/device.c
+index b9de3eeb..ca9d917d 100644
+--- a/src/device.c
++++ b/src/device.c
+@@ -232,11 +232,15 @@ G_DEFINE_AUTOPTR_CLEANUP_FUNC (FprintDeviceActionUnset, auto_device_action_unset
+ static void
+ fprint_device_dispose (GObject *object)
+ {
++  g_autoptr(GError) error = NULL;
+   FprintDevice *self = (FprintDevice *) object;
+   FprintDevicePrivate *priv = fprint_device_get_instance_private (self);
+
+   g_hash_table_remove_all (priv->clients);
+
++  if (!store.persistent_data_save (priv->dev, &error))
++    g_warning ("Failed to save persistent data: %s", error->message);
++
+   G_OBJECT_CLASS (fprint_device_parent_class)->dispose (object);
+ }
+
+@@ -374,6 +378,7 @@ on_temperature_changed (FprintDevice *rdev,
+ static void
+ fprint_device_constructed (GObject *object)
+ {
++  g_autoptr(GError) error = NULL;
+   FprintDevice *rdev = FPRINT_DEVICE (object);
+   FprintDBusDevice *dbus_dev = FPRINT_DBUS_DEVICE (rdev);
+   FprintDevicePrivate *priv = fprint_device_get_instance_private (rdev);
+@@ -400,6 +405,9 @@ fprint_device_constructed (GObject *object)
+                            rdev, G_CONNECT_SWAPPED);
+   on_temperature_changed (rdev, NULL, priv->dev);
+
++  if (!store.persistent_data_load (priv->dev, &error))
++    g_warning ("Failed to load persistent data: %s", error->message);
++
+   G_OBJECT_CLASS (fprint_device_parent_class)->constructed (object);
+ }
+
+diff --git a/src/file_storage.c b/src/file_storage.c
+index e12fe58b..a19cf5e5 100644
+--- a/src/file_storage.c
++++ b/src/file_storage.c
+@@ -40,6 +40,8 @@
+ #include "file_storage.h"
+
+ #define FILE_STORAGE_PATH "/var/lib/fprint"
++/* Starts with a number as that is not valid in a username */
++#define PERSISTENT_DATA_DIR "0-persistent"
+ #define DIR_PERMS 0700
+
+ static char *storage_path = NULL;
+@@ -353,6 +355,74 @@ file_storage_discover_users (void)
+   return list;
+ }
+
++gboolean
++file_storage_persistent_data_save (FpDevice *dev, GError **error)
++{
++  g_autofree gchar *dir = NULL;
++  g_autofree gchar *path = NULL;
++  g_autofree guint8 *cur_contents = NULL;
++  g_autofree guint8 *new_contents = NULL;
++  gsize cur_length = 0;
++  gsize new_length = 0;
++
++  if (!fp_device_get_persistent_data (dev, &new_contents, &new_length, error))
++    return FALSE;
++
++  dir = g_build_filename (get_storage_path (), PERSISTENT_DATA_DIR, fp_device_get_driver (dev), NULL);
++  path = g_build_filename (dir, fp_device_get_device_id (dev), NULL);
++
++  if (new_length == 0)
++    {
++      if (g_unlink (path) < 0)
++        {
++          if (errno == ENOENT)
++            return TRUE;
++
++          g_set_error (error,
++                       G_IO_ERROR,
++                       g_io_error_from_errno (errno),
++                       "Failed to delete persistent storage for driver/device %s/%s", fp_device_get_driver (dev), fp_device_get_device_id (dev));
++          return FALSE;
++        }
++      return TRUE;
++    }
++
++  if (g_mkdir_with_parents (dir, DIR_PERMS) < 0)
++    {
++      g_set_error (error,
++                   G_IO_ERROR,
++                   g_io_error_from_errno (errno),
++                   "Failed to create directory for persistent data storage");
++      return FALSE;
++    }
++
++  /* Try to load to avoid writing if that is nothing changed (ignore errors) */
++  g_file_get_contents (path, (char **) &cur_contents, &cur_length, NULL);
++
++  /* Nothing needs to be written. */
++  if (new_length == cur_length && memcmp (new_contents, cur_contents, cur_length) == 0)
++    return TRUE;
++
++  /* Pass over to device */
++  return g_file_set_contents (path, new_contents, new_length, error);
++}
++
++gboolean
++file_storage_persistent_data_load (FpDevice *dev, GError **error)
++{
++  g_autofree gchar *path = NULL;
++  g_autofree gchar *contents;
++  gsize length;
++
++  path = g_build_filename (get_storage_path (), PERSISTENT_DATA_DIR, fp_device_get_driver (dev), fp_device_get_device_id (dev), NULL);
++
++  if (!g_file_get_contents (path, &contents, &length, error))
++    return FALSE;
++
++  /* Pass over to device */
++  return fp_device_set_persistent_data (dev, contents, length, error);
++}
++
+ int
+ file_storage_init (void)
+ {
+diff --git a/src/file_storage.h b/src/file_storage.h
+index 29e70df3..37a58812 100644
+--- a/src/file_storage.h
++++ b/src/file_storage.h
+@@ -31,6 +31,11 @@ int file_storage_print_data_delete (FpDevice   *dev,
+                                     FpFinger    finger,
+                                     const char *username);
+
++gboolean file_storage_persistent_data_save (FpDevice *dev,
++                                            GError  **error);
++gboolean file_storage_persistent_data_load (FpDevice *dev,
++                                            GError  **error);
++
+ int file_storage_init (void);
+
+ int file_storage_deinit (void);
+diff --git a/src/main.c b/src/main.c
+index f2328dae..cf6d1811 100644
+--- a/src/main.c
++++ b/src/main.c
+@@ -49,6 +49,8 @@ set_storage_file (void)
+   store.print_data_save = &file_storage_print_data_save;
+   store.print_data_load = &file_storage_print_data_load;
+   store.print_data_delete = &file_storage_print_data_delete;
++  store.persistent_data_save = &file_storage_persistent_data_save;
++  store.persistent_data_load = &file_storage_persistent_data_load;
+   store.discover_prints = &file_storage_discover_prints;
+   store.discover_users = &file_storage_discover_users;
+ }
+diff --git a/src/storage.h b/src/storage.h
+index ef25a84f..6dc11aea 100644
+--- a/src/storage.h
++++ b/src/storage.h
+@@ -31,18 +31,26 @@ typedef int (*storage_print_data_delete)(FpDevice   *dev,
+ typedef GSList *(*storage_discover_prints)(FpDevice   *dev,
+                                            const char *username);
+ typedef GSList *(*storage_discover_users)(void);
++
++typedef int (*storage_persistent_data_save)(FpDevice *dev,
++                                            GError  **error);
++typedef int (*storage_persistent_data_load)(FpDevice *dev,
++                                            GError  **error);
++
+ typedef int (*storage_init)(void);
+ typedef int (*storage_deinit)(void);
+
+ struct storage
+ {
+-  storage_init              init;
+-  storage_deinit            deinit;
+-  storage_print_data_save   print_data_save;
+-  storage_print_data_load   print_data_load;
+-  storage_print_data_delete print_data_delete;
+-  storage_discover_prints   discover_prints;
+-  storage_discover_users    discover_users;
++  storage_init                 init;
++  storage_deinit               deinit;
++  storage_print_data_save      print_data_save;
++  storage_print_data_load      print_data_load;
++  storage_print_data_delete    print_data_delete;
++  storage_persistent_data_save persistent_data_save;
++  storage_persistent_data_load persistent_data_load;
++  storage_discover_prints      discover_prints;
++  storage_discover_users       discover_users;
+ };
+
+ typedef struct storage fp_storage;
+--
+GitLab
+

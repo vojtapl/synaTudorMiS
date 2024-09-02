@@ -35,7 +35,7 @@ static gboolean serialize_private_key(FpiDeviceSynaTudorMoc *self,
    gboolean ret = TRUE;
 
    if (!self->pairing_data.private_key_initialized) {
-      *error = fpi_device_error_new_msg(
+      *error = set_and_report_error(
           FP_DEVICE_ERROR_GENERAL,
           "Unable to save a private_key which is not initialized");
       ret = FALSE;
@@ -159,18 +159,18 @@ static gboolean check_host_data_version(hash_container_item_t *hash_cont,
    gboolean ret = TRUE;
 
    if (hash_cont->cont.data_size != sizeof(host_data_version)) {
-      *error = fpi_device_error_new_msg(
-          FP_DEVICE_ERROR_GENERAL, "Invalid host data version tag length: %d",
-          hash_cont->cont.data_size);
+      *error = set_and_report_error(FP_DEVICE_ERROR_GENERAL,
+                                    "Invalid host data version tag length: %d",
+                                    hash_cont->cont.data_size);
       ret = FALSE;
       goto error;
    }
 
    guint32 recv_version = FP_READ_UINT32_LE(hash_cont->cont.data);
    if (recv_version != host_data_version) {
-      *error = fpi_device_error_new_msg(FP_DEVICE_ERROR_GENERAL,
-                                        "Invalid host data version: %d",
-                                        recv_version);
+      *error =
+          set_and_report_error(FP_DEVICE_ERROR_GENERAL,
+                               "Invalid host data version: %d", recv_version);
       ret = FALSE;
       goto error;
    }
@@ -185,7 +185,7 @@ static gboolean check_pairing_data_version(container_item_t *cont,
    gboolean ret = TRUE;
 
    if (cont->data_size != sizeof(pair_data_version)) {
-      *error = fpi_device_error_new_msg(
+      *error = set_and_report_error(
           FP_DEVICE_ERROR_GENERAL, "Stored pairing data has invalid length: %d",
           cont->data_size);
       ret = FALSE;
@@ -194,10 +194,10 @@ static gboolean check_pairing_data_version(container_item_t *cont,
 
    guint16 recv_pair_data_version = FP_READ_UINT16_LE(cont->data);
    if (recv_pair_data_version != pair_data_version) {
-      *error = fpi_device_error_new_msg(
-          FP_DEVICE_ERROR_GENERAL,
-          "Stored pairing data has invalid version: %d",
-          recv_pair_data_version);
+      *error =
+          set_and_report_error(FP_DEVICE_ERROR_GENERAL,
+                               "Stored pairing data has invalid version: %d",
+                               recv_pair_data_version);
       ret = FALSE;
       goto error;
    }
@@ -212,7 +212,7 @@ static gboolean load_host_cert(FpiDeviceSynaTudorMoc *self,
    gboolean ret = TRUE;
 
    if (cont->data_size != CERTIFICATE_SIZE) {
-      *error = fpi_device_error_new_msg(
+      *error = set_and_report_error(
           FP_DEVICE_ERROR_GENERAL,
           "Stored host certificate has invalid size: %d", cont->data_size);
       ret = FALSE;
@@ -232,7 +232,7 @@ static gboolean load_sensor_cert(FpiDeviceSynaTudorMoc *self,
    gboolean ret = TRUE;
 
    if (cont->data_size != CERTIFICATE_SIZE) {
-      *error = fpi_device_error_new_msg(
+      *error = set_and_report_error(
           FP_DEVICE_ERROR_GENERAL,
           "Stored sensor certificate has invalid size: %d", cont->data_size);
       ret = FALSE;
@@ -396,8 +396,6 @@ gboolean host_partition_load_pairing_data(FpiDeviceSynaTudorMoc *self,
 
    BOOL_CHECK(
        host_partition_deserialize(self, serialized, serialized_size, error));
-
-   self->pairing_data.loaded_from_storage = TRUE;
 
 error:
    return ret;

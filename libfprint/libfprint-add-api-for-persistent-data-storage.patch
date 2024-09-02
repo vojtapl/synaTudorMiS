@@ -1,0 +1,337 @@
+From afa37cbcbf775c21b85715067061f910cc398205 Mon Sep 17 00:00:00 2001
+From: Benjamin Berg <bberg@redhat.com>
+Date: Mon, 11 Jul 2022 19:41:43 +0200
+Subject: [PATCH] device: Add API for perstistent data storage
+
+API consumers should fetch the persistent data when they are done and
+store it to disk. It is undefined when this data is updated by the
+driver, but in general, it should only be updated once the first time
+a device is used.
+---
+ doc/libfprint-2-sections.txt  |   2 +
+ libfprint/fp-device-private.h |   1 +
+ libfprint/fp-device.c         | 160 ++++++++++++++++++++++++++++++++++
+ libfprint/fp-device.h         |   9 ++
+ tests/test-fp-device.c        |  48 ++++++++++
+ 5 files changed, 220 insertions(+)
+
+diff --git a/doc/libfprint-2-sections.txt b/doc/libfprint-2-sections.txt
+index 0fb0cfab3..f7ee7805b 100644
+--- a/doc/libfprint-2-sections.txt
++++ b/doc/libfprint-2-sections.txt
+@@ -40,6 +40,8 @@ fp_device_has_feature
+ fp_device_has_storage
+ fp_device_supports_identify
+ fp_device_supports_capture
++fp_device_get_persistent_data
++fp_device_set_persistent_data
+ fp_device_is_open
+ fp_device_open
+ fp_device_close
+diff --git a/libfprint/fp-device-private.h b/libfprint/fp-device-private.h
+index 9b2ea27cb..8a7979f3e 100644
+--- a/libfprint/fp-device-private.h
++++ b/libfprint/fp-device-private.h
+@@ -61,6 +61,7 @@ typedef struct
+   FpDeviceFeature features;
+ 
+   guint64         driver_data;
++  GVariant       *persistent_data;
+ 
+   gint            nr_enroll_stages;
+   GSList         *sources;
+diff --git a/libfprint/fp-device.c b/libfprint/fp-device.c
+index b94f7d801..618ef3a97 100644
+--- a/libfprint/fp-device.c
++++ b/libfprint/fp-device.c
+@@ -54,6 +54,7 @@ enum {
+   PROP_FPI_UDEV_DATA_SPIDEV,
+   PROP_FPI_UDEV_DATA_HIDRAW,
+   PROP_FPI_DRIVER_DATA,
++  PROP_FPI_PERSISTENT_DATA,
+   N_PROPS
+ };
+ 
+@@ -235,6 +236,8 @@ fp_device_finalize (GObject *object)
+   g_clear_pointer (&priv->udev_data.spidev_path, g_free);
+   g_clear_pointer (&priv->udev_data.hidraw_path, g_free);
+ 
++  g_clear_pointer (&priv->persistent_data, g_variant_unref);
++
+   G_OBJECT_CLASS (fp_device_parent_class)->finalize (object);
+ }
+ 
+@@ -304,6 +307,10 @@ fp_device_get_property (GObject    *object,
+         g_value_set_string (value, NULL);
+       break;
+ 
++    case PROP_FPI_PERSISTENT_DATA:
++      g_value_set_variant (value, priv->persistent_data);
++      break;
++
+     default:
+       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+     }
+@@ -354,6 +361,11 @@ fp_device_set_property (GObject      *object,
+       priv->driver_data = g_value_get_uint64 (value);
+       break;
+ 
++    case PROP_FPI_PERSISTENT_DATA:
++      g_clear_pointer (&priv->persistent_data, g_variant_unref);
++      priv->persistent_data = g_value_dup_variant (value);
++      break;
++
+     default:
+       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+     }
+@@ -594,6 +606,21 @@ fp_device_class_init (FpDeviceClass *klass)
+                          0,
+                          G_PARAM_STATIC_STRINGS | G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY);
+ 
++  /**
++   * FpDevice::fpi-persistent-data: (skip)
++   *
++   * This property is only for internal purposes.
++   *
++   * Stability: private
++   */
++  properties[PROP_FPI_PERSISTENT_DATA] =
++    g_param_spec_variant ("fpi-persistent-data",
++                          "Persistent Driver Data",
++                          "Private: Previously stored data for the device",
++                          G_VARIANT_TYPE_ANY,
++                          NULL,
++                          G_PARAM_STATIC_STRINGS | G_PARAM_READWRITE);
++
+   g_object_class_install_properties (object_class, N_PROPS, properties);
+ }
+ 
+@@ -739,6 +766,139 @@ fp_device_get_temperature (FpDevice *device)
+   return priv->temp_current;
+ }
+ 
++/**
++ * fp_device_get_persistent_data:
++ * @device: A #FpDevice
++ * @data: (array length=length) (transfer full) (out): Return location for data pointer
++ * @length: (transfer full) (out): Length of @data
++ * @error: Return location for error
++ *
++ * Retrieves persistent data that should be stored for this device. Storage
++ * needs to be device specific, i.e. device ID and driver must match when
++ * restored.
++ *
++ * Returns: (type void): %TRUE on success
++ */
++gboolean
++fp_device_get_persistent_data (FpDevice *device,
++                               guchar  **data,
++                               gsize    *length,
++                               GError  **error)
++{
++  g_autoptr(GVariant) res = NULL;
++  FpDevicePrivate *priv = fp_device_get_instance_private (device);
++
++  g_assert (data);
++  g_assert (length);
++
++  if (priv->persistent_data == NULL)
++    {
++      *data = NULL;
++      *length = 0;
++
++      return TRUE;
++    }
++
++  /* Version + variant from driver */
++  res = g_variant_new ("(issv)",
++                       1,
++                       fp_device_get_driver (device),
++                       priv->device_id,
++                       priv->persistent_data);
++
++  *length = g_variant_get_size (res);
++  *data = g_malloc (*length);
++  g_variant_store (res, *data);
++
++  return TRUE;
++}
++
++/**
++ * fp_device_get_persistent_data:
++ * @device: A #FpDevice
++ * @data: (array length=length) (transfer none): Persistent Data
++ * @length: (transfer none): Length of @data
++ * @error: Return location for error
++ *
++ * Load persistent data from storage. This function should be called after
++ * a device was discovered and before it is opened for the first time. It is
++ * an error to call it if data has already been set (or generated by the
++ * driver).
++ *
++ * Note that the driver may update the data. The API user should retrieve the
++ * value when done with the device and store it in a persistent location.
++ *
++ * Returns: (type void): %TRUE on success
++ */
++gboolean
++fp_device_set_persistent_data (FpDevice *device,
++                               guchar   *data,
++                               gsize     length,
++                               GError  **error)
++{
++  g_autoptr(GVariant) stored = NULL;
++  g_autoptr(GVariant) loaded = NULL;
++  FpDevicePrivate *priv = fp_device_get_instance_private (device);
++  guchar *copy;
++  gint version;
++  const gchar *device_id;
++  const gchar *driver;
++
++  if (priv->is_open)
++    {
++      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
++                   "Data can only be set right after device creation");
++      return FALSE;
++    }
++
++  if (priv->persistent_data)
++    {
++      g_set_error (error, G_IO_ERROR, G_IO_ERROR_EXISTS,
++                   "Data has already been set");
++      return FALSE;
++    }
++
++  if (length == 0)
++    {
++      g_clear_pointer (&priv->persistent_data, g_variant_unref);
++      g_object_notify_by_pspec (G_OBJECT (device), properties[PROP_FPI_PERSISTENT_DATA]);
++      return TRUE;
++    }
++  g_assert (data);
++
++  copy = g_memdup (data, length);
++  stored = g_variant_new_from_data (G_VARIANT_TYPE ("(issv)"), copy, length, FALSE, g_free, copy);
++
++  if (!stored)
++    {
++      g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA,
++                   "Data could not be parsed");
++      return FALSE;
++    }
++
++  g_variant_get (stored, "(issv)", &version, &driver, &device_id, &loaded);
++  if (version != 1)
++    {
++      g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA,
++                   "Unknown data storage version");
++      return FALSE;
++    }
++
++  if (g_strcmp0 (device_id, priv->device_id) != 0 ||
++      g_strcmp0 (driver, fp_device_get_driver (device)) != 0)
++    {
++      g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA,
++                   "Driver or device ID mismatch!");
++      return FALSE;
++    }
++
++  g_clear_pointer (&priv->persistent_data, g_variant_unref);
++  priv->persistent_data = g_steal_pointer (&loaded);
++  g_object_notify_by_pspec (G_OBJECT (device), properties[PROP_FPI_PERSISTENT_DATA]);
++
++  return TRUE;
++}
++
+ /**
+  * fp_device_supports_identify:
+  * @device: A #FpDevice
+diff --git a/libfprint/fp-device.h b/libfprint/fp-device.h
+index 9dda747cb..15f631710 100644
+--- a/libfprint/fp-device.h
++++ b/libfprint/fp-device.h
+@@ -230,6 +230,15 @@ FpDeviceFeature     fp_device_get_features (FpDevice *device);
+ gboolean            fp_device_has_feature (FpDevice       *device,
+                                            FpDeviceFeature feature);
+ 
++gboolean fp_device_get_persistent_data (FpDevice *device,
++                                        guchar  **data,
++                                        gsize    *length,
++                                        GError  **error);
++gboolean fp_device_set_persistent_data (FpDevice *device,
++                                        guchar   *data,
++                                        gsize     length,
++                                        GError  **error);
++
+ /* Opening the device */
+ void fp_device_open (FpDevice           *device,
+                      GCancellable       *cancellable,
+diff --git a/tests/test-fp-device.c b/tests/test-fp-device.c
+index a633eb914..f9abdb570 100644
+--- a/tests/test-fp-device.c
++++ b/tests/test-fp-device.c
+@@ -232,6 +232,53 @@ test_device_has_storage (void)
+   G_GNUC_END_IGNORE_DEPRECATIONS
+ }
+ 
++static void
++test_device_persistent_data (void)
++{
++  g_autoptr(FptContext) tctx = fpt_context_new_with_virtual_device (FPT_VIRTUAL_DEVICE_IMAGE);
++  g_autoptr(GVariant) initial = NULL;
++  g_autoptr(GVariant) loaded = NULL;
++  g_autoptr(GError) error = NULL;
++  guint8 *data = (guint8 *) 0xdeadbeef;
++  gsize length = 1;
++
++  initial = g_variant_ref_sink (g_variant_new ("(s)", "stored data"));
++
++  g_assert_true (fp_device_get_persistent_data (tctx->device, &data, &length, &error));
++  g_assert_cmpint (length, ==, 0);
++  g_assert_null (data);
++  g_assert_no_error (error);
++
++  /* Use the fact that this is a property that we can poke from the outside. */
++  g_object_set (tctx->device, "fpi-persistent-data", initial, NULL);
++
++  /* Works now */
++  g_assert_true (fp_device_get_persistent_data (tctx->device, &data, &length, &error));
++  g_assert_cmpint (length, !=, 0);
++  g_assert_nonnull (data);
++  g_assert_no_error (error);
++
++  /* We can't load the data, as data has been set already. */
++  g_assert_false (fp_device_set_persistent_data (tctx->device, data, length, &error));
++  g_assert_error (error, G_IO_ERROR, G_IO_ERROR_EXISTS);
++  g_clear_pointer (&error, g_error_free);
++
++  /* Abuse that we can "load" again if the data is set to NULL.
++   * This is an implementation detail and just a lack of error checking. */
++  g_object_set (tctx->device, "fpi-persistent-data", NULL, NULL);
++
++  /* Incomplete data, causes parsing error */
++  g_assert_false (fp_device_set_persistent_data (tctx->device, data, 5, &error));
++  g_assert_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA);
++  g_clear_pointer (&error, g_error_free);
++
++  g_assert_true (fp_device_set_persistent_data (tctx->device, data, length, &error));
++  g_assert_no_error (error);
++
++  g_object_get (tctx->device, "fpi-persistent-data", &loaded, NULL);
++  g_assert_cmpvariant (initial, loaded);
++}
++
+ int
+ main (int argc, char *argv[])
+ {
+@@ -252,6 +299,7 @@ main (int argc, char *argv[])
+   g_test_add_func ("/device/sync/supports_identify", test_device_supports_identify);
+   g_test_add_func ("/device/sync/supports_capture", test_device_supports_capture);
+   g_test_add_func ("/device/sync/has_storage", test_device_has_storage);
++  g_test_add_func ("/device/persistent_data", test_device_persistent_data);
+ 
+   return g_test_run ();
+ }
+-- 
+GitLab
+

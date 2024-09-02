@@ -128,7 +128,6 @@ typedef struct {
 
 typedef struct {
    gboolean present;
-   gboolean loaded_from_storage; /* check for storing of pairing data */
 
    cert_t sensor_cert;
    cert_t host_cert;

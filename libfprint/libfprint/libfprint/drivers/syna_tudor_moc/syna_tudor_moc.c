@@ -21,6 +21,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+/* WARNING: current implementation starts a new TLS session on each device open
+ */
+
 #include "communication.c"
 #include "device.h"
 #include "drivers_api.h"
@@ -30,7 +33,7 @@
 #include <gnutls/abstract.h>
 #include <gnutls/gnutls.h>
 
-/* #define STORAGE_ENABLED */
+// #define USE_SAMPLE_PAIRING_DATA
 
 static db2_id_t cache_template_id = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
                                      0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -194,9 +197,8 @@ static gboolean get_template_id_from_print_data(GVariant *data,
    g_return_val_if_fail(data != NULL, FALSE);
 
    if (!g_variant_check_format_string(data, "(y@ay@ay)", FALSE)) {
-      *error =
-          fpi_device_error_new_msg(FP_DEVICE_ERROR_DATA_INVALID,
-                                   "Print data has invalid fpi-data format");
+      *error = set_and_report_error(FP_DEVICE_ERROR_DATA_INVALID,
+                                    "Print data has invalid fpi-data format");
       ret = FALSE;
       goto error;
    }
@@ -207,7 +209,7 @@ static gboolean get_template_id_from_print_data(GVariant *data,
    gsize tid_len = 0;
    tid = g_variant_get_fixed_array(tid_var, &tid_len, 1);
    if (tid_len != DB2_ID_SIZE) {
-      *error = fpi_device_error_new_msg(
+      *error = set_and_report_error(
           FP_DEVICE_ERROR_DATA_INVALID,
           "Stored template id in print data has invalid size of %lu", tid_len);
       ret = FALSE;
@@ -220,7 +222,183 @@ error:
    return ret;
 }
 
-/* open -------------------------------------------------------------------- */
+static gboolean store_pairing_data(FpiDeviceSynaTudorMoc *self, GError **error)
+{
+   gboolean ret = TRUE;
+
+   if (!self->pairing_data.present) {
+      *error = set_and_report_error(
+          FP_DEVICE_ERROR_GENERAL,
+          "Unable to store pairing data if they are not present");
+      ret = FALSE;
+      goto error;
+   }
+
+   GVariant *host_cert = g_variant_new_fixed_array(
+       G_VARIANT_TYPE_BYTE, &self->pairing_data.host_cert, CERTIFICATE_SIZE, 1);
+   GVariant *sensor_cert = g_variant_new_fixed_array(
+       G_VARIANT_TYPE_BYTE, &self->pairing_data.sensor_cert, CERTIFICATE_SIZE,
+       1);
+
+   gnutls_datum_t x = {.data = NULL};
+   gnutls_datum_t y = {.data = NULL};
+   gnutls_datum_t k = {.data = NULL};
+   gnutls_ecc_curve_t curve;
+   /* as we use only one curve, there is no need to store it */
+   GNUTLS_CHECK(gnutls_privkey_export_ecc_raw2(self->pairing_data.private_key,
+                                               &curve, &x, &y, &k,
+                                               GNUTLS_EXPORT_FLAG_NO_LZ));
+
+   GVariant *private_key_x_var =
+       g_variant_new_fixed_array(G_VARIANT_TYPE_BYTE, x.data, x.size, 1);
+   GVariant *private_key_y_var =
+       g_variant_new_fixed_array(G_VARIANT_TYPE_BYTE, y.data, y.size, 1);
+   GVariant *private_key_k_var =
+       g_variant_new_fixed_array(G_VARIANT_TYPE_BYTE, k.data, k.size, 1);
+
+   GVariant *pairing_data =
+       g_variant_new("(@ay@ayu@ay@ay@ay)", host_cert, sensor_cert, curve,
+                     private_key_x_var, private_key_y_var, private_key_k_var);
+
+   g_object_set(FP_DEVICE(self), "fpi-persistent-data", pairing_data, NULL);
+
+   fp_dbg("Pairing data store success");
+
+   fp_dbg("Pairing data:");
+   fp_dbg("\tSensor certificate:");
+   fp_dbg_large_hex((guint8 *)&self->pairing_data.sensor_cert,
+                    CERTIFICATE_SIZE);
+   fp_dbg("\tHost certificate:");
+   fp_dbg_large_hex((guint8 *)&self->pairing_data.host_cert, CERTIFICATE_SIZE);
+   fp_dbg("\tPrivate key x:");
+   fp_dbg_large_hex(x.data, x.size);
+   fp_dbg("\tPrivate key y:");
+   fp_dbg_large_hex(y.data, y.size);
+   fp_dbg("\tPrivate key k:");
+   fp_dbg_large_hex(k.data, k.size);
+
+error:
+   if (x.data != NULL) {
+      g_free(x.data);
+   }
+   if (y.data != NULL) {
+      g_free(y.data);
+   }
+   if (k.data != NULL) {
+      g_free(k.data);
+   }
+   return ret;
+}
+
+static gboolean load_pairing_data(FpiDeviceSynaTudorMoc *self, GError **error)
+{
+   gboolean ret = TRUE;
+
+   if (self->pairing_data.present) {
+      fp_warn("Overwriting currently stored pairing data");
+      self->pairing_data.present = FALSE;
+      if (self->pairing_data.private_key_initialized) {
+         gnutls_privkey_deinit(self->pairing_data.private_key);
+         self->pairing_data.private_key_initialized = FALSE;
+      }
+   }
+
+   g_autoptr(GVariant) pairing_data = NULL;
+   g_autoptr(GVariant) sensor_cert_var = NULL;
+   g_autoptr(GVariant) host_cert_var = NULL;
+   g_autoptr(GVariant) private_key_x_var = NULL;
+   g_autoptr(GVariant) private_key_y_var = NULL;
+   g_autoptr(GVariant) private_key_k_var = NULL;
+   gnutls_datum_t x = {.data = NULL};
+   gnutls_datum_t y = {.data = NULL};
+   gnutls_datum_t k = {.data = NULL};
+   gnutls_ecc_curve_t curve = 0;
+
+   g_object_get(FP_DEVICE(self), "fpi-persistent-data", &pairing_data, NULL);
+
+   if (pairing_data == NULL) {
+      *error = set_and_report_error(FP_DEVICE_ERROR_GENERAL,
+                                    "Received NULL as stored pairing data");
+      ret = FALSE;
+      goto error;
+   }
+
+   if (!g_variant_check_format_string(pairing_data, "(@ay@ayu@ay@ay@ay)",
+                                      FALSE)) {
+      *error = set_and_report_error(
+          FP_DEVICE_ERROR_GENERAL, "Stored pairing data have incorrect format");
+      ret = FALSE;
+      goto error;
+   }
+
+   g_variant_get(pairing_data, "(@ay@ayu@ay@ay@ay)", &host_cert_var,
+                 &sensor_cert_var, &curve, &private_key_x_var,
+                 &private_key_y_var, &private_key_k_var);
+
+   gsize host_cert_data_size = 0;
+   guint8 *host_cert_data = (guint8 *)g_variant_get_fixed_array(
+       host_cert_var, &host_cert_data_size, 1);
+   if (host_cert_data_size != CERTIFICATE_SIZE) {
+      *error = set_and_report_error(
+          FP_DEVICE_ERROR_GENERAL,
+          "Stored host certificate has invalid size: %lu", host_cert_data_size);
+      ret = FALSE;
+      goto error;
+   }
+   memcpy(&self->pairing_data.host_cert, host_cert_data, CERTIFICATE_SIZE);
+
+   gsize sensor_cert_data_size = 0;
+   guint8 *sensor_cert_data = (guint8 *)g_variant_get_fixed_array(
+       sensor_cert_var, &sensor_cert_data_size, 1);
+   if (sensor_cert_data_size != CERTIFICATE_SIZE) {
+      *error = set_and_report_error(
+          FP_DEVICE_ERROR_GENERAL,
+          "Stored sensor certificate has invalid size: %lu",
+          sensor_cert_data_size);
+      ret = FALSE;
+      goto error;
+   }
+   memcpy(&self->pairing_data.sensor_cert, sensor_cert_data, CERTIFICATE_SIZE);
+
+   x.data = (guint8 *)g_variant_get_fixed_array(private_key_x_var,
+                                                (gsize *)&x.size, 1);
+
+   y.data = (guint8 *)g_variant_get_fixed_array(private_key_y_var,
+                                                (gsize *)&y.size, 1);
+   k.data = (guint8 *)g_variant_get_fixed_array(private_key_k_var,
+                                                (gsize *)&k.size, 1);
+
+   GNUTLS_CHECK(gnutls_privkey_init(&self->pairing_data.private_key));
+   self->pairing_data.private_key_initialized = TRUE;
+
+   /* as we use only one curve, there is no need to store it */
+   GNUTLS_CHECK(gnutls_privkey_import_ecc_raw(self->pairing_data.private_key,
+                                              curve, &x, &y, &k));
+   GNUTLS_CHECK(gnutls_privkey_verify_params(self->pairing_data.private_key));
+   self->pairing_data.private_key_initialized = TRUE;
+
+   self->pairing_data.present = TRUE;
+
+   fp_dbg("Pairing data load success");
+
+   fp_dbg("Pairing data:");
+   fp_dbg("\tSensor certificate:");
+   fp_dbg_large_hex((guint8 *)&self->pairing_data.sensor_cert,
+                    CERTIFICATE_SIZE);
+   fp_dbg("\tHost certificate:");
+   fp_dbg_large_hex((guint8 *)&self->pairing_data.host_cert, CERTIFICATE_SIZE);
+   fp_dbg("\tPrivate key x:");
+   fp_dbg_large_hex(x.data, x.size);
+   fp_dbg("\tPrivate key y:");
+   fp_dbg_large_hex(y.data, y.size);
+   fp_dbg("\tPrivate key k:");
+   fp_dbg_large_hex(k.data, k.size);
+
+error:
+   return ret;
+}
+
+/* open ==================================================================== */
 
 static void syna_tudor_moc_open(FpDevice *device)
 {
@@ -228,10 +406,12 @@ static void syna_tudor_moc_open(FpDevice *device)
    FpiDeviceSynaTudorMoc *self = FPI_DEVICE_SYNA_TUDOR_MOC(device);
    GError *error = NULL;
    gboolean usb_device_claimed = FALSE;
-   /* debug check */
-   g_assert(sizeof(cert_t) == 400);
+   g_autoptr(GVariant) pairing_data = NULL;
 
    G_DEBUG_HERE();
+
+   /* debug check */
+   g_assert(sizeof(cert_t) == 400);
 
    self->cancellable = g_cancellable_new();
 
@@ -244,9 +424,14 @@ static void syna_tudor_moc_open(FpDevice *device)
 
    g_usb_device_reset(fpi_device_get_usb_device(device), &error);
 
-   /* If last session was not properly closed, sending any unencrypted command
-    * will result in error */
+   /* NOTE: If last session was not properly closed, sending any unencrypted
+    * command will result in error */
    if (!handle_tls_statuses_for_sensor_and_host(self, &error)) {
+      goto error;
+   }
+
+   if (self->tls.established) {
+      fp_dbg("TLS is already established -> open done");
       goto error;
    }
 
@@ -262,41 +447,52 @@ static void syna_tudor_moc_open(FpDevice *device)
    }
 
    guint8 provision_state = self->mis_version.provision_state & 0xF;
-   gboolean is_provisioned = provision_state == PROVISION_STATE_PROVISIONED;
-   if (is_provisioned) {
-#ifdef STORAGE_ENABLED
-      /* NOTE: this is not ideal as some errors should be handled differently */
-      if (!host_partition_load_pairing_data(self, &error)) {
-         fp_err("Unable to load pairing data");
-         fp_dbg("Trying to pair");
-         if (!pair(self, &error)) {
-            fp_err("Unable to pair");
-            goto error;
-         }
+   gboolean need_to_pair = provision_state != PROVISION_STATE_PROVISIONED;
+
+   g_object_get(device, "fpi-persistent-data", &pairing_data, NULL);
+
+   if (need_to_pair || pairing_data == NULL) {
+      if (pairing_data == NULL) {
+         fp_warn("Previous pairing data in persistent storage are NULL");
+      }
+
+      fp_warn("Need to pair sensor");
+
+#ifndef USE_SAMPLE_PAIRING_DATA
+      if (!pair(self, &error)) {
+         goto error;
       }
 #else
+      /* NOTE: left here for testing as the libfprint examples do not store
+       * pairing data */
       if (!load_sample_pairing_data(self, &error)) {
          fp_err("Error while loading sample pairing data");
          goto error;
       }
 #endif
 
-      /* pairing data should be present now */
-      BUG_ON(!self->pairing_data.present);
-
-      if (!verify_sensor_certificate(self, &error)) {
-         error = fpi_device_error_new_msg(FP_DEVICE_ERROR_GENERAL,
-                                          "Sensor certificate is invalid");
+      if (!store_pairing_data(self, &error)) {
+         fp_err("Unable to store pairing data");
          goto error;
       }
-
    } else {
-      /* If sensor is not paired, then the sample pairing data will not work,
-       * this is why this is not using STORAGE_ENABLED */
-      fp_warn("Sensor is not paired");
-      if (!pair(self, &error)) {
+      if (!load_pairing_data(self, &error)) {
+         fp_err("Unable to load pairing data");
          goto error;
       }
+   }
+
+   if (!self->pairing_data.present) {
+      error = set_and_report_error(
+          FP_DEVICE_ERROR_GENERAL,
+          "Pairing data should have been loaded but are not");
+      goto error;
+   }
+
+   if (!verify_sensor_certificate(self, &error)) {
+      error = set_and_report_error(FP_DEVICE_ERROR_GENERAL,
+                                   "Sensor certificate is invalid");
+      goto error;
    }
 
    if (!self->tls.established) {
@@ -304,14 +500,6 @@ static void syna_tudor_moc_open(FpDevice *device)
          goto error;
       }
    }
-
-#ifdef STORAGE_ENABLED
-   if (!self->pairing_data.loaded_from_storage &&
-       !host_partition_store_pairing_data(self, &error)) {
-      fp_err("Unable to store pairing data");
-      goto error;
-   }
-#endif
 
 error:
    if (error != NULL && usb_device_claimed) {
@@ -322,7 +510,7 @@ error:
    fpi_device_open_complete(FP_DEVICE(self), error);
 }
 
-/* close --------------------------------------------------------------------*/
+/* close ====================================================================*/
 
 static void syna_tudor_moc_close(FpDevice *device)
 {
@@ -340,7 +528,6 @@ static void syna_tudor_moc_close(FpDevice *device)
    if (self->tls.established) {
       tls_close_session(self, &error);
    }
-
    deinit_tls(self);
    free_pairing_data(self);
 
@@ -350,10 +537,12 @@ static void syna_tudor_moc_close(FpDevice *device)
    fpi_device_close_complete(device, release_error);
 }
 
-/* enroll -------------------------------------------------------------------*/
+/* enroll ==================================================================-*/
 
 static void syna_tudor_moc_enroll(FpDevice *device)
 {
+   fp_dbg("==================== enroll start ====================");
+
    FpiDeviceSynaTudorMoc *self = FPI_DEVICE_SYNA_TUDOR_MOC(device);
    guint16 finger_id;
    GError *error = NULL;
@@ -465,7 +654,7 @@ error:
    fpi_device_enroll_complete(device, NULL, error);
 }
 
-/* verify ------------------------------------------------------------------ */
+/* verify ================================================================== */
 
 static void syna_tudor_moc_verify(FpDevice *device)
 {
@@ -489,7 +678,7 @@ static void syna_tudor_moc_verify(FpDevice *device)
    if (image_quality < IMAGE_QUALITY_THRESHOLD) {
       fp_info("Image quality %d%% is lower than threshold %d%%", image_quality,
               IMAGE_QUALITY_THRESHOLD);
-      error = fpi_device_error_new_msg(
+      error = set_and_report_error(
           FP_DEVICE_ERROR_GENERAL,
           "Image quality %d%% is lower than threshold %d%%", image_quality,
           IMAGE_QUALITY_THRESHOLD);
@@ -531,7 +720,7 @@ error:
    fpi_device_verify_complete(device, NULL);
 }
 
-/* identify ---------------------------------------------------------------- */
+/* identify ================================================================ */
 
 static void syna_tudor_moc_identify(FpDevice *device)
 {
@@ -553,7 +742,7 @@ static void syna_tudor_moc_identify(FpDevice *device)
    if (image_quality < IMAGE_QUALITY_THRESHOLD) {
       fp_info("Image quality %d%% is lower than threshold %d%%", image_quality,
               IMAGE_QUALITY_THRESHOLD);
-      error = fpi_device_error_new_msg(
+      error = set_and_report_error(
           FP_DEVICE_ERROR_GENERAL,
           "Image quality %d%% is lower than threshold %d%%", image_quality,
           IMAGE_QUALITY_THRESHOLD);
@@ -597,7 +786,7 @@ error:
    fpi_device_identify_complete(device, error);
 }
 
-/* array -------------------------------------------------------------------- */
+/* array ==================================================================== */
 
 static void syna_tudor_moc_list(FpDevice *device)
 {
@@ -615,8 +804,7 @@ static void syna_tudor_moc_list(FpDevice *device)
    if (enrollment_cnt == 0) {
       fpi_device_list_complete(
           device, NULL,
-          fpi_device_error_new_msg(FP_DEVICE_ERROR_DATA_FULL,
-                                   "Database is empty"));
+          set_and_report_error(FP_DEVICE_ERROR_DATA_FULL, "Database is empty"));
    }
 
    g_autoptr(GPtrArray) list_result = NULL;
@@ -631,7 +819,7 @@ static void syna_tudor_moc_list(FpDevice *device)
    fpi_device_list_complete(device, g_steal_pointer(&list_result), NULL);
 }
 
-/* delete_print ------------------------------------------------------------ */
+/* delete_print ============================================================ */
 
 static void syna_tudor_moc_delete_print(FpDevice *device)
 {
@@ -648,7 +836,7 @@ static void syna_tudor_moc_delete_print(FpDevice *device)
    db2_id_t template_id;
    if (!get_template_id_from_print_data(data, template_id, &error)) {
       fpi_device_delete_complete(
-          device, fpi_device_error_new_msg(
+          device, set_and_report_error(
                       FP_DEVICE_ERROR_DATA_INVALID,
                       "Unable to get template id from print fpi-data"));
       return;
@@ -665,7 +853,7 @@ static void syna_tudor_moc_delete_print(FpDevice *device)
    fpi_device_delete_complete(device, NULL);
 }
 
-/* clear_storage ----------------------------------------------------------- */
+/* clear_storage =========================================================== */
 
 static void syna_tudor_moc_clear_storage(FpDevice *device)
 {
@@ -681,28 +869,28 @@ error:
    fpi_device_clear_storage_complete(device, error);
 }
 
-/* cancel ------------------------------------------------------------------ */
+/* cancel ================================================================== */
 
 /* static void syna_tudor_moc_cancel(FpDevice *device)
 {
    fp_dbg("==================== cancel start ====================");
 } */
 
-/* suspend ----------------------------------------------------------------- */
+/* suspend ================================================================= */
 
 /* static void syna_tudor_moc_suspend(FpDevice *device)
 {
    fp_dbg("==================== suspend start ====================");
 } */
 
-/* resume ------------------------------------------------------------------ */
+/* resume ================================================================== */
 
 /* static void syna_tudor_moc_resume(FpDevice *device)
 {
    fp_dbg("==================== resume start ====================");
 } */
 
-/* ------------------------------------------------------------------------- */
+/* ========================================================================= */
 
 static void fpi_device_syna_tudor_moc_init(FpiDeviceSynaTudorMoc *self)
 {

@@ -176,8 +176,8 @@ gboolean get_enrollment_data_from_serialized_container(const guint8 *data,
              "which requires: %lu",
              template_id_idx, container_array[template_id_idx].data_size,
              sizeof(template_id_idx));
-      *error = fpi_device_error_new_msg(FP_DEVICE_ERROR_GENERAL,
-                                        "container item has invalid size");
+      *error = set_and_report_error(FP_DEVICE_ERROR_GENERAL,
+                                    "container item has invalid size");
 
       ret = FALSE;
       goto error;
@@ -190,8 +190,8 @@ gboolean get_enrollment_data_from_serialized_container(const guint8 *data,
              "requires: %lu",
              user_id_idx, container_array[user_id_idx].data_size,
              sizeof(user_id_idx));
-      *error = fpi_device_error_new_msg(FP_DEVICE_ERROR_GENERAL,
-                                        "container item has invalid size");
+      *error = set_and_report_error(FP_DEVICE_ERROR_GENERAL,
+                                    "container item has invalid size");
       ret = FALSE;
       goto error;
    }
@@ -204,8 +204,8 @@ gboolean get_enrollment_data_from_serialized_container(const guint8 *data,
           "requires: %lu",
           finger_id_idx, container_array[finger_id_idx].data_size,
           sizeof(guint8));
-      *error = fpi_device_error_new_msg(FP_DEVICE_ERROR_GENERAL,
-                                        "container item has invalid size");
+      *error = set_and_report_error(FP_DEVICE_ERROR_GENERAL,
+                                    "container item has invalid size");
       ret = FALSE;
       goto error;
    }
@@ -292,8 +292,8 @@ gboolean hash_container_check_hashes(hash_container_item_t *hash_cont,
 #endif
 
       if (0 != memcmp(calculated_hash, hash_cont[i].sha256_hash, SHA256_SIZE)) {
-         *error = fpi_device_error_new_msg(FP_DEVICE_ERROR_GENERAL,
-                                           "Container hashes do not match");
+         *error = set_and_report_error(FP_DEVICE_ERROR_GENERAL,
+                                       "Container hashes do not match");
          ret = FALSE;
          goto error;
       }

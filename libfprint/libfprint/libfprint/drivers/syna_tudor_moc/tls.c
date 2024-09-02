@@ -321,7 +321,8 @@ static gboolean check_server_finished_verify_data(FpiDeviceSynaTudorMoc *self,
 
 #ifdef TLS_DEBUG
    fp_dbg("Server finished sent messages:");
-   fp_dbg_large_hex(self->tls.sent_data, self->tls.sent_data_size);
+   fp_dbg_large_hex(self->tls.sent_handshake_msgs,
+                    self->tls.sent_handshake_msgs_size);
 #endif
 
    GNUTLS_CHECK(gnutls_hash_fast(hash_algo, self->tls.sent_handshake_msgs,
@@ -338,7 +339,7 @@ static gboolean check_server_finished_verify_data(FpiDeviceSynaTudorMoc *self,
 
 #ifdef TLS_DEBUG
    fp_dbg("tls prf server finished output:");
-   fp_dbg_large_hex(verify_data, verify_data_size);
+   fp_dbg_large_hex(verify_data, VERIFY_DATA_SIZE);
 #endif
 
    if (recv_verify_data_size >= VERIFY_DATA_SIZE &&
@@ -540,7 +541,8 @@ static void update_handshake_messages_data(FpiDeviceSynaTudorMoc *self,
 
 #ifdef TLS_DEBUG
    fp_dbg("sent messages:");
-   fp_dbg_large_hex(self->tls.sent_data, self->tls.sent_data_size);
+   fp_dbg_large_hex(self->tls.sent_handshake_msgs,
+                    self->tls.sent_handshake_msgs_size);
 #endif
 }
 
@@ -679,7 +681,7 @@ static gboolean parse_and_process_server_hello(FpiDeviceSynaTudorMoc *self,
 
    /* version check copied from decompiled code */
    if (ret && ((version_major != 3) || ((version_minor & 3) != 3))) {
-      *error = fpi_device_error_new_msg(
+      *error = set_and_report_error(
           FP_DEVICE_ERROR_GENERAL,
           "Server hello - major or minor version is invalid");
       ret = FALSE;
@@ -694,7 +696,8 @@ static gboolean parse_and_process_server_hello(FpiDeviceSynaTudorMoc *self,
              sizeof(self->tls.server_random));
 #ifdef TLS_DEBUG
       fp_dbg("received server_random:");
-      fp_dbg_large_hex(recv_random, sizeof(self->tls.server_random));
+      fp_dbg_large_hex(self->tls.server_random,
+                       sizeof(self->tls.server_random));
 #endif
    }
 
@@ -702,7 +705,7 @@ static gboolean parse_and_process_server_hello(FpiDeviceSynaTudorMoc *self,
    guint8 session_id_len = 0;
    ret &= fpi_byte_reader_get_uint8(reader, &session_id_len);
    if (ret && session_id_len != SESSION_ID_LEN) {
-      *error = fpi_device_error_new_msg(
+      *error = set_and_report_error(
           FP_DEVICE_ERROR_PROTO,
           "Invalid session_id length: expected: %d, got: %d", SESSION_ID_LEN,
           session_id_len);
@@ -747,7 +750,7 @@ parse_and_process_certificate_request(FpiDeviceSynaTudorMoc *self,
    gboolean ret = TRUE;
 
    if (msg_len != 4) {
-      *error = fpi_device_error_new_msg(
+      *error = set_and_report_error(
           FP_DEVICE_ERROR_GENERAL,
           "Unexpected msg_len of certificate request received: %d", msg_len);
       ret = FALSE;
@@ -758,7 +761,7 @@ parse_and_process_certificate_request(FpiDeviceSynaTudorMoc *self,
    ret &= fpi_byte_reader_get_uint8(reader, &num_requested_certs);
 
    if (ret && num_requested_certs != 1) {
-      *error = fpi_device_error_new_msg(
+      *error = set_and_report_error(
           FP_DEVICE_ERROR_GENERAL,
           "Requested an unimplemented number of certificates: %d",
           num_requested_certs);
@@ -789,7 +792,7 @@ static gboolean parse_and_process_hs_finished(FpiDeviceSynaTudorMoc *self,
    gboolean ret = TRUE;
 
    if (self->tls.handshake_state != TLS_HS_STATE_END) {
-      *error = fpi_device_error_new_msg(
+      *error = set_and_report_error(
           FP_DEVICE_ERROR_GENERAL,
           "Unexpected recieval of handshake finished message - "
           "handshake state is %d",
@@ -800,7 +803,7 @@ static gboolean parse_and_process_hs_finished(FpiDeviceSynaTudorMoc *self,
    BOOL_CHECK(check_server_finished_verify_data(self, reader, msg_len,
                                                 &verify_matches, error));
    if (!verify_matches) {
-      *error = fpi_device_error_new_msg(
+      *error = set_and_report_error(
           FP_DEVICE_ERROR_PROTO,
           "Server verify message does not match the one expected");
       ret = FALSE;
@@ -852,7 +855,7 @@ static gboolean parse_and_process_handshake_record(FpiDeviceSynaTudorMoc *self,
       case HS_SERVER_HELLO_DONE:
          fp_dbg("received server hello done");
          if (self->tls.handshake_state != TLS_HS_STATE_END) {
-            *error = fpi_device_error_new_msg(
+            *error = set_and_report_error(
                 FP_DEVICE_ERROR_GENERAL,
                 "invalied handshake_state at start of HS_SERVER_HELLO_DONE: %d",
                 self->tls.handshake_state);
@@ -871,9 +874,9 @@ static gboolean parse_and_process_handshake_record(FpiDeviceSynaTudorMoc *self,
 
       default:
          fp_err("Received unimplemented msg type: %d", msg_type);
-         *error = fpi_device_error_new_msg(
-             FP_DEVICE_ERROR_GENERAL, "Received unimplemented msg type: %d",
-             msg_type);
+         *error = set_and_report_error(FP_DEVICE_ERROR_GENERAL,
+                                       "Received unimplemented msg type: %d",
+                                       msg_type);
          ret = FALSE;
       }
 
@@ -921,10 +924,7 @@ static gboolean parse_and_process_records(FpiDeviceSynaTudorMoc *self,
          read_ok &=
              fpi_byte_reader_dup_data(&reader, record.msg_len, &record.msg);
       }
-      if (!read_ok) {
-         fp_err("Transfer in version response to version query was too short");
-         goto error;
-      }
+      READ_OK_CHECK(read_ok);
 
       if (self->tls.remote_sends_encrypted) {
          guint8 *ptext = NULL;
@@ -1136,7 +1136,8 @@ static gboolean append_certificate_verify_to_record(FpiDeviceSynaTudorMoc *self,
 
 #ifdef TLS_DEBUG
    fp_dbg("Messages to certificate veify");
-   fp_dbg_large_hex(self->tls.sent_data, self->tls.sent_data_size);
+   fp_dbg_large_hex(self->tls.sent_handshake_msgs,
+                    self->tls.sent_handshake_msgs_size);
 #endif
 
    GNUTLS_CHECK(gnutls_hash_fast(
@@ -1292,7 +1293,8 @@ static gboolean append_encrypted_handshake_finish_to_record(
 
 #ifdef TLS_DEBUG
    fp_dbg("Handshake finished sent messages:");
-   fp_dbg_large_hex(self->tls.sent_data, self->tls.sent_data_size);
+   fp_dbg_large_hex(self->tls.sent_handshake_msgs,
+                    self->tls.sent_handshake_msgs_size);
 #endif
 
    GNUTLS_CHECK(gnutls_hash_fast(
@@ -1908,6 +1910,8 @@ gboolean establish_tls_session(FpiDeviceSynaTudorMoc *self, GError **error)
    /* a check should be done beforehand */
    g_assert(!self->tls.established && !remote_established);
 
+   self->tls.handshake_state = TLS_HS_STATE_PREPARE;
+
    while (!self->tls.established) {
       if (g_cancellable_is_cancelled(self->cancellable)) {
          fp_warn("Establishing of TLS was cancelled");
@@ -1967,8 +1971,8 @@ gboolean establish_tls_session(FpiDeviceSynaTudorMoc *self, GError **error)
 
          /* propagate error if present */
          if (*error != NULL) {
-            *error = fpi_device_error_new_msg(FP_DEVICE_ERROR_PROTO,
-                                              "TLS handshake failed");
+            *error = set_and_report_error(FP_DEVICE_ERROR_PROTO,
+                                          "TLS handshake failed");
          }
 
          ret = FALSE;
@@ -2003,24 +2007,24 @@ sensor_pub_key_compatibility_check(FpiDeviceSynaTudorMoc *self,
    gboolean key_flag = (self->mis_version.security & 0x20) != 0;
    if (sensor_pubkey->keyflag != key_flag) {
       ret = FALSE;
-      *error = fpi_device_error_new_msg(FP_DEVICE_ERROR_NOT_SUPPORTED,
-                                        "Sensor pubkey keyflag does not match");
+      *error = set_and_report_error(FP_DEVICE_ERROR_NOT_SUPPORTED,
+                                    "Sensor pubkey keyflag does not match");
    } else if (sensor_pubkey->fw_version_major !=
               self->mis_version.version_major) {
       ret = FALSE;
-      *error = fpi_device_error_new_msg(FP_DEVICE_ERROR_NOT_SUPPORTED,
-                                        "Sensor pubkey fw_version_major does "
-                                        "not match - expected: %d, got: %d",
-                                        sensor_pubkey->fw_version_major,
-                                        self->mis_version.version_major);
+      *error = set_and_report_error(FP_DEVICE_ERROR_NOT_SUPPORTED,
+                                    "Sensor pubkey fw_version_major does "
+                                    "not match - expected: %d, got: %d",
+                                    sensor_pubkey->fw_version_major,
+                                    self->mis_version.version_major);
    } else if (sensor_pubkey->fw_version_minor !=
               self->mis_version.version_minor) {
       ret = FALSE;
-      *error = fpi_device_error_new_msg(FP_DEVICE_ERROR_NOT_SUPPORTED,
-                                        "Sensor pubkey fw_version_minor does "
-                                        "not match - expected: %d, got: %d",
-                                        sensor_pubkey->fw_version_minor,
-                                        self->mis_version.version_minor);
+      *error = set_and_report_error(FP_DEVICE_ERROR_NOT_SUPPORTED,
+                                    "Sensor pubkey fw_version_minor does "
+                                    "not match - expected: %d, got: %d",
+                                    sensor_pubkey->fw_version_minor,
+                                    self->mis_version.version_minor);
    }
    return ret;
 }
@@ -2095,7 +2099,9 @@ void free_pairing_data(FpiDeviceSynaTudorMoc *self)
 {
    if (self->pairing_data.private_key_initialized) {
       gnutls_privkey_deinit(self->pairing_data.private_key);
+      self->pairing_data.private_key_initialized = FALSE;
    }
+   self->pairing_data.present = FALSE;
 }
 
 gboolean handle_tls_statuses_for_sensor_and_host(FpiDeviceSynaTudorMoc *self,
@@ -2119,7 +2125,7 @@ gboolean handle_tls_statuses_for_sensor_and_host(FpiDeviceSynaTudorMoc *self,
       remote_tls_status = FALSE;
       BOOL_CHECK(get_remote_tls_status(self, &remote_tls_status, error));
       if (remote_tls_status) {
-         *error = fpi_device_error_new_msg(
+         *error = set_and_report_error(
              FP_DEVICE_ERROR_PROTO,
              "Unable to get the sensor out of TLS session");
          goto error;
@@ -2206,15 +2212,20 @@ static gboolean create_host_certificate(FpiDeviceSynaTudorMoc *self,
 {
    gboolean ret = TRUE;
 
+   gboolean pubkey_initialized = FALSE;
+   gboolean hs_privkey_initialized = FALSE;
+   gnutls_datum_t signature = {.data = NULL};
+   gnutls_datum_t x = {.data = NULL};
+   gnutls_datum_t y = {.data = NULL};
+
    /* get public key */
    gnutls_pubkey_t pubkey;
    GNUTLS_CHECK(gnutls_pubkey_init(&pubkey));
+   pubkey_initialized = TRUE;
    GNUTLS_CHECK(gnutls_pubkey_import_privkey(pubkey,
                                              self->pairing_data.private_key,
                                              GNUTLS_KEY_DIGITAL_SIGNATURE, 0));
 
-   gnutls_datum_t x;
-   gnutls_datum_t y;
    GNUTLS_CHECK(gnutls_pubkey_export_ecc_raw(pubkey, NULL, &x, &y));
 
    /* as the size of public key x and y is up to 68 we need to zero the unused
@@ -2246,10 +2257,10 @@ static gboolean create_host_certificate(FpiDeviceSynaTudorMoc *self,
 
    gnutls_privkey_t hs_privkey;
    BOOL_CHECK(generate_hs_priv_key(&hs_privkey, error));
+   hs_privkey_initialized = TRUE;
 
    gnutls_datum_t to_sign = {.data = host_certificate,
                              .size = CERTIFICATE_SIZE_WITHOUT_SIGNATURE};
-   gnutls_datum_t signature;
    GNUTLS_CHECK(gnutls_privkey_sign_data(hs_privkey, GNUTLS_DIG_SHA256, 0,
                                          &to_sign, &signature));
    g_assert(signature.size <= SIGNATURE_SIZE);
@@ -2263,6 +2274,21 @@ static gboolean create_host_certificate(FpiDeviceSynaTudorMoc *self,
    g_assert(fpi_byte_writer_get_pos(&writer) == CERTIFICATE_SIZE);
 
 error:
+   if (pubkey_initialized) {
+      gnutls_pubkey_deinit(pubkey);
+   }
+   if (hs_privkey_initialized) {
+      gnutls_privkey_deinit(hs_privkey);
+   }
+   if (signature.data != NULL) {
+      g_free(signature.data);
+   }
+   if (x.data != NULL) {
+      g_free(x.data);
+   }
+   if (y.data != NULL) {
+      g_free(y.data);
+   }
    return ret;
 }
 
