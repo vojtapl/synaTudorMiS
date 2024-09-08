@@ -1,6 +1,30 @@
+/*
+ * Synaptics Tudor Match-In-Sensor driver for libfprint
+ *
+ * Copyright (c) 2024 Vojtěch Pluskal
+ *
+ * some parts are based on work of Popax21 see:
+ * https://github.com/Popax21/synaTudor/tree/rev
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+ */
+
 #pragma once
 
 #include "fpi-device.h"
+#include "fpi-ssm.h"
 #include <glib.h>
 #include <gnutls/gnutls.h>
 
@@ -10,6 +34,45 @@ G_DECLARE_FINAL_TYPE(FpiDeviceSynaTudorMoc, fpi_device_synaptics_moc, FPI,
 #define SESSION_ID_LEN 7
 #define CERTIFICATE_KEY_SIZE 68
 #define SIGNATURE_SIZE 256
+#define PROVISION_STATE_PROVISIONED 3
+
+#define WINBIO_SID_SIZE 76
+#define DB2_ID_SIZE 16
+
+#define EVENT_BUFFER_SIZE 8
+
+typedef enum {
+   OBJ_TYPE_USERS = 1,
+   OBJ_TYPE_TEMPLATES = 2,
+   OBJ_TYPE_PAYLOADS = 3,
+} obj_type_t;
+
+typedef enum {
+   MIS_IMAGE_METRICS_IPL_FINGER_COVERAGE = 0x1,
+   MIS_IMAGE_METRICS_IMG_QUALITY = 0x10000,
+} img_metrics_type_t;
+
+typedef guint8 db2_id_t[DB2_ID_SIZE];
+/* NOTE: user_id is used in place of winbio_sid used in windows driver */
+typedef guint8 user_id_t[WINBIO_SID_SIZE];
+
+typedef struct {
+   user_id_t user_id;
+   db2_id_t template_id;
+   guint8 finger_id;
+} enrollment_t;
+
+typedef struct {
+   guint16 progress;
+   db2_id_t template_id;
+   guint32 quality;
+   guint32 redundant;
+   guint32 rejected;
+   guint32 template_cnt;
+   guint16 enroll_quality;
+   guint32 status;
+   guint32 smt_like_has_fixed_pattern;
+} enroll_stats_t;
 
 typedef enum {
    TLS_HS_STATE_PREPARE = 0,
@@ -45,6 +108,42 @@ typedef enum {
    TLS_CERT_TYPE_RSA_FIXED_ECDH = 65,
    TLS_CERT_TYPE_ECDSA_FIXED_ECDH = 66,
 } tls_certificate_type_t;
+
+/* state storage structs =================================================== */
+
+typedef struct {
+   enrollment_t match_enrollment;
+   enroll_stats_t enroll_stats;
+   guint32 event_mask_to_read;
+   GError *error;
+} enroll_ssm_data_t;
+
+typedef struct {
+   guint image_quality;
+   gboolean matched;
+   enrollment_t match_enrollment;
+   guint32 event_mask_to_read;
+
+   gboolean verify_template_id_present;
+   db2_id_t verify_template_id;
+} auth_ssm_data_t;
+
+typedef struct {
+   db2_id_t *template_id_list;
+   guint template_id_cnt;
+   guint current_template_id_idx;
+
+   GArray *payload_id_list;
+   guint current_payload_id_idx;
+
+   GPtrArray *fp_print_array;
+} list_ssm_data_t;
+
+typedef struct {
+   db2_id_t template_id;
+} delete_ssm_data_t;
+
+/* ========================================================================= */
 
 typedef struct {
    gboolean established;
@@ -124,7 +223,7 @@ typedef struct {
    guint8 device_type;
    /* 2 bytes unused */
    guint8 provision_state;
-} get_version_t;
+} mis_version_t;
 
 typedef struct {
    gboolean present;
@@ -142,12 +241,103 @@ typedef struct {
    gboolean read_in_legacy_mode;
 } events_t;
 
+typedef void (*CmdCallback)(FpiDeviceSynaTudorMoc *self, guint8 *recv_data,
+                            gsize recv_size, GError *error);
+
+typedef struct {
+   guint8 *send_data;
+   gsize send_size;
+
+   guint8 *recv_data;
+   gsize recv_size;
+   gsize expected_recv_size;
+
+   gboolean check_status;
+
+   CmdCallback callback;
+} cmd_ssm_data_t;
+
+/* response storage structs ================================================ */
+
+typedef struct {
+   gboolean matched;
+   enrollment_t matched_enrollment;
+} match_result_t;
+
+typedef struct {
+   guint32 ipl_finger_coverage;
+} img_metrics_ipl_finger_coverage_t;
+
+typedef struct {
+   guint32 img_quality;
+   guint32 sensor_coverage;
+} img_metrics_matcher_stats;
+
+typedef union {
+   img_metrics_ipl_finger_coverage_t ipl_finger_coverage;
+   img_metrics_matcher_stats matcher_stats;
+} img_metrics_data_t;
+
+typedef struct {
+   img_metrics_type_t type;
+   img_metrics_data_t data;
+} img_metrics_t;
+
+typedef struct {
+   guint16 len;
+   db2_id_t *obj_list;
+} db2_obj_list_t;
+
+typedef struct {
+   guint32 size;
+   guint8 *data;
+} db2_obj_data_t;
+
+typedef struct {
+   guint8 *data;
+   gsize size;
+} raw_resp_t;
+
+typedef union {
+   enroll_stats_t enroll_stats;
+   match_result_t match_result;
+   img_metrics_t img_metrics;
+   db2_obj_list_t db2_obj_list;
+   db2_obj_data_t db2_obj_data;
+   guint32 read_event_mask;
+   guint8 event_buffer[EVENT_BUFFER_SIZE];
+   raw_resp_t raw_resp;
+} parsed_recv_data;
+
+/* ========================================================================= */
+
+typedef enum {
+   CAPTURE_FLAGS_AUTH = 7,
+   CAPTURE_FLAGS_ENROLL = 15,
+} capture_flags_t;
+
+typedef struct {
+   guint num_retries;
+   guint retries_left;
+   capture_flags_t last_capture_flags;
+} frame_acq_config_t;
+
 struct _FpiDeviceSynaTudorMoc {
    FpDevice parent;
 
-   GCancellable *cancellable;
+   GCancellable *interrupt_cancellable;
 
-   get_version_t mis_version;
+   FpiSsm *task_ssm;
+   FpiSsm *subtask_ssm;
+   FpiSsm *cmd_ssm;
+   /* stores everything needed for sending/receiving of a command to sensor */
+   FpiUsbTransfer *cmd_transfer;
+   /* stores parsed data received from sending a command if response cannot be
+    * stored to self (e.g. not mis_version)*/
+   parsed_recv_data parsed_recv_data;
+   frame_acq_config_t frame_acq_config;
+
+   mis_version_t mis_version;
    pairing_data_t pairing_data;
    tls_t tls;         /* TLS session things */
    storage_t storage; /* sensor storage */

@@ -472,7 +472,7 @@ class Sensor:
         # aux_match mentioned in original code but seems not implemented
         # if ((phSensor->chachedCnt == 0) || ((pMatchParam->matchingScore & 3) != 3)) { aux_match }
         match_tuid, match_user_id, match_sub_id = self.mis_identify_match(
-            tuid_list, b""
+            tuid_list, b''
         )
         if match_tuid is None or match_user_id is None or match_sub_id is None:
             return False
@@ -504,7 +504,7 @@ class Sensor:
             progress = 0
             tuid = ID_ZERO
             while progress != 100:
-                self.sensor.event_handler.wait_for_event([SensorEventType.EV_FINGER_UP])
+                self.event_handler.wait_for_event([SensorEventType.EV_FINGER_UP])
                 self.capture_image()
                 progress, status, tuid = self.mis_enroll_add_image()
 
@@ -546,16 +546,16 @@ class Sensor:
 
     def capture_image(self, capture_flags=15):
         logging.log(tudor.LOG_COMM, "Capturing image")
-        self.sensor.event_handler.set_event_mask([SensorEventType.EV_FRAME_READY])
+        self.event_handler.set_event_mask([SensorEventType.EV_FRAME_READY])
         self.send_frame_acq(capture_flags)
 
-        self.sensor.event_handler.set_event_mask(
+        self.event_handler.set_event_mask(
             [SensorEventType.EV_FRAME_READY, SensorEventType.EV_FINGER_DOWN]
         )
-        self.sensor.event_handler.wait_for_events_no_set(
+        self.event_handler.wait_for_events_no_set(
             [SensorEventType.EV_FINGER_DOWN, SensorEventType.EV_FRAME_READY]
         )
-        self.sensor.event_handler.set_event_mask([])
+        self.event_handler.set_event_mask([])
 
         self.send_frame_finish()
 
@@ -1548,8 +1548,8 @@ class Sensor:
 
     def create_version_tag(self):
         # based on sensorUpdatePairHostPartitionProgram
-        if HOST_TAG_VERSION not in self.sensor.host_partition:
-            self.sensor.host_partition[HOST_TAG_VERSION] = (
+        if HOST_TAG_VERSION not in self.host_partition:
+            self.host_partition[HOST_TAG_VERSION] = (
                 HOST_PARITION_VERSION_TAG_DATA
             )
 

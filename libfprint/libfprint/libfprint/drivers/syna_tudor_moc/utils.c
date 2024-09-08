@@ -69,6 +69,16 @@ void fp_dbg_large_hex(const guint8 *arr, const gint size)
    }
 }
 
+void fp_dbg_enrollment(enrollment_t *enrollment)
+{
+   fp_dbg("\tuser id:");
+   fp_dbg_large_hex(enrollment->user_id, sizeof(user_id_t));
+   fp_dbg("\ttemplate id:");
+   fp_dbg_large_hex(enrollment->template_id, DB2_ID_SIZE);
+   fp_dbg("\tfinger id:");
+   fp_dbg("\t%d", enrollment->finger_id);
+}
+
 GError *set_and_report_error(FpDeviceError device_error, const gchar *msg, ...)
 {
    va_list args;
@@ -79,7 +89,7 @@ GError *set_and_report_error(FpDeviceError device_error, const gchar *msg, ...)
    formatted_msg = g_strdup_vprintf(msg, args);
 
    // Now pass the formatted message to the error functions
-   GError *error = fpi_device_error_new_msg(device_error, "%s", msg);
+   GError *error = fpi_device_error_new_msg(device_error, "%s", formatted_msg);
    fp_err("%s", formatted_msg);
 
    va_end(args);

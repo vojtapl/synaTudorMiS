@@ -24,9 +24,7 @@
 #include "container.h"
 #include "device.h"
 #include "fpi-byte-writer.h"
-#include "fpi-device.h"
 #include "fpi-log.h"
-#include "other_constants.h"
 #include "utils.c"
 #include <gnutls/crypto.h>
 #include <gnutls/gnutls.h>

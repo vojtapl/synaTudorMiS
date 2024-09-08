@@ -23,7 +23,6 @@
 
 #include "communication.h"
 #include "device.h"
-#include "drivers_api.h"
 #include "fpi-byte-reader.h"
 #include "fpi-byte-writer.h"
 #include "fpi-usb-transfer.h"
@@ -970,7 +969,7 @@ static gboolean parse_and_process_records(FpiDeviceSynaTudorMoc *self,
          BOOL_CHECK(parse_and_process_handshake_record(self, &record, error));
          break;
 
-      case RECORD_TYPE_ALERT:;
+      case RECORD_TYPE_ALERT:
          if (record.msg_len != 2) {
             fp_err("Invalid length of received TLS alert message");
             self->tls.alert_level = GNUTLS_AL_WARNING;
@@ -1913,7 +1912,7 @@ gboolean establish_tls_session(FpiDeviceSynaTudorMoc *self, GError **error)
    self->tls.handshake_state = TLS_HS_STATE_PREPARE;
 
    while (!self->tls.established) {
-      if (g_cancellable_is_cancelled(self->cancellable)) {
+      if (g_cancellable_is_cancelled(self->interrupt_cancellable)) {
          fp_warn("Establishing of TLS was cancelled");
          ret = FALSE;
          goto error;

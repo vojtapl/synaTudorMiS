@@ -21,19 +21,13 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "other_constants.h"
+#include "device.h"
 #include <glib.h>
 
 /* id (2) + data_size (4) */
 #define CONTAINTER_HEADER_SIZE 6
 #define HASH_CONTAINTER_HEADER_SIZE (CONTAINTER_HEADER_SIZE + SHA256_SIZE)
 #define SHA256_SIZE 32
-
-static guint16 pair_data_version = 0;
-
-/* in decompiled code 0x01000000 (=1 in little-endian) is used, so use something
- * different */
-const guint32 host_data_version = 0x100;
 
 typedef enum {
    CONT_TAG_PROPERTY_ID = 4,

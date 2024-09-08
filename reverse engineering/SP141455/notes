@@ -236,7 +236,7 @@
            14: param_4
            15: 1
            16: (0)
-    - resp: size: 2connect
+    - resp: size: 2
 
 - 0x81: frame finish (VCSFW_CMD_FRAME_FINISH)
     - in tudorCmdFrameFinish:
@@ -450,7 +450,7 @@
                 4 = in data is finger coverage of IPL
                 8 = data
                   0-3: Matcher: image quality
-                  4-7: Matcher: sensor coverage (sizes 4 and 4)
+                  4-7: Matcher: sensor coverage
            10-: data
 
 - 0x9e: db2 get db info (VCSFW_CMD_DB2_GET_DB_INFO)
@@ -710,6 +710,7 @@
         0x44f - smt pair
         0x47a
         0x4b6
+        0x50b - smt enroll add image
         0x687 - smt like access error
         0x6db
         0x6e1 - when reading a host partition - read out of range
