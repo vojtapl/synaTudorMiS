@@ -297,51 +297,9 @@ error:
 
 /* open ==================================================================== */
 
-static void syna_tudor_moc_open(FpDevice *device)
+static void fetch_pairing_data(FpiDeviceSynaTudorMoc *self)
 {
-   fp_dbg("==================== open start ====================");
-   FpiDeviceSynaTudorMoc *self = FPI_DEVICE_SYNA_TUDOR_MOC(device);
    GError *error = NULL;
-   gboolean usb_device_claimed = FALSE;
-   g_autoptr(GVariant) pairing_data = NULL;
-
-   G_DEBUG_HERE();
-
-   /* debug check */
-   g_assert(sizeof(cert_t) == 400);
-
-   self->interrupt_cancellable = g_cancellable_new();
-
-   /* Claim usb interface */
-   if (!g_usb_device_claim_interface(fpi_device_get_usb_device(device), 0, 0,
-                                     &error)) {
-      goto error;
-   }
-   usb_device_claimed = TRUE;
-
-   g_usb_device_reset(fpi_device_get_usb_device(device), &error);
-
-   /* NOTE: If last session was not properly closed, sending any unencrypted
-    * command will result in error */
-   if (!handle_tls_statuses_for_sensor_and_host(self, &error)) {
-      goto error;
-   }
-
-   if (self->tls.established) {
-      fp_dbg("TLS is already established -> open done");
-      goto error;
-   }
-
-   /* get MiS version */
-   if (!send_get_version(self, &self->mis_version, &error)) {
-      goto error;
-   }
-
-   if (sensor_is_in_bootloader_mode(self)) {
-      if (!exit_bootloader_mode(self, &error)) {
-         goto error;
-      }
-   }
 
 #ifdef USE_SAMPLE_PAIRING_DATA
    if (!load_sample_pairing_data(self, &error)) {
@@ -349,7 +307,9 @@ static void syna_tudor_moc_open(FpDevice *device)
       goto error;
    }
 #else
-   g_object_get(device, "fpi-persistent-data", &pairing_data, NULL);
+
+   g_autoptr(GVariant) pairing_data = NULL;
+   g_object_get(FP_DEVICE(self), "fpi-persistent-data", &pairing_data, NULL);
 
    guint8 provision_state = self->mis_version.provision_state & 0xF;
    gboolean need_to_pair = provision_state != PROVISION_STATE_PROVISIONED;
@@ -383,51 +343,216 @@ static void syna_tudor_moc_open(FpDevice *device)
       goto error;
    }
 
-   if (!verify_sensor_certificate(self, &error)) {
-      error = set_and_report_error(FP_DEVICE_ERROR_GENERAL,
-                                   "Sensor certificate is invalid");
-      goto error;
-   }
-
-   if (!self->tls.established) {
-      if (!establish_tls_session(self, &error)) {
-         goto error;
-      }
-   }
-
 error:
-   if (error != NULL && usb_device_claimed) {
+   if (error != NULL) {
+      fpi_ssm_mark_failed(self->task_ssm, error);
+   }
+   return;
+}
+
+static void open_sm_run_state(FpiSsm *ssm, FpDevice *device)
+{
+   FpiDeviceSynaTudorMoc *self = FPI_DEVICE_SYNA_TUDOR_MOC(device);
+   open_ssm_data_t *ssm_data = fpi_ssm_get_data(ssm);
+   GError *error = NULL;
+
+   switch (fpi_ssm_get_cur_state(ssm)) {
+   case OPEN_STATE_GET_REMOTE_TLS_STATUS:
+      /* NOTE: If last session was not properly closed, sending any unencrypted
+       * command will result in error */
+      send_get_remote_tls_status(self);
+      break;
+   case OPEN_STATE_HANDLE_TLS_STATUSES:;
+      gboolean remote_established =
+          self->parsed_recv_data.sensor_is_in_tls_session;
+      if (self->tls.established && !remote_established) {
+         fp_warn("Host is in TLS session but sensor is not");
+         self->tls.established = FALSE;
+         fpi_ssm_jump_to_state(ssm, OPEN_STATE_SEND_GET_VERSION);
+      } else if (!self->tls.established && remote_established) {
+         fp_warn("Sensor is in TLS session but host is not");
+         fpi_ssm_next_state(ssm);
+      } else if (self->tls.established && remote_established) {
+         fp_dbg("Host and sensor are already in TLS session");
+         fpi_ssm_mark_completed(ssm);
+      } else { // both not established
+         fpi_ssm_jump_to_state(ssm, OPEN_STATE_SEND_GET_VERSION);
+      }
+      break;
+   case OPEN_STATE_FORCE_CLOSE_SENSOR_TLS_SESSION:
+      if (ssm_data->tried_to_close_tls_session) {
+         fpi_ssm_mark_failed(
+             ssm, set_and_report_error(
+                      FP_DEVICE_ERROR_PROTO,
+                      "Unable to get the sensor out of TLS session"));
+      } else {
+         send_cmd_to_force_close_sensor_tls_session(self);
+      }
+      break;
+   case OPEN_STATE_CHECK_CLOSE_SUCCESS:
+      fpi_ssm_jump_to_state(ssm, OPEN_STATE_GET_REMOTE_TLS_STATUS);
+      break;
+   case OPEN_STATE_SEND_GET_VERSION:
+      send_get_version(self);
+      break;
+   case OPEN_STATE_EXIT_BOOTLOADER_MODE:
+      if (sensor_is_in_bootloader_mode(self)) {
+         send_bootloader_mode_enter_exit(self, FALSE);
+      }
+      fpi_ssm_next_state(ssm);
+      break;
+   case OPEN_STATE_LOAD_PAIRING_DATA:
+      fetch_pairing_data(self);
+      fpi_ssm_next_state(ssm);
+      break;
+   case OPEN_STATE_VERIFY_SENSOR_CERTIFICATE:;
+      verify_sensor_certificate(self, &error);
+      if (error != NULL) {
+         fpi_ssm_mark_failed(ssm, error);
+      } else {
+         fpi_ssm_next_state(ssm);
+      }
+      break;
+   case OPEN_STATE_TLS_HS_PREPARE:
+      g_assert(!self->tls.established);
+      fp_dbg("TLS handshake state: prepare");
+      tls_handshake_state_prepare(self);
+      fpi_ssm_next_state(ssm);
+      break;
+   case OPEN_STATE_TLS_HS_STATE_SEND_CLIENT_HELLO:
+      tls_handshake_state_start(self);
+      break;
+   case OPEN_STATE_TLS_HS_STATE_END:
+      tls_handshake_state_end(self);
+      break;
+   case OPEN_STATE_TLS_HS_STATE_FINISHED:
+      fp_dbg("TLS handshake state: finished");
+      tls_handshake_cleanup(self);
+      self->tls.established = TRUE;
+      fpi_ssm_mark_completed(ssm);
+      break;
+   case OPEN_STATE_TLS_HS_STATE_ALERT:
+      fp_err("TLS handshake state: alert");
+      fp_dbg("\t level = %d; description = %d = %s", self->tls.alert_level,
+             self->tls.alert_desc,
+             gnutls_alert_get_strname(self->tls.alert_desc));
+      send_tls_alert(self, self->tls.alert_level, self->tls.alert_desc);
+      break;
+   case OPEN_STATE_TLS_HS_STATE_FAILED:
+      fp_err("TLS handshake state: failed");
+      tls_handshake_cleanup(self);
+      /* reset state for later calling of this function */
+      self->tls.established = FALSE;
+
+      /* propagate error if present */
+      error =
+          set_and_report_error(FP_DEVICE_ERROR_PROTO, "TLS handshake failed");
+      fpi_ssm_mark_failed(ssm, error);
+      break;
+   }
+}
+
+static void open_ssm_done(FpiSsm *ssm, FpDevice *device, GError *error)
+{
+   FpiDeviceSynaTudorMoc *self = FPI_DEVICE_SYNA_TUDOR_MOC(device);
+   open_ssm_data_t *ssm_data = fpi_ssm_get_data(ssm);
+
+   if (error != NULL && ssm_data->usb_device_claimed) {
       g_usb_device_release_interface(fpi_device_get_usb_device(device), 0, 0,
                                      NULL);
    }
 
-   fpi_device_open_complete(FP_DEVICE(self), error);
+   self->task_ssm = NULL;
+   fp_dbg("<<<<<<<<<<<<<<<<<<<< open end <<<<<<<<<<<<<<<<<<<<");
+   fpi_device_open_complete(device, error);
+}
+
+static void open(FpDevice *device)
+{
+   FpiDeviceSynaTudorMoc *self = FPI_DEVICE_SYNA_TUDOR_MOC(device);
+   open_ssm_data_t *ssm_data = g_new0(open_ssm_data_t, 1);
+   GError *error = NULL;
+
+   G_DEBUG_HERE();
+   fp_dbg(">>>>>>>>>>>>>>>>>>>> open start >>>>>>>>>>>>>>>>>>>>");
+   g_assert(self->task_ssm == NULL);
+
+#ifdef TLS_DEBUG
+   /* debug check */
+   g_assert(sizeof(cert_t) == 400);
+#endif
+
+   self->interrupt_cancellable = g_cancellable_new();
+
+   /* Claim usb interface */
+   if (!g_usb_device_claim_interface(fpi_device_get_usb_device(device), 0, 0,
+                                     &error)) {
+      goto error;
+   }
+   ssm_data->usb_device_claimed = TRUE;
+
+   g_usb_device_reset(fpi_device_get_usb_device(device), &error);
+
+   self->task_ssm = fpi_ssm_new_full(device, open_sm_run_state, OPEN_NUM_STATES,
+                                     OPEN_NUM_STATES, "Open");
+   fpi_ssm_set_data(self->task_ssm, ssm_data, (GDestroyNotify)g_free);
+   fpi_ssm_start(self->task_ssm, open_ssm_done);
+   return;
+
+error:
+   fpi_device_open_complete(device, error);
+   fp_dbg("<<<<<<<<<<<<<<<<<<<< open end <<<<<<<<<<<<<<<<<<<<");
 }
 
 /* close =================================================================== */
 
-static void deinit(FpDevice *device)
+typedef enum {
+   CLOSE_SEND_TLS_CLOSE,
+   CLOSE_NUM_STATES,
+} close_state_t;
+
+static void close_sm_run_state(FpiSsm *ssm, FpDevice *device)
 {
    FpiDeviceSynaTudorMoc *self = FPI_DEVICE_SYNA_TUDOR_MOC(device);
-   GError *error = NULL;
-   g_autoptr(GError) release_error = NULL;
+   switch (fpi_ssm_get_cur_state(ssm)) {
+   case CLOSE_SEND_TLS_CLOSE:
+      if (self->tls.established) {
+         tls_close_session(self);
+      } else {
+         fpi_ssm_next_state(ssm);
+      }
+      break;
+   }
+}
 
-   G_DEBUG_HERE();
-   fp_dbg(">>>>>>>>>>>>>>>>>>>> close start >>>>>>>>>>>>>>>>>>>>");
+static void close_ssm_done(FpiSsm *ssm, FpDevice *device, GError *error)
+{
+   FpiDeviceSynaTudorMoc *self = FPI_DEVICE_SYNA_TUDOR_MOC(device);
 
    g_clear_object(&self->interrupt_cancellable);
-
-   if (self->tls.established) {
-      tls_close_session(self, &error);
-   }
    deinit_tls(self);
    free_pairing_data(self);
 
    g_usb_device_release_interface(fpi_device_get_usb_device(FP_DEVICE(self)), 0,
-                                  0, &release_error);
+                                  0, &error);
 
-   fpi_device_close_complete(device, release_error);
+   self->task_ssm = NULL;
+
    fp_dbg("<<<<<<<<<<<<<<<<<<<< close end <<<<<<<<<<<<<<<<<<<<");
+   fpi_device_close_complete(device, error);
+}
+
+static void deinit(FpDevice *device)
+{
+   FpiDeviceSynaTudorMoc *self = FPI_DEVICE_SYNA_TUDOR_MOC(device);
+
+   G_DEBUG_HERE();
+   fp_dbg(">>>>>>>>>>>>>>>>>>>> close start >>>>>>>>>>>>>>>>>>>>");
+   g_assert(self->task_ssm == NULL);
+
+   self->task_ssm = fpi_ssm_new_full(
+       device, close_sm_run_state, CLOSE_NUM_STATES, CLOSE_NUM_STATES, "Close");
+   fpi_ssm_start(self->task_ssm, close_ssm_done);
 }
 
 /* enroll ================================================================== */
@@ -526,20 +651,20 @@ static void enroll_sm_run_state(FpiSsm *ssm, FpDevice *device)
 
    switch (fpi_ssm_get_cur_state(ssm)) {
    case ENROLL_STATE_SEND_ENROLL_START:
-      send_enroll_start_async(self);
+      send_enroll_start(self);
       break;
    case ENROLL_STATE_TEST:
       fpi_ssm_jump_to_state(ssm, ENROLL_STATE_SET_EVENT_MASK_FRAME_READY);
       break;
    case ENROLL_STATE_SET_EVENT_MASK_FINGER_UP:
-      send_event_config_async(self, EV_FINGER_UP);
+      send_event_config(self, EV_FINGER_UP);
       // FIXME: how to tell the user to lift finger?
       break;
    case ENROLL_STATE_WAIT_FOR_EVENTS1:
       send_interrupt_wait_for_events(self);
       break;
    case ENROLL_STATE_READ_EVENTS1:
-      send_event_read_async(self);
+      send_event_read(self);
       break;
    case ENROLL_STATE_CHECK_READ_EVENTS_FINGER_UP:
       if ((self->parsed_recv_data.read_event_mask & EV_FINGER_UP) != 0) {
@@ -555,21 +680,21 @@ static void enroll_sm_run_state(FpiSsm *ssm, FpDevice *device)
       }
       break;
    case ENROLL_STATE_SET_EVENT_MASK_FRAME_READY:
-      send_event_config_async(self, EV_FRAME_READY);
+      send_event_config(self, EV_FRAME_READY);
       break;
    case ENROLL_STATE_SEND_FRAME_ACQ:
-      send_frame_acq_async(self, CAPTURE_FLAGS_ENROLL);
+      send_frame_acq(self, CAPTURE_FLAGS_ENROLL);
       ssm_data->event_mask_to_read = EV_FRAME_READY | EV_FINGER_DOWN;
       break;
    case ENROLL_STATE_SET_EVENT_MASK_STORED:
-      send_event_config_async(self, ssm_data->event_mask_to_read);
+      send_event_config(self, ssm_data->event_mask_to_read);
       fpi_device_report_finger_status(FP_DEVICE(self), FP_FINGER_STATUS_NEEDED);
       break;
    case ENROLL_STATE_WAIT_FOR_EVENTS2:
       send_interrupt_wait_for_events(self);
       break;
    case ENROLL_STATE_READ_EVENTS2:
-      send_event_read_async(self);
+      send_event_read(self);
       break;
    case ENROLL_STATE_CHECK_READ_EVENTS_FRAME_READY_AND_FINGER_DOWN:
       if ((self->parsed_recv_data.read_event_mask & EV_FINGER_DOWN) != 0) {
@@ -597,13 +722,13 @@ static void enroll_sm_run_state(FpiSsm *ssm, FpDevice *device)
       }
       break;
    case ENROLL_STATE_CLEAR_EVENT_MASK:
-      send_event_config_async(self, NO_EVENTS);
+      send_event_config(self, NO_EVENTS);
       break;
    case ENROLL_STATE_SEND_FRAME_FINISH:
-      send_frame_finish_async(self);
+      send_frame_finish(self);
       break;
    case ENROLL_STATE_SEND_ENROLL_ADD_IMAGE:
-      send_enroll_add_image_async(self);
+      send_enroll_add_image(self);
       break;
    case ENROLL_STATE_PROCESS_ENROLL_STATS:
       process_enroll_stats(self, ssm);
@@ -618,13 +743,13 @@ static void enroll_sm_run_state(FpiSsm *ssm, FpDevice *device)
          fpi_ssm_jump_to_state(ssm, ENROLL_STATE_SEND_ENROLL_FINISH);
          return;
       }
-      send_enroll_commit_async(self, serialized, serialized_size);
+      send_enroll_commit(self, serialized, serialized_size);
       g_free(serialized);
       break;
    case ENROLL_STATE_SEND_ENROLL_FINISH:
       // NOTE: this state also functions as a stop to a enrollment if error
       // occures
-      send_enroll_finish_async(self);
+      send_enroll_finish(self);
       if (ssm_data->error != NULL) {
          fpi_ssm_mark_failed(ssm, ssm_data->error);
       }
@@ -647,8 +772,8 @@ static void enroll_ssm_done(FpiSsm *ssm, FpDevice *device, GError *error)
 
 error:
    fp_dbg("<<<<<<<<<<<<<<<<<<<< enroll end <<<<<<<<<<<<<<<<<<<<");
-   fpi_device_enroll_complete(device, print, error);
    self->task_ssm = NULL;
+   fpi_device_enroll_complete(device, print, error);
 }
 
 static void enroll(FpDevice *device)
@@ -727,21 +852,21 @@ static void auth_sm_run_state(FpiSsm *ssm, FpDevice *device)
 
    switch (fpi_ssm_get_cur_state(ssm)) {
    case AUTH_STATE_SET_EVENT_MASK_FRAME_READY:
-      send_event_config_async(self, EV_FRAME_READY);
+      send_event_config(self, EV_FRAME_READY);
       break;
    case AUTH_STATE_SEND_FRAME_ACQ:
-      send_frame_acq_async(self, CAPTURE_FLAGS_AUTH);
+      send_frame_acq(self, CAPTURE_FLAGS_AUTH);
       ssm_data->event_mask_to_read = EV_FRAME_READY | EV_FINGER_DOWN;
       break;
    case AUTH_STATE_SET_EVENT_MASK_STORED:
-      send_event_config_async(self, ssm_data->event_mask_to_read);
+      send_event_config(self, ssm_data->event_mask_to_read);
       fpi_device_report_finger_status(FP_DEVICE(self), FP_FINGER_STATUS_NEEDED);
       break;
    case AUTH_STATE_WAIT_FOR_EVENTS:
       send_interrupt_wait_for_events(self);
       break;
    case AUTH_STATE_READ_EVENTS:
-      send_event_read_async(self);
+      send_event_read(self);
       break;
    case AUTH_STATE_CHECK_READ_EVENTS:
       if ((self->parsed_recv_data.read_event_mask & EV_FINGER_DOWN) != 0) {
@@ -769,13 +894,13 @@ static void auth_sm_run_state(FpiSsm *ssm, FpDevice *device)
       }
       break;
    case AUTH_STATE_CLEAR_EVENT_MASK:
-      send_event_config_async(self, NO_EVENTS);
+      send_event_config(self, NO_EVENTS);
       break;
    case AUTH_STATE_SEND_FRAME_FINISH:
-      send_frame_finish_async(self);
+      send_frame_finish(self);
       break;
    case AUTH_STATE_GET_IMAGE_METRICS:
-      send_get_image_metrics_async(self, MIS_IMAGE_METRICS_IMG_QUALITY);
+      send_get_image_metrics(self, MIS_IMAGE_METRICS_IMG_QUALITY);
       break;
    case AUTH_STATE_CHECK_IMAGE_QUALITY:;
       guint32 img_quality =
@@ -784,9 +909,9 @@ static void auth_sm_run_state(FpiSsm *ssm, FpDevice *device)
       break;
    case AUTH_STATE_IDENTIFY_IMAGE:
       if (ssm_data->verify_template_id_present) {
-         send_identify_match_async(self, &ssm_data->verify_template_id, 1);
+         send_identify_match(self, &ssm_data->verify_template_id, 1);
       } else {
-         send_identify_match_async(self, NULL, 0);
+         send_identify_match(self, NULL, 0);
       }
       break;
    }
@@ -834,6 +959,7 @@ static void auth_ssm_done(FpiSsm *ssm, FpDevice *device, GError *error)
    }
 
 error:
+   self->task_ssm = NULL;
    if (fpi_device_get_current_action(device) == FPI_DEVICE_ACTION_VERIFY) {
       fp_dbg("<<<<<<<<<<<<<<<<<<<< auth - verify end <<<<<<<<<<<<<<<<<<<<");
       fpi_device_verify_complete(device, error);
@@ -841,7 +967,6 @@ error:
       fp_dbg("<<<<<<<<<<<<<<<<<<<< auth - identify end <<<<<<<<<<<<<<<<<<<<");
       fpi_device_identify_complete(device, error);
    }
-   self->task_ssm = NULL;
 }
 
 static void auth(FpDevice *device)
@@ -885,14 +1010,15 @@ error:
    } else {
       fp_dbg("<<<<<<<<<<<<<<<<<<<< auth - identify end <<<<<<<<<<<<<<<<<<<<");
    }
-   fpi_device_identify_complete(device, error);
    self->task_ssm = NULL;
+   fpi_device_identify_complete(device, error);
 }
 
 /* list ==================================================================== */
 
 typedef enum {
    LIST_STATE_GET_CURRENT_NUMBER_OF_DB2_OBJECTS,
+   LIST_STATE_CLEANUP,
    LIST_STATE_GET_TEMPLATE_LIST,
    LIST_STATE_STORE_TEMPLATE_LIST,
    LIST_STATE_GET_PAYLOAD_LIST,
@@ -910,11 +1036,17 @@ static void list_sm_run_state(FpiSsm *ssm, FpDevice *device)
 
    switch (fpi_ssm_get_cur_state(ssm)) {
    case LIST_STATE_GET_CURRENT_NUMBER_OF_DB2_OBJECTS:
-      send_db2_info_async(self);
+      send_db2_info(self);
+      break;
+   case LIST_STATE_CLEANUP:
+      if (self->parsed_recv_data.cleanup_required) {
+         send_db2_cleanup(self);
+      } else {
+         fpi_ssm_next_state(ssm);
+      }
       break;
    case LIST_STATE_GET_TEMPLATE_LIST:
-      send_db2_get_object_list_async(self, OBJ_TYPE_TEMPLATES,
-                                     cache_template_id);
+      send_db2_get_object_list(self, OBJ_TYPE_TEMPLATES, cache_template_id);
       break;
    case LIST_STATE_STORE_TEMPLATE_LIST:
       ssm_data->template_id_cnt = self->parsed_recv_data.db2_obj_list.len;
@@ -927,7 +1059,7 @@ static void list_sm_run_state(FpiSsm *ssm, FpDevice *device)
       fpi_ssm_next_state(ssm);
       break;
    case LIST_STATE_GET_PAYLOAD_LIST:
-      send_db2_get_object_list_async(
+      send_db2_get_object_list(
           self, OBJ_TYPE_PAYLOADS,
           ssm_data->template_id_list[ssm_data->current_template_id_idx++]);
       break;
@@ -956,10 +1088,10 @@ static void list_sm_run_state(FpiSsm *ssm, FpDevice *device)
                                      ssm_data->current_payload_id_idx),
                        DB2_ID_SIZE);
 
-      send_db2_get_object_info_async(
-          self, OBJ_TYPE_PAYLOADS,
-          g_array_index(ssm_data->payload_id_list, db2_id_t,
-                        ssm_data->current_payload_id_idx));
+      send_db2_get_object_info(self, OBJ_TYPE_PAYLOADS,
+                               g_array_index(ssm_data->payload_id_list,
+                                             db2_id_t,
+                                             ssm_data->current_payload_id_idx));
       break;
    case LIST_STATE_GET_PAYLOAD_DATA:;
       const guint size_offset = 48;
@@ -974,12 +1106,13 @@ static void list_sm_run_state(FpiSsm *ssm, FpDevice *device)
       }
       guint obj_data_size = FP_READ_UINT32_LE(
           &((self->parsed_recv_data.raw_resp.data)[size_offset]));
+      g_free(self->parsed_recv_data.raw_resp.data);
 
-      send_db2_get_object_data_async(
-          self, OBJ_TYPE_PAYLOADS,
-          g_array_index(ssm_data->payload_id_list, db2_id_t,
-                        ssm_data->current_payload_id_idx),
-          obj_data_size);
+      send_db2_get_object_data(self, OBJ_TYPE_PAYLOADS,
+                               g_array_index(ssm_data->payload_id_list,
+                                             db2_id_t,
+                                             ssm_data->current_payload_id_idx),
+                               obj_data_size);
       ssm_data->current_payload_id_idx += 1;
       break;
    case LIST_STATE_STORE_PAYLOAD_DATA:;
@@ -1019,13 +1152,13 @@ static void list_ssm_done(FpiSsm *ssm, FpDevice *device, GError *error)
 
 error:
    fp_dbg("<<<<<<<<<<<<<<<<<<<< list end <<<<<<<<<<<<<<<<<<<<");
+   self->task_ssm = NULL;
    if (error != NULL) {
       g_ptr_array_free(ssm_data->fp_print_array, TRUE);
       fpi_device_list_complete(device, NULL, error);
    } else {
       fpi_device_list_complete(device, ssm_data->fp_print_array, error);
    }
-   self->task_ssm = NULL;
 }
 
 static void free_list_ssm_data_t(list_ssm_data_t *ssm_data)
@@ -1069,8 +1202,7 @@ static void delete_sm_run_state(FpiSsm *ssm, FpDevice *device)
 
    switch (fpi_ssm_get_cur_state(ssm)) {
    case DELETE_SEND_DB2_DELETE:
-      send_db2_delete_object_async(self, OBJ_TYPE_TEMPLATES,
-                                   ssm_data->template_id);
+      send_db2_delete_object(self, OBJ_TYPE_TEMPLATES, ssm_data->template_id);
       break;
    }
 }
@@ -1080,8 +1212,8 @@ static void delete_ssm_done(FpiSsm *ssm, FpDevice *device, GError *error)
    FpiDeviceSynaTudorMoc *self = FPI_DEVICE_SYNA_TUDOR_MOC(device);
 
    fp_dbg("<<<<<<<<<<<<<<<<<<<< delete end <<<<<<<<<<<<<<<<<<<<");
-   fpi_device_delete_complete(device, error);
    self->task_ssm = NULL;
+   fpi_device_delete_complete(device, error);
 }
 
 static void delete(FpDevice *device)
@@ -1129,7 +1261,7 @@ static void clear_storage_sm_run_state(FpiSsm *ssm, FpDevice *device)
    FpiDeviceSynaTudorMoc *self = FPI_DEVICE_SYNA_TUDOR_MOC(device);
    switch (fpi_ssm_get_cur_state(ssm)) {
    case CLEAR_STORAGE_SEND_DB2_FORMAT:
-      send_db2_format_async(self);
+      send_db2_format(self);
       break;
    }
 }
@@ -1139,8 +1271,8 @@ static void clear_storage_ssm_done(FpiSsm *ssm, FpDevice *device, GError *error)
    FpiDeviceSynaTudorMoc *self = FPI_DEVICE_SYNA_TUDOR_MOC(device);
 
    fp_dbg("<<<<<<<<<<<<<<<<<<<< clear storage end <<<<<<<<<<<<<<<<<<<<");
-   fpi_device_clear_storage_complete(device, error);
    self->task_ssm = NULL;
+   fpi_device_clear_storage_complete(device, error);
 }
 
 static void clear_storage(FpDevice *device)
@@ -1195,7 +1327,7 @@ fpi_device_syna_tudor_moc_class_init(FpiDeviceSynaTudorMocClass *klass)
    dev_class->temp_hot_seconds = -1;
    dev_class->temp_cold_seconds = -1;
 
-   dev_class->open = syna_tudor_moc_open;
+   dev_class->open = open;
    dev_class->close = deinit; // close name is taken by another funciton name
    dev_class->enroll = enroll;
    dev_class->verify = auth;

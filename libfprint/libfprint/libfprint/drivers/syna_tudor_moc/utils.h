@@ -38,6 +38,16 @@
          goto error;                                                           \
       }                                                                        \
    } while (0)
+#define BOOL_CHECK_ASYNC(ssm, func_call)                                       \
+   do {                                                                        \
+      if (!(func_call)) {                                                      \
+         FP_ERR_FANCY("Error in " #func_call);                                 \
+         fpi_ssm_mark_failed(ssm,                                              \
+                             set_and_report_error(FP_DEVICE_ERROR_GENERAL,     \
+                                                  "Error in " #func_call));    \
+         return;                                                               \
+      }                                                                        \
+   } while (0)
 
 /* Provides a check with error reporting as some external functions do not log
  * errors. */
@@ -103,7 +113,6 @@
          return;                                                               \
       }                                                                        \
    } while (0)
-
 #define GNUTLS_CHECK(func_call)                                                \
    do {                                                                        \
       gint gnutls_ret = (func_call);                                           \
@@ -117,6 +126,21 @@
          goto error;                                                           \
       }                                                                        \
    } while (0)
+
+#define GNUTLS_CHECK_ASYNC(ssm, func_call)                                     \
+   do {                                                                        \
+      gint gnutls_ret = (func_call);                                           \
+      if (gnutls_ret != GNUTLS_E_SUCCESS) {                                    \
+         FP_ERR_FANCY("GnuTLS error in " #func_call ": %s",                    \
+                      gnutls_strerror(gnutls_ret));                            \
+         fpi_ssm_mark_failed(                                                  \
+             ssm,                                                              \
+             set_and_report_error(FP_DEVICE_ERROR_GENERAL, "GnuTLS error: %s", \
+                                  gnutls_strerror(gnutls_ret)));               \
+         return;                                                               \
+      }                                                                        \
+   } while (0)
+
 #define FP_ERR_FANCY(msg, ...)                                                 \
    fp_err("%s: %s: %d:" msg, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
 

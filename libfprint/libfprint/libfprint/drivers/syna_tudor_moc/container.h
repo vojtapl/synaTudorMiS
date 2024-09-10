@@ -26,27 +26,6 @@
 
 /* id (2) + data_size (4) */
 #define CONTAINTER_HEADER_SIZE 6
-#define HASH_CONTAINTER_HEADER_SIZE (CONTAINTER_HEADER_SIZE + SHA256_SIZE)
-#define SHA256_SIZE 32
-
-typedef enum {
-   CONT_TAG_PROPERTY_ID = 4,
-   CONT_TAG_PROPERTY_DATA = 5,
-} cont_tag_property_t;
-
-typedef enum {
-   HOST_DATA_TAG_VERSION = 1,
-   HOST_DATA_TAG_PAIRED_DATA = 2,
-} host_data_tag_t;
-
-typedef enum {
-   PAIR_DATA_TAG_VERSION = 0,
-   PAIR_DATA_TAG_HOST_CERT = 1,
-   PAIR_DATA_TAG_PRIVATE_KEY = 2,
-   PAIR_DATA_TAG_SENSOR_CERT = 3,
-   PAIR_DATA_TAG_PUB_KEY_SEC_DATA = 4,
-   PAIR_DATA_TAG_SSI_STORAGE_PSK_ID = 5,
-} pair_data_tag_t;
 
 typedef enum {
    ENROLL_TAG_TEMPLATE_ID = 0,
@@ -60,16 +39,8 @@ typedef struct {
    guint8 *data;
 } container_item_t;
 
-typedef struct {
-   container_item_t cont;
-   guint8 sha256_hash[32];
-} hash_container_item_t;
-
 gboolean serialize_container(container_item_t *cont, guint cont_cnt,
                              guint8 **serialized, gsize *serialized_size);
-
-gboolean serialize_hash_container(hash_container_item_t *cont, guint cont_cnt,
-                                  guint8 **serialized, gsize *serialized_size);
 
 gboolean deserialize_container(const guint8 *serialized,
                                const gsize serialized_size,
@@ -79,22 +50,7 @@ gboolean get_container_with_id_index(container_item_t *container,
                                      guint container_cnt, guint8 id,
                                      guint *idx);
 
-gboolean get_hash_container_with_id_index(hash_container_item_t *container,
-                                          guint container_cnt, guint8 id,
-                                          guint *idx);
-
 gboolean get_enrollment_data_from_serialized_container(const guint8 *data,
                                                        const gsize data_size,
                                                        enrollment_t *enrollment,
                                                        GError **error);
-
-gboolean hash_container_add_hash(hash_container_item_t *hash_cont,
-                                 GError **error);
-
-gboolean hash_container_check_hashes(hash_container_item_t *hash_cont,
-                                     guint cont_item_cnt, GError **error);
-
-gboolean deserialize_hash_container(const guint8 *serialized,
-                                    const gsize serialized_size,
-                                    hash_container_item_t **hash_cont,
-                                    guint *cont_item_cnt, GError **error);

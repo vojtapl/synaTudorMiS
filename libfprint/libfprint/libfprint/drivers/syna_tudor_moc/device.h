@@ -112,6 +112,12 @@ typedef enum {
 /* state storage structs =================================================== */
 
 typedef struct {
+   gboolean usb_device_claimed;
+   gboolean tried_to_close_tls_session;
+
+} open_ssm_data_t;
+
+typedef struct {
    enrollment_t match_enrollment;
    enroll_stats_t enroll_stats;
    guint32 event_mask_to_read;
@@ -253,10 +259,28 @@ typedef struct {
    gsize expected_recv_size;
 
    gboolean check_status;
+   guint8 cmd_id;
 
    CmdCallback callback;
 } cmd_ssm_data_t;
 
+typedef enum {
+   OPEN_STATE_GET_REMOTE_TLS_STATUS,
+   OPEN_STATE_HANDLE_TLS_STATUSES,
+   OPEN_STATE_FORCE_CLOSE_SENSOR_TLS_SESSION,
+   OPEN_STATE_CHECK_CLOSE_SUCCESS,
+   OPEN_STATE_SEND_GET_VERSION,
+   OPEN_STATE_EXIT_BOOTLOADER_MODE,
+   OPEN_STATE_LOAD_PAIRING_DATA,
+   OPEN_STATE_VERIFY_SENSOR_CERTIFICATE,
+   OPEN_STATE_TLS_HS_PREPARE,
+   OPEN_STATE_TLS_HS_STATE_SEND_CLIENT_HELLO,
+   OPEN_STATE_TLS_HS_STATE_END,
+   OPEN_STATE_TLS_HS_STATE_FINISHED,
+   OPEN_STATE_TLS_HS_STATE_ALERT,
+   OPEN_STATE_TLS_HS_STATE_FAILED,
+   OPEN_NUM_STATES,
+} open_state_t;
 /* response storage structs ================================================ */
 
 typedef struct {
@@ -307,6 +331,8 @@ typedef union {
    guint32 read_event_mask;
    guint8 event_buffer[EVENT_BUFFER_SIZE];
    raw_resp_t raw_resp;
+   gboolean cleanup_required;
+   gboolean sensor_is_in_tls_session;
 } parsed_recv_data;
 
 /* ========================================================================= */

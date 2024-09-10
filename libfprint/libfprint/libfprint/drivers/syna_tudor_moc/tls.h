@@ -106,7 +106,7 @@ typedef struct {
 
 gboolean establish_tls_session(FpiDeviceSynaTudorMoc *self, GError **error);
 
-gboolean tls_close_session(FpiDeviceSynaTudorMoc *self, GError **error);
+void tls_close_session(FpiDeviceSynaTudorMoc *self);
 
 gboolean tls_wrap(FpiDeviceSynaTudorMoc *self, guint8 *ptext, gsize ptext_size,
                   guint8 **ctext, gsize *ctext_size, GError **error);
@@ -124,14 +124,18 @@ gboolean load_sample_pairing_data(FpiDeviceSynaTudorMoc *self, GError **error);
 
 void deinit_tls(FpiDeviceSynaTudorMoc *self);
 
-gboolean send_cmd_to_force_close_sensor_tls_session(FpiDeviceSynaTudorMoc *self,
-                                                    GError **error);
-
 gboolean handle_tls_statuses_for_sensor_and_host(FpiDeviceSynaTudorMoc *self,
                                                  GError **error);
 
 void free_pairing_data(FpiDeviceSynaTudorMoc *self);
 
-gboolean pair(FpiDeviceSynaTudorMoc *self, GError **error);
+void pair(FpiDeviceSynaTudorMoc *self);
 
 gboolean parse_certificate(const guint8 *data, const gsize len, cert_t *cert);
+
+void send_get_remote_tls_status(FpiDeviceSynaTudorMoc *self);
+
+void tls_handshake_state_prepare(FpiDeviceSynaTudorMoc *self);
+void tls_handshake_state_start(FpiDeviceSynaTudorMoc *self);
+void tls_handshake_state_end(FpiDeviceSynaTudorMoc *self);
+void tls_handshake_cleanup(FpiDeviceSynaTudorMoc *self);

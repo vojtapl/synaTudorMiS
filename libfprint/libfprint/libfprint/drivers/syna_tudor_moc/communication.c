@@ -31,7 +31,7 @@
 #include <glib.h>
 #include <gnutls/abstract.h>
 
-// #define COMMUNICATION_DEBUG
+#define COMMUNICATION_DEBUG
 
 static gboolean sensor_status_is_result_ok(guint16 status)
 {
@@ -260,76 +260,68 @@ static const char *cmd_id_to_str(guint8 cmd_id)
    return ret;
 }
 
-static gboolean synaptics_secure_connect_send(FpiDeviceSynaTudorMoc *self,
-                                              guint8 *send_data, gsize send_len,
-                                              GError **error)
+gboolean serialize_enrollment_data(FpiDeviceSynaTudorMoc *self,
+                                   enrollment_t *enrollment,
+                                   guint8 **serialized, gsize *serialized_size,
+                                   GError **error)
 {
    gboolean ret = TRUE;
-   g_autoptr(FpiUsbTransfer) transfer = NULL;
 
-   guint8 *wrapped_data = NULL;
-   gsize wrapped_size = 0;
+   guint container_cnt = 3;
+   container_item_t container[3];
 
-   /* Wrap command if in TLS session */
-   if (self->tls.established) {
-      BOOL_CHECK(tls_wrap(self, send_data, send_len, &wrapped_data,
-                          &wrapped_size, error));
-   } else {
-      wrapped_data = send_data;
-      wrapped_size = send_len;
-   }
-   fp_dbg("  raw unwrapped req:");
-   fp_dbg_large_hex(send_data, send_len);
-   fp_dbg("  raw wrapped req:");
-   fp_dbg_large_hex(wrapped_data, wrapped_size);
+   container[0].id = ENROLL_TAG_TEMPLATE_ID;
+   container[0].data = enrollment->template_id;
+   container[0].data_size = DB2_ID_SIZE;
 
-   /* Send data */
-   transfer = fpi_usb_transfer_new(FP_DEVICE(self));
-   fpi_usb_transfer_fill_bulk(transfer, USB_EP_REQUEST, wrapped_size);
-   /* TODO: do I understand this correctly */
-   transfer->short_is_error = FALSE;
-   memcpy(transfer->buffer, wrapped_data, wrapped_size);
-   BOOL_CHECK_WITH_REPORT(
-       fpi_usb_transfer_submit_sync(transfer, USB_TRANSFER_TIMEOUT_MS, error));
+   container[1].id = ENROLL_TAG_USER_ID;
+   container[1].data = enrollment->user_id;
+   container[1].data_size = sizeof(user_id_t);
+
+   container[2].id = ENROLL_TAG_FINGER_ID;
+   container[2].data = &enrollment->finger_id;
+   container[2].data_size = sizeof(enrollment->finger_id);
+
+   fp_dbg("Adding enrollment with:");
+   fp_dbg("\ttemplate ID:");
+   fp_dbg_large_hex(enrollment->template_id, DB2_ID_SIZE);
+   fp_dbg("\tuser ID:");
+   fp_dbg_large_hex(enrollment->user_id, sizeof(user_id_t));
+   fp_dbg("\tfinger ID: %u", enrollment->finger_id);
+
+   BOOL_CHECK(serialize_container(container, container_cnt, serialized,
+                                  serialized_size));
+
+   fp_dbg("serialized container:");
+   fp_dbg_large_hex(*serialized, *serialized_size);
 
 error:
-   if (self->tls.established && wrapped_data != NULL) {
-      g_free(wrapped_data);
-   }
    return ret;
 }
 
-static gboolean synaptics_secure_connect_recv(FpiDeviceSynaTudorMoc *self,
-                                              guint8 **recv_data,
-                                              gsize *recv_len,
-                                              const gboolean check_status,
-                                              GError **error)
-{
-   gboolean ret = TRUE;
-   g_autoptr(FpiUsbTransfer) transfer = NULL;
-   *recv_data = NULL;
-   guint16 status = 0xffff;
+/* ========================================================================= */
 
+/* Async cmd send ========================================================== */
+
+typedef enum {
+   CMD_STATE_SEND,
+   CMD_STATE_GET_RESP,
+   CMD_NUM_STATES,
+} cmd_state_t;
+
+static void cmd_receive_cb(FpiUsbTransfer *transfer, FpDevice *device,
+                           gpointer user_data, GError *error)
+{
+   FpiDeviceSynaTudorMoc *self = FPI_DEVICE_SYNA_TUDOR_MOC(device);
+   cmd_ssm_data_t *ssm_data = (cmd_ssm_data_t *)user_data;
    const int status_header_len = 2;
 
-   /* TLS response is expected to be larger */
-   if (self->tls.established) {
-      *recv_len += WRAP_RESPONSE_ADDITIONAL_SIZE;
-   }
-
-   /* receive data */
-   transfer = fpi_usb_transfer_new(FP_DEVICE(self));
-   fpi_usb_transfer_fill_bulk(transfer, USB_EP_REPLY, *recv_len);
-   BOOL_CHECK_WITH_REPORT(
-       fpi_usb_transfer_submit_sync(transfer, USB_TRANSFER_TIMEOUT_MS, error));
-
-   if (transfer->actual_length < status_header_len) {
-      *error = set_and_report_error(FP_DEVICE_ERROR_PROTO,
-                                    "Response transfer was too short");
-      ret = FALSE;
+   if (error != NULL) {
+      /* NOTE: assumes timeout should never happen for receiving. */
       goto error;
    }
 
+   /* some debug output */
    fp_dbg("  Transfer: length: %lu, actual_length: %lu", transfer->length,
           transfer->actual_length);
    fp_dbg("  raw wrapped resp:");
@@ -337,55 +329,181 @@ static gboolean synaptics_secure_connect_recv(FpiDeviceSynaTudorMoc *self,
 
    /* Unwrap command if in TLS session */
    if (self->tls.established && transfer->actual_length != status_header_len) {
-      BOOL_CHECK(tls_unwrap(self, transfer->buffer, transfer->actual_length,
-                            recv_data, recv_len, error));
+      tls_unwrap(self, transfer->buffer, transfer->actual_length,
+                 &ssm_data->recv_data, &ssm_data->recv_size, &error);
+      if (error != NULL) {
+         goto error;
+      }
    } else {
       /* Response can be shorter, e.g. on error */
-      *recv_len = transfer->actual_length;
-      *recv_data = g_malloc(*recv_len);
-      memcpy(*recv_data, transfer->buffer, transfer->actual_length);
+      ssm_data->recv_size = transfer->actual_length;
+      ssm_data->recv_data = g_malloc(ssm_data->recv_size);
+      memcpy(ssm_data->recv_data, transfer->buffer, transfer->actual_length);
    }
 
+#ifdef COMMUNICATION_DEBUG
    fp_dbg("  raw unwrapped resp:");
-   fp_dbg_large_hex(*recv_data, *recv_len);
+   fp_dbg_large_hex(ssm_data->recv_data, ssm_data->recv_size);
+   fp_dbg("<--- 0x%x = %s", ssm_data->cmd_id, cmd_id_to_str(ssm_data->cmd_id));
+#endif
 
-   status = FP_READ_UINT16_LE(*recv_data);
-   if ((check_status) && !sensor_status_is_result_ok(status)) {
-      *error = set_and_report_error(
-          FP_DEVICE_ERROR_PROTO, "Device responded with status: 0x%04x aka %s",
-          status, sensor_status_to_string(status));
-      ret = FALSE;
+   /* stauts is not initialized to 0 as 0 marks success */
+   guint16 status = 0xffff;
+   status = FP_READ_UINT16_LE(ssm_data->recv_data);
+   if ((ssm_data->check_status) && !sensor_status_is_result_ok(status)) {
+      fpi_ssm_mark_failed(
+          transfer->ssm,
+          set_and_report_error(FP_DEVICE_ERROR_PROTO,
+                               "Device responded with status: 0x%04x aka %s",
+                               status, sensor_status_to_string(status)));
+      return;
+   }
+
+   if (error != NULL) {
+      g_free(ssm_data->recv_data);
+      fpi_ssm_mark_failed(self->task_ssm, error);
+   } else {
+      (ssm_data->callback)(self, ssm_data->recv_data, ssm_data->recv_size,
+                           NULL);
+   }
+   fpi_ssm_mark_completed(transfer->ssm);
+   return;
+error:
+   fpi_ssm_mark_failed(transfer->ssm, error);
+}
+
+static void cmd_state_send(FpiDeviceSynaTudorMoc *self,
+                           cmd_ssm_data_t *ssm_data)
+{
+   g_autofree guint8 *wrapped_data = NULL;
+   gsize wrapped_size = 0;
+
+#ifdef COMMUNICATION_DEBUG
+   /* some debug info */
+   fp_dbg("---> 0x%x = %s", ssm_data->cmd_id, cmd_id_to_str(ssm_data->cmd_id));
+   fp_dbg("  expected recv size: %lu", ssm_data->expected_recv_size);
+   fp_dbg("  raw unwrapped req:");
+   fp_dbg_large_hex(ssm_data->send_data, ssm_data->send_size);
+#endif
+
+   /* Wrap command if in TLS session */
+   if (self->tls.established) {
+      GError *error = NULL;
+      if (!tls_wrap(self, ssm_data->send_data, ssm_data->send_size,
+                    &wrapped_data, &wrapped_size, &error)) {
+         fpi_ssm_mark_failed(self->cmd_ssm, error);
+         return;
+      } else {
+         g_free(ssm_data->send_data);
+      }
+      /* TLS response is expected to be larger */
+      ssm_data->expected_recv_size += WRAP_RESPONSE_ADDITIONAL_SIZE;
+   } else {
+      wrapped_data = ssm_data->send_data;
+      wrapped_size = ssm_data->send_size;
+   }
+
+#ifdef COMMUNICATION_DEBUG
+   fp_dbg("  raw wrapped req:");
+   fp_dbg_large_hex(wrapped_data, wrapped_size);
+#endif
+
+   /* Send out the command */
+   g_assert(self->cmd_transfer == NULL);
+   self->cmd_transfer = fpi_usb_transfer_new(FP_DEVICE(self));
+   self->cmd_transfer->short_is_error = FALSE;
+   fpi_usb_transfer_fill_bulk(self->cmd_transfer, USB_EP_REQUEST, wrapped_size);
+   memcpy(self->cmd_transfer->buffer, wrapped_data, wrapped_size);
+
+   self->cmd_transfer->ssm = self->cmd_ssm;
+   fpi_usb_transfer_submit(self->cmd_transfer, USB_TRANSFER_TIMEOUT_MS, NULL,
+                           fpi_ssm_usb_transfer_cb, NULL);
+   self->cmd_transfer = NULL;
+}
+
+static void cmd_run_state(FpiSsm *ssm, FpDevice *dev)
+{
+   FpiDeviceSynaTudorMoc *self = FPI_DEVICE_SYNA_TUDOR_MOC(dev);
+   cmd_ssm_data_t *ssm_data = fpi_ssm_get_data(ssm);
+
+   switch (fpi_ssm_get_cur_state(ssm)) {
+   case CMD_STATE_SEND:
+      cmd_state_send(self, ssm_data);
+      break;
+
+   case CMD_STATE_GET_RESP:
+      self->cmd_transfer = fpi_usb_transfer_new(dev);
+      self->cmd_transfer->ssm = ssm;
+      fpi_usb_transfer_fill_bulk(self->cmd_transfer, USB_EP_REPLY,
+                                 ssm_data->expected_recv_size);
+      fpi_usb_transfer_submit(self->cmd_transfer, USB_TRANSFER_TIMEOUT_MS, NULL,
+                              cmd_receive_cb, fpi_ssm_get_data(ssm));
+      self->cmd_transfer = NULL;
+      break;
+   }
+}
+
+static void cmd_ssm_done(FpiSsm *ssm, FpDevice *dev, GError *error)
+{
+   FpiDeviceSynaTudorMoc *self = FPI_DEVICE_SYNA_TUDOR_MOC(dev);
+
+   if (error != NULL) {
+      FP_ERR_FANCY("Cmd transfer resulted in error: %s", error->message);
+      fpi_ssm_mark_failed(self->task_ssm, error);
+      return;
+   }
+
+   self->cmd_ssm = NULL;
+   fpi_device_critical_leave(dev);
+}
+
+void synaptics_secure_connect(FpiDeviceSynaTudorMoc *self, guint8 *send_data,
+                              const gsize send_size,
+                              const gsize expected_recv_size,
+                              const gboolean check_status,
+                              const CmdCallback callback)
+{
+   /* Start of a new command, create the state machine. */
+   g_assert(callback != NULL);
+   g_assert(expected_recv_size > 0);
+   g_assert(self->cmd_transfer == NULL);
+
+   self->cmd_ssm = fpi_ssm_new_full(FP_DEVICE(self), cmd_run_state,
+                                    CMD_NUM_STATES, CMD_NUM_STATES, "Cmd");
+
+   cmd_ssm_data_t *data = g_new0(cmd_ssm_data_t, 1);
+   data->send_data = send_data;
+   data->send_size = send_size;
+   data->expected_recv_size = expected_recv_size;
+   data->callback = callback;
+   data->check_status = check_status;
+   data->cmd_id = send_data[0];
+   fpi_ssm_set_data(self->cmd_ssm, data, g_free);
+
+   fpi_device_critical_enter(FP_DEVICE(self));
+   fpi_ssm_start(self->cmd_ssm, cmd_ssm_done);
+}
+
+static void recv_no_operation(FpiDeviceSynaTudorMoc *self, guint8 *recv_data,
+                              gsize recv_size, GError *error)
+{
+
+   if (error != NULL) {
       goto error;
    }
+   g_assert(recv_data != NULL);
 
 error:
-   if (!ret && *recv_data != NULL) {
-      g_free(*recv_data);
-      *recv_data = NULL;
+   g_free(recv_data);
+
+   if (error != NULL) {
+      fpi_ssm_mark_failed(self->task_ssm, error);
+   } else {
+      fpi_ssm_next_state(self->task_ssm);
    }
-   return ret;
 }
 
-gboolean synaptics_secure_connect(FpiDeviceSynaTudorMoc *self,
-                                  guint8 *send_data, gsize send_len,
-                                  guint8 **recv_data, gsize *recv_len,
-                                  const gboolean check_status, GError **error)
-{
-   gboolean ret = TRUE;
-
-   guint8 cmd_id = send_data[0];
-
-   fp_dbg("---> 0x%x = %s", cmd_id, cmd_id_to_str(cmd_id));
-   BOOL_CHECK(synaptics_secure_connect_send(self, send_data, send_len, error));
-   BOOL_CHECK(synaptics_secure_connect_recv(self, recv_data, recv_len,
-                                            check_status, error));
-   fp_dbg("<--- 0x%x = %s", cmd_id, cmd_id_to_str(cmd_id));
-
-error:
-   return ret;
-}
-
-/* VCSFW_CMD_GET_VERSION =================================================== */
+/* VCSFW_CMD_GET_VERSION async ============================================= */
 
 static gboolean parse_get_version(FpiByteReader *reader, mis_version_t *result)
 {
@@ -448,43 +566,174 @@ static void fp_dbg_get_version(mis_version_t *get_version)
    fp_dbg("\tProvision state: %d", get_version->provision_state);
 }
 
-gboolean send_get_version(FpiDeviceSynaTudorMoc *self, mis_version_t *resp,
-                          GError **error)
+static void recv_get_version(FpiDeviceSynaTudorMoc *self, guint8 *recv_data,
+                             gsize recv_size, GError *error)
 {
-   gboolean ret = TRUE;
-
-   const gsize send_size = 1;
-   gsize recv_size = 38;
-
-   g_autofree guint8 *recv_data = NULL;
-   guint8 send_data[send_size];
-   send_data[0] = VCSFW_CMD_GET_VERSION;
-
-   BOOL_CHECK(synaptics_secure_connect(self, send_data, send_size, &recv_data,
-                                       &recv_size, TRUE, error));
-
+   if (error != NULL) {
+      goto error;
+   }
    g_assert(recv_data != NULL);
 
    FpiByteReader reader;
    fpi_byte_reader_init(&reader, recv_data, recv_size);
-
    gboolean read_ok = TRUE;
    /* no need to read status again */
    read_ok &= fpi_byte_reader_skip(&reader, SENSOR_FW_REPLY_STATUS_HEADER_LEN);
-   read_ok &= parse_get_version(&reader, resp);
+   read_ok &= parse_get_version(&reader, &self->mis_version);
+   READ_OK_CHECK_ASYNC(self->task_ssm, read_ok);
 
-   if (!read_ok) {
-      *error = set_and_report_error(
-          FP_DEVICE_ERROR_PROTO,
-          "Transfer in version response to version query was too short");
-      ret = FALSE;
+   fp_dbg_get_version(&self->mis_version);
+
+error:
+   g_free(recv_data);
+
+   if (error != NULL) {
+      fpi_ssm_mark_failed(self->task_ssm, error);
+   } else {
+      fpi_ssm_next_state(self->task_ssm);
+   }
+}
+
+/* Sends a VCSFW_CMD_GET_VERSION command and stores result to self */
+void send_get_version(FpiDeviceSynaTudorMoc *self)
+{
+   const guint send_size = 1;
+   const guint expected_recv_size = 38;
+   guint8 *send_data = g_malloc(send_size);
+   send_data[0] = VCSFW_CMD_GET_VERSION;
+
+   synaptics_secure_connect(self, send_data, send_size, expected_recv_size,
+                            TRUE, recv_get_version);
+}
+
+/* VCSFW_CMD_SEND_FRAME_ACQ async=========================================== */
+
+static void recv_frame_acq(FpiDeviceSynaTudorMoc *self, guint8 *recv_data,
+                           gsize recv_size, GError *error)
+{
+   if (error != NULL) {
+      goto error;
+   }
+   g_assert(recv_data != NULL);
+
+   FpiByteReader reader;
+   fpi_byte_reader_init(&reader, recv_data, recv_size);
+   gboolean read_ok = TRUE;
+   guint16 status;
+   read_ok &= fpi_byte_reader_get_uint16_le(&reader, &status);
+   READ_OK_CHECK_ASYNC(self->task_ssm, read_ok);
+
+   status = FP_READ_UINT16_LE(recv_data);
+   if (status == RESPONSE_PROCESSING_FRAME) {
+      fp_dbg("received status RESPONSE_PROCESSING_FRAME, retrying");
+      if (self->frame_acq_config.retries_left <= 0) {
+         error = set_and_report_error(FP_DEVICE_ERROR_PROTO,
+                                      "no retries left for frame acq");
+         return;
+      } else {
+         self->frame_acq_config.retries_left -= 1;
+         send_frame_acq(self, self->frame_acq_config.last_capture_flags);
+         return;
+      }
+   } else if (!sensor_status_is_result_ok(status)) {
+      error = set_and_report_error(FP_DEVICE_ERROR_PROTO,
+                                   "Received status 0x%04x aka %s", status,
+                                   sensor_status_to_string(status));
       goto error;
    }
 
-   fp_dbg_get_version(resp);
-
 error:
-   return ret;
+   g_free(recv_data);
+
+   if (error != NULL) {
+      fpi_ssm_mark_failed(self->task_ssm, error);
+   } else {
+      fpi_ssm_next_state(self->task_ssm);
+   }
+}
+
+void send_frame_acq(FpiDeviceSynaTudorMoc *self, capture_flags_t capture_flags)
+{
+   const guint send_size = 17;
+   const guint expected_recv_size = 2;
+
+   const guint32 num_frames = 1;
+   // TODO: consider a better place for init
+   self->frame_acq_config.num_retries = 3;
+
+   FpiByteWriter writer;
+   fpi_byte_writer_init_with_size(&writer, send_size, FALSE);
+
+   gboolean written = TRUE;
+   /* As there were only two capture flags used, I simplified the request logic
+    * a bit */
+   written &= fpi_byte_writer_put_uint8(&writer, VCSFW_CMD_FRAME_ACQ); // +0
+   /* I was unable to find the meaning of these values, so I did not abstract
+    * them into constants */
+   if (capture_flags == CAPTURE_FLAGS_AUTH) {
+      written &= fpi_byte_writer_put_uint32_le(&writer, 4116); // +1
+   } else { // CAPTURE_FLAGS_ENROLL
+      written &= fpi_byte_writer_put_uint32_le(&writer, 12); // +1
+   }
+   written &= fpi_byte_writer_put_uint32_le(&writer, num_frames); // +5
+   written &= fpi_byte_writer_put_uint16_le(&writer, 1);          // +9
+   written &= fpi_byte_writer_put_uint8(&writer, 0);              // +11
+   written &= fpi_byte_writer_put_uint8(&writer, 8);              // +13
+   written &= fpi_byte_writer_put_uint8(&writer, 1);              // +14
+   written &= fpi_byte_writer_put_uint8(&writer, 1);              // +15
+   written &= fpi_byte_writer_put_uint8(&writer, 1);              // +16
+   written &= fpi_byte_writer_put_uint8(&writer, 0);              // +17
+   CHECK_WRITER(self, self->task_ssm, &writer, written);
+
+   guint8 *send_data = fpi_byte_writer_reset_and_get_data(&writer);
+
+   self->frame_acq_config.last_capture_flags = capture_flags;
+
+   /* Do not check the response status as there is a status on which we
+    * should send the command again */
+   synaptics_secure_connect(self, send_data, send_size, expected_recv_size,
+                            FALSE, recv_frame_acq);
+}
+/* VCSFW_CMD_FRAME_FINISH async============================================= */
+
+void send_frame_finish(FpiDeviceSynaTudorMoc *self)
+{
+
+   const guint send_size = 1;
+   const guint expected_recv_size = 2;
+   guint8 *send_data = g_malloc(send_size);
+   send_data[0] = VCSFW_CMD_FRAME_FINISH;
+   synaptics_secure_connect(self, send_data, send_size, expected_recv_size,
+                            TRUE, recv_no_operation);
+}
+
+/* VCSFW_CMD_ENROLL async ================================================== */
+
+void send_enroll_start(FpiDeviceSynaTudorMoc *self)
+{
+   /* Unused parameters of original function*/
+   const gsize nonce_buffer_size = 0;
+
+   const guint send_size = 13;
+   const guint expected_recv_size = 5;
+
+   FpiByteWriter writer;
+   fpi_byte_writer_init_with_size(&writer, send_size, TRUE);
+
+   gboolean written = TRUE;
+   written &= fpi_byte_writer_put_uint8(&writer, VCSFW_CMD_ENROLL);        // +0
+   written &= fpi_byte_writer_put_uint32_le(&writer, ENROLL_SUBCMD_START); // +1
+   /* deduced name */
+   const guint32 send_nonce_buffer = nonce_buffer_size != 0;
+   written &= fpi_byte_writer_put_uint32_le(&writer, send_nonce_buffer); // +5
+   written &= fpi_byte_writer_put_uint32_le(&writer, nonce_buffer_size); // +9
+   CHECK_WRITER(self, self->task_ssm, &writer, written);
+
+   guint8 *send_data = fpi_byte_writer_reset_and_get_data(&writer);
+
+   /* no need to receive nonce buffer as it it not used here */
+   synaptics_secure_connect(self, send_data, send_size, expected_recv_size,
+                            TRUE, recv_no_operation);
 }
 
 static gboolean parse_enroll_stats(FpiByteReader *reader,
@@ -526,687 +775,6 @@ static void fp_dbg_enroll_stats(enroll_stats_t *enroll_stats)
    fp_dbg("\tenroll status: %d", enroll_stats->status);
    fp_dbg("\tsmt like has fixed pattern: %d",
           enroll_stats->smt_like_has_fixed_pattern);
-}
-gboolean serialize_enrollment_data(FpiDeviceSynaTudorMoc *self,
-                                   enrollment_t *enrollment,
-                                   guint8 **serialized, gsize *serialized_size,
-                                   GError **error)
-{
-   gboolean ret = TRUE;
-
-   guint container_cnt = 3;
-   container_item_t container[3];
-
-   container[0].id = ENROLL_TAG_TEMPLATE_ID;
-   container[0].data = enrollment->template_id;
-   container[0].data_size = DB2_ID_SIZE;
-
-   container[1].id = ENROLL_TAG_USER_ID;
-   container[1].data = enrollment->user_id;
-   container[1].data_size = sizeof(user_id_t);
-
-   container[2].id = ENROLL_TAG_FINGER_ID;
-   container[2].data = &enrollment->finger_id;
-   container[2].data_size = sizeof(enrollment->finger_id);
-
-   fp_dbg("Adding enrollment with:");
-   fp_dbg("\ttemplate ID:");
-   fp_dbg_large_hex(enrollment->template_id, DB2_ID_SIZE);
-   fp_dbg("\tuser ID:");
-   fp_dbg_large_hex(enrollment->user_id, sizeof(user_id_t));
-   fp_dbg("\tfinger ID: %u", enrollment->finger_id);
-
-   BOOL_CHECK(serialize_container(container, container_cnt, serialized,
-                                  serialized_size));
-
-   fp_dbg("serialized container:");
-   fp_dbg_large_hex(*serialized, *serialized_size);
-
-error:
-   return ret;
-}
-
-/* VCSFW_CMD_DB2_INFO ====================================================== */
-
-static gboolean parse_db2_info(FpiByteReader *reader, db2_info_t *db2_info)
-{
-   gboolean read_ok = TRUE;
-
-   read_ok &= fpi_byte_reader_get_uint16_le(reader, &db2_info->dummy);
-   read_ok &= fpi_byte_reader_get_uint16_le(reader, &db2_info->version_major);
-   read_ok &= fpi_byte_reader_get_uint16_le(reader, &db2_info->version_minor);
-   read_ok &=
-       fpi_byte_reader_get_uint32_le(reader, &db2_info->partition_version);
-
-   read_ok &= fpi_byte_reader_get_uint16_le(reader, &db2_info->uop_length);
-   read_ok &= fpi_byte_reader_get_uint16_le(reader, &db2_info->top_length);
-   read_ok &= fpi_byte_reader_get_uint16_le(reader, &db2_info->pop_length);
-   read_ok &=
-       fpi_byte_reader_get_uint16_le(reader, &db2_info->template_object_size);
-   read_ok &= fpi_byte_reader_get_uint16_le(
-       reader, &db2_info->payload_object_slot_size);
-   read_ok &=
-       fpi_byte_reader_get_uint16_le(reader, &db2_info->num_current_users);
-   read_ok &=
-       fpi_byte_reader_get_uint16_le(reader, &db2_info->num_deleted_users);
-   read_ok &= fpi_byte_reader_get_uint16_le(
-       reader, &db2_info->num_available_user_slots);
-   read_ok &=
-       fpi_byte_reader_get_uint16_le(reader, &db2_info->num_current_templates);
-   read_ok &=
-       fpi_byte_reader_get_uint16_le(reader, &db2_info->num_deleted_templates);
-   read_ok &= fpi_byte_reader_get_uint16_le(
-       reader, &db2_info->num_available_template_slots);
-   read_ok &=
-       fpi_byte_reader_get_uint16_le(reader, &db2_info->num_current_payloads);
-   read_ok &=
-       fpi_byte_reader_get_uint16_le(reader, &db2_info->num_deleted_payloads);
-   read_ok &= fpi_byte_reader_get_uint16_le(
-       reader, &db2_info->num_available_payload_slots);
-
-   return read_ok;
-}
-
-static void fp_dbg_db2_info(db2_info_t *db2_info)
-{
-   fp_dbg("received DB2 info:");
-   fp_dbg("\tdummy: %d", db2_info->dummy);
-   fp_dbg("\tversion_major: %d", db2_info->version_major);
-   fp_dbg("\tversion_minor: %d", db2_info->version_minor);
-   fp_dbg("\tpartition_version: %d", db2_info->partition_version);
-   fp_dbg("\tuop_length: %d", db2_info->uop_length);
-   fp_dbg("\ttop_length: %d", db2_info->top_length);
-   fp_dbg("\tpop_length: %d", db2_info->pop_length);
-   fp_dbg("\ttemplate_object_size: %d", db2_info->template_object_size);
-   fp_dbg("\tpayload_object_slot_size: %d", db2_info->payload_object_slot_size);
-   fp_dbg("\tnum_current_users: %d", db2_info->num_current_users);
-   fp_dbg("\tnum_deleted_users: %d", db2_info->num_deleted_users);
-   fp_dbg("\tnum_available_user_slots: %d", db2_info->num_available_user_slots);
-   fp_dbg("\tnum_current_templates: %d", db2_info->num_current_templates);
-   fp_dbg("\tnum_deleted_templates: %d", db2_info->num_deleted_templates);
-   fp_dbg("\tnum_available_template_slots: %d ",
-          db2_info->num_available_template_slots);
-   fp_dbg("\tnum_current_payloads: %d ", db2_info->num_current_payloads);
-   fp_dbg("\tnum_deleted_payloads: %d ", db2_info->num_deleted_payloads);
-   fp_dbg("\tnum_available_payload_slots: %d",
-          db2_info->num_available_payload_slots);
-}
-
-static gsize get_object_list_recv_size(FpiDeviceSynaTudorMoc *self,
-                                       obj_type_t obj_type)
-{
-   switch (obj_type) {
-   case OBJ_TYPE_USERS:
-      return 4 + 16 * self->storage.num_current_users;
-      break;
-   case OBJ_TYPE_TEMPLATES:
-      return 4 + 16 * self->storage.num_current_templates;
-      break;
-   case OBJ_TYPE_PAYLOADS:
-      return 4 + 16 * self->storage.num_current_payloads;
-      break;
-   }
-
-   return 0;
-}
-
-/* ========================================================================= */
-
-/*
- * Sends a get_version command to force the sensor to close its TLS session
- * -> error 0x315 is expected (its real name is not known) */
-gboolean send_cmd_to_force_close_sensor_tls_session(FpiDeviceSynaTudorMoc *self,
-                                                    GError **error)
-{
-   gboolean ret = TRUE;
-
-   /* deduced name */
-   const guint16 unclosed_tls_session_status = 0x315;
-
-   const gsize send_size = 1;
-   /* we may get a TLS alert message, so increase the recv_size accordingly */
-   gsize recv_size = 38 + WRAP_RESPONSE_ADDITIONAL_SIZE;
-
-   g_autofree guint8 *recv_data = NULL;
-   guint8 send_data[send_size];
-   send_data[0] = VCSFW_CMD_GET_VERSION;
-
-   BOOL_CHECK(synaptics_secure_connect(self, send_data, send_size, &recv_data,
-                                       &recv_size, FALSE, error));
-
-   g_assert(recv_data != NULL);
-
-   FpiByteReader reader;
-   fpi_byte_reader_init(&reader, recv_data, recv_size);
-
-   if (recv_size < 2) {
-      *error =
-          set_and_report_error(FP_DEVICE_ERROR_PROTO,
-                               "Response to get_version command was too short");
-      ret = FALSE;
-      goto error;
-   }
-
-   guint16 status = FP_READ_UINT16_LE(recv_data);
-   if (sensor_status_is_result_ok(status)) {
-      fp_dbg("TLS force close - sensor was not in TLS session");
-   } else if (status == unclosed_tls_session_status) {
-      fp_dbg("TLS force close - sensor was in TLS status");
-   } else {
-      *error = set_and_report_error(
-          FP_DEVICE_ERROR_PROTO, "Device responded with error: 0x%04x aka %s",
-          status, sensor_status_to_string(status));
-   }
-
-error:
-   return ret;
-}
-
-static gboolean write_dft(FpiDeviceSynaTudorMoc *self, guint8 *data,
-                          gsize data_size, GError **error)
-{
-   gboolean ret = TRUE;
-
-   fp_dbg("---> DFT");
-   fp_dbg_large_hex(data, data_size);
-
-   /* Send data */
-   g_autoptr(FpiUsbTransfer) transfer = fpi_usb_transfer_new(FP_DEVICE(self));
-   fpi_usb_transfer_fill_control(
-       transfer, G_USB_DEVICE_DIRECTION_HOST_TO_DEVICE,
-       G_USB_DEVICE_REQUEST_TYPE_VENDOR, G_USB_DEVICE_RECIPIENT_DEVICE,
-       REQUEST_DFT_WRITE, 0, 0, data_size);
-
-   transfer->short_is_error = FALSE;
-   memcpy(transfer->buffer, data, data_size);
-
-   BOOL_CHECK_WITH_REPORT(
-       fpi_usb_transfer_submit_sync(transfer, USB_TRANSFER_TIMEOUT_MS, error));
-
-error:
-   return ret;
-}
-
-/* Bootloader functions ==================================================== */
-
-gboolean sensor_is_in_bootloader_mode(FpiDeviceSynaTudorMoc *self)
-{
-   return self->mis_version.product_id == PRODUCT_ID_BOOTLOADER_1 ||
-          self->mis_version.product_id == PRODUCT_ID_BOOTLOADER_2;
-}
-
-static gboolean send_bootloader_mode_exit(FpiDeviceSynaTudorMoc *self,
-                                          GError **error)
-{
-   gboolean ret = TRUE;
-
-   fp_dbg("Exiting bootloader mode");
-
-   guint8 to_send[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-   BOOL_CHECK(write_dft(self, to_send, sizeof(to_send), error));
-
-   g_usb_device_reset(fpi_device_get_usb_device(FP_DEVICE(self)), error);
-
-error:
-   return ret;
-}
-
-/* left here for testing of bootloader_mode_exit */
-static gboolean send_bootloader_mode_enter(FpiDeviceSynaTudorMoc *self,
-                                           GError **error)
-{
-   gboolean ret = TRUE;
-
-   fp_dbg("Entering bootloader mode");
-
-   guint8 to_send[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00};
-   BOOL_CHECK(write_dft(self, to_send, sizeof(to_send), error));
-   g_usb_device_reset(fpi_device_get_usb_device(FP_DEVICE(self)), error);
-
-error:
-   return ret;
-}
-
-gboolean exit_bootloader_mode(FpiDeviceSynaTudorMoc *self, GError **error)
-{
-   gboolean ret = TRUE;
-
-   BOOL_CHECK(send_bootloader_mode_exit(self, error));
-   /* update MiS version data which contain if sensor is in bootloader mode */
-   BOOL_CHECK(send_get_version(self, &self->mis_version, error));
-
-   if (sensor_is_in_bootloader_mode(self)) {
-      *error = set_and_report_error(
-          FP_DEVICE_ERROR_PROTO, "Unable to get sensor out of bootloader mode, "
-                                 "it may not have a valid firmware");
-      ret = FALSE;
-   }
-
-error:
-   return ret;
-}
-
-/* VCSFW_CMD_PAIR ========================================================== */
-
-gboolean send_pair(FpiDeviceSynaTudorMoc *self,
-                   const guint8 *send_host_cert_bytes, GError **error)
-{
-   g_return_val_if_fail(send_host_cert_bytes != NULL, FALSE);
-
-   gboolean ret = TRUE;
-
-   const gsize send_len = 1 + CERTIFICATE_SIZE;
-   gsize recv_len = 802; /* 2 * CERTIFICATE_SIZE + status_header_len */
-
-   g_autofree guint8 *recv_data = NULL;
-   g_autofree guint8 *to_send = g_malloc(send_len);
-
-   to_send[0] = VCSFW_CMD_PAIR;
-   memcpy(&to_send[1], send_host_cert_bytes, CERTIFICATE_SIZE);
-
-   BOOL_CHECK(synaptics_secure_connect(self, to_send, send_len, &recv_data,
-                                       &recv_len, TRUE, error));
-
-   FpiByteReader reader;
-   fpi_byte_reader_init(&reader, recv_data, recv_len);
-   gboolean read_ok = TRUE;
-   /* no need to read status again */
-   read_ok &= fpi_byte_reader_skip(&reader, SENSOR_FW_REPLY_STATUS_HEADER_LEN);
-   const guint8 *recv_host_cert_bytes = NULL;
-   read_ok &= fpi_byte_reader_get_data(&reader, CERTIFICATE_SIZE,
-                                       &recv_host_cert_bytes);
-   const guint8 *sensor_cert_bytes = NULL;
-   read_ok &=
-       fpi_byte_reader_get_data(&reader, CERTIFICATE_SIZE, &sensor_cert_bytes);
-   READ_OK_CHECK(read_ok);
-
-   BOOL_CHECK(parse_certificate(recv_host_cert_bytes, CERTIFICATE_SIZE,
-                                &self->pairing_data.host_cert));
-   BOOL_CHECK(parse_certificate(sensor_cert_bytes, CERTIFICATE_SIZE,
-                                &self->pairing_data.sensor_cert));
-
-   if (self->pairing_data.private_key_initialized) {
-      self->pairing_data.present = TRUE;
-   } else {
-      *error = set_and_report_error(
-          FP_DEVICE_ERROR_GENERAL,
-          "Private key is not initialized when it should be");
-      ret = FALSE;
-   }
-
-error:
-   return ret;
-}
-
-/* Async cmd send ========================================================== */
-
-typedef enum {
-   CMD_STATE_SEND,
-   CMD_STATE_GET_RESP,
-   CMD_STATE_RESTART,
-   CMD_NUM_STATES,
-} cmd_state_t;
-
-static void cmd_receive_cb(FpiUsbTransfer *transfer, FpDevice *device,
-                           gpointer user_data, GError *error)
-{
-   FpiDeviceSynaTudorMoc *self = FPI_DEVICE_SYNA_TUDOR_MOC(device);
-   cmd_ssm_data_t *ssm_data = (cmd_ssm_data_t *)user_data;
-   const int status_header_len = 2;
-
-   if (error != NULL) {
-      /* NOTE: assumes timeout should never happen for receiving. */
-      fpi_ssm_mark_failed(transfer->ssm, error);
-      return;
-   }
-
-   /* some debug output */
-   guint8 cmd_id = ssm_data->send_data[0];
-   fp_dbg("  Transfer: length: %lu, actual_length: %lu", transfer->length,
-          transfer->actual_length);
-   fp_dbg("  raw wrapped resp:");
-   fp_dbg_large_hex(transfer->buffer, transfer->actual_length);
-
-   /* Unwrap command if in TLS session */
-   if (self->tls.established && transfer->actual_length != status_header_len) {
-      // FIXME: error handling
-      tls_unwrap(self, transfer->buffer, transfer->actual_length,
-                 &ssm_data->recv_data, &ssm_data->recv_size, &error);
-   } else {
-      /* Response can be shorter, e.g. on error */
-      ssm_data->recv_size = transfer->actual_length;
-      ssm_data->recv_data = g_malloc(ssm_data->recv_size);
-      memcpy(ssm_data->recv_data, transfer->buffer, transfer->actual_length);
-   }
-
-#ifdef COMMUNICATION_DEBUG
-   fp_dbg("  raw unwrapped resp:");
-   fp_dbg_large_hex(ssm_data->recv_data, ssm_data->recv_size);
-   fp_dbg("<--- 0x%x = %s", cmd_id, cmd_id_to_str(cmd_id));
-#endif
-
-   /* stauts is not initialized to 0 as 0 marks success */
-   guint16 status = 0xffff;
-   status = FP_READ_UINT16_LE(ssm_data->recv_data);
-   if ((ssm_data->check_status) && !sensor_status_is_result_ok(status)) {
-      fpi_ssm_mark_failed(
-          transfer->ssm,
-          set_and_report_error(FP_DEVICE_ERROR_PROTO,
-                               "Device responded with status: 0x%04x aka %s",
-                               status, sensor_status_to_string(status)));
-      return;
-   }
-
-   if (ssm_data->callback != NULL) {
-      (ssm_data->callback)(self, ssm_data->recv_data, ssm_data->recv_size,
-                           NULL);
-   }
-
-   fpi_ssm_mark_completed(transfer->ssm);
-}
-
-static void cmd_state_send(FpiDeviceSynaTudorMoc *self,
-                           cmd_ssm_data_t *ssm_data)
-{
-   g_autofree guint8 *wrapped_data = NULL;
-   gsize wrapped_size = 0;
-
-   /* Wrap command if in TLS session */
-   if (self->tls.established) {
-      GError *error = NULL;
-      if (!tls_wrap(self, ssm_data->send_data, ssm_data->send_size,
-                    &wrapped_data, &wrapped_size, &error)) {
-         fpi_ssm_mark_failed(self->cmd_ssm, error);
-         return;
-      }
-      /* TLS response is expected to be larger */
-      ssm_data->expected_recv_size += WRAP_RESPONSE_ADDITIONAL_SIZE;
-   } else {
-      wrapped_data = ssm_data->send_data;
-      wrapped_size = ssm_data->send_size;
-   }
-
-#ifdef COMMUNICATION_DEBUG
-   /* some debug info */
-   guint8 cmd_id = ssm_data->send_data[0];
-   fp_dbg("---> 0x%x = %s", cmd_id, cmd_id_to_str(cmd_id));
-   fp_dbg("  raw unwrapped req:");
-   fp_dbg_large_hex(ssm_data->send_data, ssm_data->send_size);
-   fp_dbg("  raw wrapped req:");
-   fp_dbg_large_hex(wrapped_data, wrapped_size);
-   fp_dbg("  expected recv size: %lu", ssm_data->expected_recv_size);
-#endif
-
-   /* Send out the command */
-   g_assert(self->cmd_transfer == NULL);
-   self->cmd_transfer = fpi_usb_transfer_new(FP_DEVICE(self));
-   self->cmd_transfer->short_is_error = FALSE;
-   fpi_usb_transfer_fill_bulk(self->cmd_transfer, USB_EP_REQUEST, wrapped_size);
-   memcpy(self->cmd_transfer->buffer, wrapped_data, wrapped_size);
-
-   self->cmd_transfer->ssm = self->cmd_ssm;
-   fpi_usb_transfer_submit(self->cmd_transfer, USB_TRANSFER_TIMEOUT_MS, NULL,
-                           fpi_ssm_usb_transfer_cb, NULL);
-   self->cmd_transfer = NULL;
-}
-
-static void cmd_run_state(FpiSsm *ssm, FpDevice *dev)
-{
-   FpiDeviceSynaTudorMoc *self = FPI_DEVICE_SYNA_TUDOR_MOC(dev);
-   cmd_ssm_data_t *ssm_data = fpi_ssm_get_data(ssm);
-
-   switch (fpi_ssm_get_cur_state(ssm)) {
-   case CMD_STATE_SEND:
-      cmd_state_send(self, ssm_data);
-      break;
-
-   case CMD_STATE_GET_RESP:
-      self->cmd_transfer = fpi_usb_transfer_new(dev);
-      self->cmd_transfer->ssm = ssm;
-      fpi_usb_transfer_fill_bulk(self->cmd_transfer, USB_EP_REPLY,
-                                 ssm_data->expected_recv_size);
-      fpi_usb_transfer_submit(self->cmd_transfer, USB_TRANSFER_TIMEOUT_MS, NULL,
-                              cmd_receive_cb, fpi_ssm_get_data(ssm));
-      self->cmd_transfer = NULL;
-      break;
-
-   case CMD_STATE_RESTART:
-      fpi_ssm_jump_to_state(ssm, CMD_STATE_SEND);
-      break;
-   }
-}
-
-static void cmd_ssm_done(FpiSsm *ssm, FpDevice *dev, GError *error)
-{
-   FpiDeviceSynaTudorMoc *self = FPI_DEVICE_SYNA_TUDOR_MOC(dev);
-
-   if (error != NULL) {
-      FP_ERR_FANCY("Cmd transfer resulted in error: %s", error->message);
-      fpi_ssm_mark_failed(self->task_ssm, error);
-      return;
-   }
-
-   self->cmd_ssm = NULL;
-
-   fpi_device_critical_leave(dev);
-
-   fpi_ssm_next_state(self->task_ssm);
-}
-
-static void free_cmd_ssm_data_t(cmd_ssm_data_t *ssm_data)
-{
-   g_free(ssm_data->send_data);
-   g_free(ssm_data);
-}
-
-void synaptics_secure_connect_async(FpiDeviceSynaTudorMoc *self,
-                                    guint8 *send_data, const gsize send_size,
-                                    const gsize expected_recv_size,
-                                    const gboolean check_status,
-                                    const CmdCallback callback)
-{
-   /* Start of a new command, create the state machine. */
-   g_assert(callback != NULL);
-   g_assert(expected_recv_size > 0);
-   g_assert(self->cmd_ssm == NULL);
-   g_assert(self->cmd_transfer == NULL);
-
-   self->cmd_ssm = fpi_ssm_new_full(FP_DEVICE(self), cmd_run_state,
-                                    CMD_NUM_STATES, CMD_NUM_STATES, "Cmd");
-
-   cmd_ssm_data_t *data = g_new0(cmd_ssm_data_t, 1);
-   data->send_data = send_data;
-   data->send_size = send_size;
-   data->expected_recv_size = expected_recv_size;
-   data->callback = callback;
-   data->check_status = check_status;
-   fpi_ssm_set_data(self->cmd_ssm, data, (GDestroyNotify)free_cmd_ssm_data_t);
-
-   fpi_device_critical_enter(FP_DEVICE(self));
-   fpi_ssm_start(self->cmd_ssm, cmd_ssm_done);
-}
-
-static void recv_no_operation(FpiDeviceSynaTudorMoc *self, guint8 *recv_data,
-                              gsize recv_size, GError *error)
-{
-
-   if (error != NULL) {
-      goto error;
-   }
-   g_assert(recv_data != NULL);
-
-   g_free(recv_data);
-
-   return;
-error:
-   fpi_ssm_mark_failed(self->task_ssm, error);
-}
-
-/* VCSFW_CMD_GET_VERSION async ============================================= */
-
-static void recv_get_version(FpiDeviceSynaTudorMoc *self, guint8 *recv_data,
-                             gsize recv_size, GError *error)
-{
-   if (error != NULL) {
-      goto error;
-   }
-   g_assert(recv_data != NULL);
-
-   FpiByteReader reader;
-   fpi_byte_reader_init(&reader, recv_data, recv_size);
-   gboolean read_ok = TRUE;
-   /* no need to read status again */
-   read_ok &= fpi_byte_reader_skip(&reader, SENSOR_FW_REPLY_STATUS_HEADER_LEN);
-   read_ok &= parse_get_version(&reader, &self->mis_version);
-   READ_OK_CHECK_ASYNC(self->task_ssm, read_ok);
-
-   fp_dbg_get_version(&self->mis_version);
-
-error:
-   if (error != NULL) {
-      fpi_ssm_mark_failed(self->task_ssm, error);
-   }
-   g_free(recv_data);
-}
-
-/* Sends a VCSFW_CMD_GET_VERSION command and stores result to self */
-void send_get_version_async(FpiDeviceSynaTudorMoc *self)
-{
-   const guint send_size = 1;
-   const guint expected_recv_size = 38;
-   guint8 *send_data = g_malloc(send_size);
-   send_data[0] = VCSFW_CMD_GET_VERSION;
-
-   synaptics_secure_connect_async(self, send_data, send_size,
-                                  expected_recv_size, TRUE, recv_get_version);
-}
-
-/* VCSFW_CMD_SEND_FRAME_ACQ async=========================================== */
-
-static void recv_frame_acq(FpiDeviceSynaTudorMoc *self, guint8 *recv_data,
-                           gsize recv_size, GError *error)
-{
-   if (error != NULL) {
-      goto error;
-   }
-   g_assert(recv_data != NULL);
-
-   FpiByteReader reader;
-   fpi_byte_reader_init(&reader, recv_data, recv_size);
-   gboolean read_ok = TRUE;
-   guint16 status;
-   read_ok &= fpi_byte_reader_get_uint16_le(&reader, &status);
-   READ_OK_CHECK_ASYNC(self->task_ssm, read_ok);
-
-   status = FP_READ_UINT16_LE(recv_data);
-   if (status == RESPONSE_PROCESSING_FRAME) {
-      fp_dbg("received status RESPONSE_PROCESSING_FRAME, retrying");
-      if (self->frame_acq_config.retries_left <= 0) {
-         error = set_and_report_error(FP_DEVICE_ERROR_PROTO,
-                                      "no retries left for frame acq");
-         return;
-      } else {
-         self->frame_acq_config.retries_left -= 1;
-         send_frame_acq_async(self, self->frame_acq_config.last_capture_flags);
-         return;
-      }
-   } else if (!sensor_status_is_result_ok(status)) {
-      error = set_and_report_error(FP_DEVICE_ERROR_PROTO,
-                                   "Received status 0x%04x aka %s", status,
-                                   sensor_status_to_string(status));
-      goto error;
-   }
-
-error:
-   if (error != NULL) {
-      fpi_ssm_mark_failed(self->task_ssm, error);
-   }
-   g_free(recv_data);
-}
-
-void send_frame_acq_async(FpiDeviceSynaTudorMoc *self,
-                          capture_flags_t capture_flags)
-{
-   const guint send_size = 17;
-   const guint expected_recv_size = 2;
-
-   const guint32 num_frames = 1;
-   // TODO: consider a better place for init
-   self->frame_acq_config.num_retries = 3;
-
-   FpiByteWriter writer;
-   fpi_byte_writer_init_with_size(&writer, send_size, FALSE);
-
-   gboolean written = TRUE;
-   /* As there were only two capture flags used, I simplified the request logic
-    * a bit */
-   written &= fpi_byte_writer_put_uint8(&writer, VCSFW_CMD_FRAME_ACQ); // +0
-   /* I was unable to find the meaning of these values, so I did not abstract
-    * them into constants */
-   if (capture_flags == CAPTURE_FLAGS_AUTH) {
-      written &= fpi_byte_writer_put_uint32_le(&writer, 4116); // +1
-   } else { // CAPTURE_FLAGS_ENROLL
-      written &= fpi_byte_writer_put_uint32_le(&writer, 12); // +1
-   }
-   written &= fpi_byte_writer_put_uint32_le(&writer, num_frames); // +5
-   written &= fpi_byte_writer_put_uint16_le(&writer, 1);          // +9
-   written &= fpi_byte_writer_put_uint8(&writer, 0);              // +11
-   written &= fpi_byte_writer_put_uint8(&writer, 8);              // +13
-   written &= fpi_byte_writer_put_uint8(&writer, 1);              // +14
-   written &= fpi_byte_writer_put_uint8(&writer, 1);              // +15
-   written &= fpi_byte_writer_put_uint8(&writer, 1);              // +16
-   written &= fpi_byte_writer_put_uint8(&writer, 0);              // +17
-   CHECK_WRITER(self, self->task_ssm, &writer, written);
-
-   guint8 *send_data = fpi_byte_writer_reset_and_get_data(&writer);
-
-   self->frame_acq_config.last_capture_flags = capture_flags;
-
-   /* Do not check the response status as there is a status on which we
-    * should send the command again */
-   synaptics_secure_connect_async(self, send_data, send_size,
-                                  expected_recv_size, FALSE, recv_frame_acq);
-}
-/* VCSFW_CMD_FRAME_FINISH async============================================= */
-
-void send_frame_finish_async(FpiDeviceSynaTudorMoc *self)
-{
-
-   const guint send_size = 1;
-   const guint expected_recv_size = 2;
-   guint8 *send_data = g_malloc(send_size);
-   send_data[0] = VCSFW_CMD_FRAME_FINISH;
-   synaptics_secure_connect_async(self, send_data, send_size,
-                                  expected_recv_size, TRUE, recv_no_operation);
-}
-
-/* VCSFW_CMD_ENROLL async ================================================== */
-
-void send_enroll_start_async(FpiDeviceSynaTudorMoc *self)
-{
-   /* Unused parameters of original function*/
-   const gsize nonce_buffer_size = 0;
-
-   const guint send_size = 13;
-   const guint expected_recv_size = 5;
-
-   FpiByteWriter writer;
-   fpi_byte_writer_init_with_size(&writer, send_size, TRUE);
-
-   gboolean written = TRUE;
-   written &= fpi_byte_writer_put_uint8(&writer, VCSFW_CMD_ENROLL);        // +0
-   written &= fpi_byte_writer_put_uint32_le(&writer, ENROLL_SUBCMD_START); // +1
-   /* deduced name */
-   const guint32 send_nonce_buffer = nonce_buffer_size != 0;
-   written &= fpi_byte_writer_put_uint32_le(&writer, send_nonce_buffer); // +5
-   written &= fpi_byte_writer_put_uint32_le(&writer, nonce_buffer_size); // +9
-   CHECK_WRITER(self, self->task_ssm, &writer, written);
-
-   guint8 *send_data = fpi_byte_writer_reset_and_get_data(&writer);
-
-   /* no need to receive nonce buffer as it it not used here */
-   synaptics_secure_connect_async(self, send_data, send_size,
-                                  expected_recv_size, TRUE, recv_no_operation);
 }
 
 static void recv_enroll_add_image(FpiDeviceSynaTudorMoc *self,
@@ -1252,13 +820,16 @@ static void recv_enroll_add_image(FpiDeviceSynaTudorMoc *self,
    }
 
 error:
+   g_free(recv_data);
+
    if (error != NULL) {
       fpi_ssm_mark_failed(self->task_ssm, error);
+   } else {
+      fpi_ssm_next_state(self->task_ssm);
    }
-   g_free(recv_data);
 }
 
-void send_enroll_add_image_async(FpiDeviceSynaTudorMoc *self)
+void send_enroll_add_image(FpiDeviceSynaTudorMoc *self)
 {
    const guint send_size = 5;
    const guint expected_recv_size = 82;
@@ -1274,14 +845,12 @@ void send_enroll_add_image_async(FpiDeviceSynaTudorMoc *self)
 
    guint8 *send_data = fpi_byte_writer_reset_and_get_data(&writer);
 
-   synaptics_secure_connect_async(self, send_data, send_size,
-                                  expected_recv_size, TRUE,
-                                  recv_enroll_add_image);
+   synaptics_secure_connect(self, send_data, send_size, expected_recv_size,
+                            TRUE, recv_enroll_add_image);
 }
 
-void send_enroll_commit_async(FpiDeviceSynaTudorMoc *self,
-                              guint8 *enroll_commit_data,
-                              gsize enroll_commit_data_size)
+void send_enroll_commit(FpiDeviceSynaTudorMoc *self, guint8 *enroll_commit_data,
+                        gsize enroll_commit_data_size)
 {
    const guint send_size = 13 + enroll_commit_data_size;
    const guint expected_recv_size = 2;
@@ -1303,11 +872,11 @@ void send_enroll_commit_async(FpiDeviceSynaTudorMoc *self,
 
    guint8 *send_data = fpi_byte_writer_reset_and_get_data(&writer);
 
-   synaptics_secure_connect_async(self, send_data, send_size,
-                                  expected_recv_size, TRUE, recv_no_operation);
+   synaptics_secure_connect(self, send_data, send_size, expected_recv_size,
+                            TRUE, recv_no_operation);
 }
 
-void send_enroll_finish_async(FpiDeviceSynaTudorMoc *self)
+void send_enroll_finish(FpiDeviceSynaTudorMoc *self)
 {
    const guint send_size = 5;
    const guint expected_recv_size = 2;
@@ -1323,8 +892,8 @@ void send_enroll_finish_async(FpiDeviceSynaTudorMoc *self)
 
    guint8 *send_data = fpi_byte_writer_reset_and_get_data(&writer);
 
-   synaptics_secure_connect_async(self, send_data, send_size,
-                                  expected_recv_size, TRUE, recv_no_operation);
+   synaptics_secure_connect(self, send_data, send_size, expected_recv_size,
+                            TRUE, recv_no_operation);
 }
 
 /* VCSFW_CMD_IDENTIFY_MATCH async ========================================== */
@@ -1402,15 +971,18 @@ static void recv_identify_match(FpiDeviceSynaTudorMoc *self, guint8 *recv_data,
    fp_dbg_enrollment(&match_result->matched_enrollment);
 
 error:
+   g_free(recv_data);
+
    if (error != NULL) {
       fpi_ssm_mark_failed(self->task_ssm, error);
+   } else {
+      fpi_ssm_next_state(self->task_ssm);
    }
-   g_free(recv_data);
 }
 
-void send_identify_match_async(FpiDeviceSynaTudorMoc *self,
-                               db2_id_t *template_ids_to_match,
-                               gsize template_ids_cnt)
+void send_identify_match(FpiDeviceSynaTudorMoc *self,
+                         db2_id_t *template_ids_to_match,
+                         gsize template_ids_cnt)
 {
    /* we will get operation denier error if TLS is not established */
    g_assert(self->tls.established);
@@ -1451,9 +1023,8 @@ void send_identify_match_async(FpiDeviceSynaTudorMoc *self,
 
    guint8 *send_data = fpi_byte_writer_reset_and_get_data(&writer);
 
-   synaptics_secure_connect_async(self, send_data, send_size,
-                                  expected_recv_size, FALSE,
-                                  recv_identify_match);
+   synaptics_secure_connect(self, send_data, send_size, expected_recv_size,
+                            FALSE, recv_identify_match);
 }
 
 /* VCSFW_CMD_GET_IMAGE_METRICS async ======================================= */
@@ -1524,14 +1095,17 @@ static void recv_get_image_metrics(FpiDeviceSynaTudorMoc *self,
    }
 
 error:
+   g_free(recv_data);
+
    if (error != NULL) {
       fpi_ssm_mark_failed(self->task_ssm, error);
+   } else {
+      fpi_ssm_next_state(self->task_ssm);
    }
-   g_free(recv_data);
 }
 
-void send_get_image_metrics_async(FpiDeviceSynaTudorMoc *self,
-                                  img_metrics_type_t type)
+void send_get_image_metrics(FpiDeviceSynaTudorMoc *self,
+                            img_metrics_type_t type)
 {
    const guint send_size = 5;
    guint expected_recv_size = 10;
@@ -1554,9 +1128,8 @@ void send_get_image_metrics_async(FpiDeviceSynaTudorMoc *self,
 
    guint8 *send_data = fpi_byte_writer_reset_and_get_data(&writer);
 
-   synaptics_secure_connect_async(self, send_data, send_size,
-                                  expected_recv_size, TRUE,
-                                  recv_get_image_metrics);
+   synaptics_secure_connect(self, send_data, send_size, expected_recv_size,
+                            TRUE, recv_get_image_metrics);
 }
 
 /* VCSFW_CMD_EVENT_CONFIG ================================================== */
@@ -1580,13 +1153,16 @@ static void recv_event_config(FpiDeviceSynaTudorMoc *self, guint8 *recv_data,
    fp_dbg("Current event sequence number is %d", self->events.seq_num);
 
 error:
+   g_free(recv_data);
+
    if (error != NULL) {
       fpi_ssm_mark_failed(self->task_ssm, error);
+   } else {
+      fpi_ssm_next_state(self->task_ssm);
    }
-   g_free(recv_data);
 }
 
-void send_event_config_async(FpiDeviceSynaTudorMoc *self, guint32 event_mask)
+void send_event_config(FpiDeviceSynaTudorMoc *self, guint32 event_mask)
 {
    const gint event_mask_cnt = 8;
    fp_dbg("Setting event mask to: 0b%b", event_mask);
@@ -1611,8 +1187,8 @@ void send_event_config_async(FpiDeviceSynaTudorMoc *self, guint32 event_mask)
    CHECK_WRITER(self, self->task_ssm, &writer, written);
 
    guint8 *send_data = fpi_byte_writer_reset_and_get_data(&writer);
-   synaptics_secure_connect_async(self, send_data, send_size,
-                                  expected_recv_size, TRUE, recv_event_config);
+   synaptics_secure_connect(self, send_data, send_size, expected_recv_size,
+                            TRUE, recv_event_config);
 }
 
 /* VCSFW_CMD_EVENT_READ ==================================================== */
@@ -1638,7 +1214,7 @@ static void recv_event_read(FpiDeviceSynaTudorMoc *self, guint8 *recv_data,
                 "legacy event reading -> sending event read again",
                 status);
          self->events.read_in_legacy_mode = TRUE;
-         send_event_read_async(self);
+         send_event_read(self);
          return;
       } else {
          error = set_and_report_error(FP_DEVICE_ERROR_PROTO,
@@ -1682,18 +1258,21 @@ static void recv_event_read(FpiDeviceSynaTudorMoc *self, guint8 *recv_data,
    if (self->events.num_pending > 0) {
       fp_dbg("There are %u events pending -> sending event read again",
              self->events.num_pending);
-      send_event_read_async(self);
+      send_event_read(self);
       return;
    }
 
 error:
+   g_free(recv_data);
+
    if (error != NULL) {
       fpi_ssm_mark_failed(self->task_ssm, error);
+   } else {
+      fpi_ssm_next_state(self->task_ssm);
    }
-   g_free(recv_data);
 }
 
-void send_event_read_async(FpiDeviceSynaTudorMoc *self)
+void send_event_read(FpiDeviceSynaTudorMoc *self)
 {
    const guint16 max_num_events_in_resp = 32;
 
@@ -1715,11 +1294,75 @@ void send_event_read_async(FpiDeviceSynaTudorMoc *self)
    guint8 *send_data = fpi_byte_writer_reset_and_get_data(&writer);
    /* do not check status as some statuses indicate that legacy reading mode
     * should be used */
-   synaptics_secure_connect_async(self, send_data, send_size,
-                                  expected_recv_size, FALSE, recv_event_read);
+   synaptics_secure_connect(self, send_data, send_size, expected_recv_size,
+                            FALSE, recv_event_read);
 }
 
 /* VCSFW_CMD_DB2_INFO ====================================================== */
+
+static gboolean parse_db2_info(FpiByteReader *reader, db2_info_t *db2_info)
+{
+   gboolean read_ok = TRUE;
+
+   read_ok &= fpi_byte_reader_get_uint16_le(reader, &db2_info->dummy);
+   read_ok &= fpi_byte_reader_get_uint16_le(reader, &db2_info->version_major);
+   read_ok &= fpi_byte_reader_get_uint16_le(reader, &db2_info->version_minor);
+   read_ok &=
+       fpi_byte_reader_get_uint32_le(reader, &db2_info->partition_version);
+
+   read_ok &= fpi_byte_reader_get_uint16_le(reader, &db2_info->uop_length);
+   read_ok &= fpi_byte_reader_get_uint16_le(reader, &db2_info->top_length);
+   read_ok &= fpi_byte_reader_get_uint16_le(reader, &db2_info->pop_length);
+   read_ok &=
+       fpi_byte_reader_get_uint16_le(reader, &db2_info->template_object_size);
+   read_ok &= fpi_byte_reader_get_uint16_le(
+       reader, &db2_info->payload_object_slot_size);
+   read_ok &=
+       fpi_byte_reader_get_uint16_le(reader, &db2_info->num_current_users);
+   read_ok &=
+       fpi_byte_reader_get_uint16_le(reader, &db2_info->num_deleted_users);
+   read_ok &= fpi_byte_reader_get_uint16_le(
+       reader, &db2_info->num_available_user_slots);
+   read_ok &=
+       fpi_byte_reader_get_uint16_le(reader, &db2_info->num_current_templates);
+   read_ok &=
+       fpi_byte_reader_get_uint16_le(reader, &db2_info->num_deleted_templates);
+   read_ok &= fpi_byte_reader_get_uint16_le(
+       reader, &db2_info->num_available_template_slots);
+   read_ok &=
+       fpi_byte_reader_get_uint16_le(reader, &db2_info->num_current_payloads);
+   read_ok &=
+       fpi_byte_reader_get_uint16_le(reader, &db2_info->num_deleted_payloads);
+   read_ok &= fpi_byte_reader_get_uint16_le(
+       reader, &db2_info->num_available_payload_slots);
+
+   return read_ok;
+}
+
+static void fp_dbg_db2_info(db2_info_t *db2_info)
+{
+   fp_dbg("received DB2 info:");
+   fp_dbg("\tdummy: %d", db2_info->dummy);
+   fp_dbg("\tversion_major: %d", db2_info->version_major);
+   fp_dbg("\tversion_minor: %d", db2_info->version_minor);
+   fp_dbg("\tpartition_version: %d", db2_info->partition_version);
+   fp_dbg("\tuop_length: %d", db2_info->uop_length);
+   fp_dbg("\ttop_length: %d", db2_info->top_length);
+   fp_dbg("\tpop_length: %d", db2_info->pop_length);
+   fp_dbg("\ttemplate_object_size: %d", db2_info->template_object_size);
+   fp_dbg("\tpayload_object_slot_size: %d", db2_info->payload_object_slot_size);
+   fp_dbg("\tnum_current_users: %d", db2_info->num_current_users);
+   fp_dbg("\tnum_deleted_users: %d", db2_info->num_deleted_users);
+   fp_dbg("\tnum_available_user_slots: %d", db2_info->num_available_user_slots);
+   fp_dbg("\tnum_current_templates: %d", db2_info->num_current_templates);
+   fp_dbg("\tnum_deleted_templates: %d", db2_info->num_deleted_templates);
+   fp_dbg("\tnum_available_template_slots: %d ",
+          db2_info->num_available_template_slots);
+   fp_dbg("\tnum_current_payloads: %d ", db2_info->num_current_payloads);
+   fp_dbg("\tnum_deleted_payloads: %d ", db2_info->num_deleted_payloads);
+   fp_dbg("\tnum_available_payload_slots: %d",
+          db2_info->num_available_payload_slots);
+}
 
 static void recv_db2_info(FpiDeviceSynaTudorMoc *self, guint8 *recv_data,
                           gsize recv_size, GError *error)
@@ -1739,20 +1382,29 @@ static void recv_db2_info(FpiDeviceSynaTudorMoc *self, guint8 *recv_data,
    read_ok &= parse_db2_info(&reader, &db2_info);
    READ_OK_CHECK_ASYNC(self->task_ssm, read_ok);
 
+   fp_dbg_db2_info(&db2_info);
+
    self->storage.num_current_users = db2_info.num_current_users;
    self->storage.num_current_templates = db2_info.num_current_templates;
    self->storage.num_current_payloads = db2_info.num_current_payloads;
 
+   self->parsed_recv_data.cleanup_required =
+       db2_info.num_deleted_users != 0 &&
+       db2_info.num_available_user_slots == 0;
+
 error:
+   g_free(recv_data);
+
    if (error != NULL) {
       fpi_ssm_mark_failed(self->task_ssm, error);
+   } else {
+      fpi_ssm_next_state(self->task_ssm);
    }
-   g_free(recv_data);
 }
 
 /* prints DB2 info on debug output and stores numbers of current users,
  * templates and payloads */
-void send_db2_info_async(FpiDeviceSynaTudorMoc *self)
+void send_db2_info(FpiDeviceSynaTudorMoc *self)
 {
    const guint send_size = 2;
    const guint expected_recv_size = 64;
@@ -1768,12 +1420,11 @@ void send_db2_info_async(FpiDeviceSynaTudorMoc *self)
 
    guint8 *send_data = fpi_byte_writer_reset_and_get_data(&writer);
 
-   synaptics_secure_connect_async(self, send_data, send_size,
-                                  expected_recv_size, TRUE, recv_db2_info);
+   synaptics_secure_connect(self, send_data, send_size, expected_recv_size,
+                            TRUE, recv_db2_info);
 }
 
-/* VCSFW_CMD_DB2_FORMAT ====================================================
- */
+/* VCSFW_CMD_DB2_FORMAT ==================================================== */
 
 static void recv_db2_format(FpiDeviceSynaTudorMoc *self, guint8 *recv_data,
                             gsize recv_size, GError *error)
@@ -1799,15 +1450,18 @@ static void recv_db2_format(FpiDeviceSynaTudorMoc *self, guint8 *recv_data,
           new_partition_version);
 
 error:
+   g_free(recv_data);
+
    if (error != NULL) {
       fpi_ssm_mark_failed(self->task_ssm, error);
+   } else {
+      fpi_ssm_next_state(self->task_ssm);
    }
-   g_free(recv_data);
 }
 
 /* prints DB2 info on debug output and stores numbers of current users,
  * templates and payloads */
-void send_db2_format_async(FpiDeviceSynaTudorMoc *self)
+void send_db2_format(FpiDeviceSynaTudorMoc *self)
 {
    const guint send_size = 12;
    const guint expected_recv_size = 8;
@@ -1823,12 +1477,70 @@ void send_db2_format_async(FpiDeviceSynaTudorMoc *self)
 
    guint8 *send_data = fpi_byte_writer_reset_and_get_data(&writer);
 
-   synaptics_secure_connect_async(self, send_data, send_size,
-                                  expected_recv_size, TRUE, recv_db2_format);
+   synaptics_secure_connect(self, send_data, send_size, expected_recv_size,
+                            TRUE, recv_db2_format);
 }
 
-/* VCSFW_CMD_DB2_DELETE_OBJECT async =======================================
- */
+/* VCSFW_CMD_DB2_CLEANUP =================================================== */
+
+static void recv_db2_cleanup(FpiDeviceSynaTudorMoc *self, guint8 *recv_data,
+                             gsize recv_size, GError *error)
+{
+   if (error != NULL) {
+      goto error;
+   }
+   g_assert(recv_data != NULL);
+
+   FpiByteReader reader;
+   fpi_byte_reader_init(&reader, recv_data, recv_size);
+
+   gboolean read_ok = TRUE;
+   /* no need to read status again */
+   read_ok &= fpi_byte_reader_skip(&reader, SENSOR_FW_REPLY_STATUS_HEADER_LEN);
+   guint16 num_erased_slots = 0;
+   read_ok &= fpi_byte_reader_get_uint16_le(&reader, &num_erased_slots);
+   guint32 new_partition_version = 0;
+   read_ok &= fpi_byte_reader_get_uint32_le(&reader, &new_partition_version);
+   READ_OK_CHECK_ASYNC(self->task_ssm, read_ok);
+
+   fp_dbg("DB2 cleanup succeeded with:");
+   fp_dbg("\tNumber of erased slots: %u", num_erased_slots);
+   fp_dbg("\tNew partition version: %u", new_partition_version);
+
+error:
+   g_free(recv_data);
+
+   if (error != NULL) {
+      fpi_ssm_mark_failed(self->task_ssm, error);
+   } else {
+      fpi_ssm_next_state(self->task_ssm);
+   }
+}
+
+/* prints DB2 info on debug output and stores numbers of current users,
+ * templates and payloads */
+void send_db2_cleanup(FpiDeviceSynaTudorMoc *self)
+{
+   const guint8 unused_param = 1;
+
+   const guint send_size = 2;
+   const guint expected_recv_size = 8;
+
+   FpiByteWriter writer;
+   fpi_byte_writer_init_with_size(&writer, send_size, TRUE);
+
+   gboolean written = TRUE;
+   written &= fpi_byte_writer_put_uint8(&writer, VCSFW_CMD_DB2_CLEANUP); // +0
+   written &= fpi_byte_writer_put_uint32_le(&writer, unused_param);      // +1
+   CHECK_WRITER(self, self->task_ssm, &writer, written);
+
+   guint8 *send_data = fpi_byte_writer_reset_and_get_data(&writer);
+
+   synaptics_secure_connect(self, send_data, send_size, expected_recv_size,
+                            TRUE, recv_db2_cleanup);
+}
+
+/* VCSFW_CMD_DB2_DELETE_OBJECT async ======================================= */
 
 static void recv_db2_delete_object(FpiDeviceSynaTudorMoc *self,
                                    guint8 *recv_data, gsize recv_size,
@@ -1858,15 +1570,17 @@ static void recv_db2_delete_object(FpiDeviceSynaTudorMoc *self,
           num_deleted_objects);
 
 error:
+   g_free(recv_data);
+
    if (error != NULL) {
       fpi_ssm_mark_failed(self->task_ssm, error);
+   } else {
+      fpi_ssm_next_state(self->task_ssm);
    }
-   g_free(recv_data);
 }
 
-void send_db2_delete_object_async(FpiDeviceSynaTudorMoc *self,
-                                  const obj_type_t obj_type,
-                                  const db2_id_t obj_id)
+void send_db2_delete_object(FpiDeviceSynaTudorMoc *self,
+                            const obj_type_t obj_type, const db2_id_t obj_id)
 {
    const guint send_size = 21;
    const guint expected_recv_size = 4;
@@ -1887,9 +1601,8 @@ void send_db2_delete_object_async(FpiDeviceSynaTudorMoc *self,
    fp_dbg("Sending delete object of type: %d with ID:", obj_type);
    fp_dbg_large_hex((guint8 *)obj_id, DB2_ID_SIZE);
 
-   synaptics_secure_connect_async(self, send_data, send_size,
-                                  expected_recv_size, TRUE,
-                                  recv_db2_delete_object);
+   synaptics_secure_connect(self, send_data, send_size, expected_recv_size,
+                            TRUE, recv_db2_delete_object);
 }
 
 /* VCSFW_CMD_GET_OBJECT_LIST async =========================================
@@ -1901,6 +1614,24 @@ static void fp_dbg_object_list(db2_obj_list_t *obj_list)
       fp_dbg("\tat position %d is:", i);
       fp_dbg_large_hex((obj_list->obj_list)[i], DB2_ID_SIZE);
    }
+}
+
+static gsize get_object_list_recv_size(FpiDeviceSynaTudorMoc *self,
+                                       obj_type_t obj_type)
+{
+   switch (obj_type) {
+   case OBJ_TYPE_USERS:
+      return 4 + 16 * self->storage.num_current_users;
+      break;
+   case OBJ_TYPE_TEMPLATES:
+      return 4 + 16 * self->storage.num_current_templates;
+      break;
+   case OBJ_TYPE_PAYLOADS:
+      return 4 + 16 * self->storage.num_current_payloads;
+      break;
+   }
+
+   return 0;
 }
 
 static void recv_db2_get_object_list(FpiDeviceSynaTudorMoc *self,
@@ -1930,17 +1661,19 @@ static void recv_db2_get_object_list(FpiDeviceSynaTudorMoc *self,
    fp_dbg_object_list(db2_obj_list);
 
 error:
+   g_free(recv_data);
+
    if (error != NULL) {
       fpi_ssm_mark_failed(self->task_ssm, error);
+   } else {
+      fpi_ssm_next_state(self->task_ssm);
    }
-   g_free(recv_data);
 }
 
 /* NOTE: the current number of items in db2 database needs to be up to date when
  * calling this function */
-void send_db2_get_object_list_async(FpiDeviceSynaTudorMoc *self,
-                                    const obj_type_t obj_type,
-                                    const db2_id_t obj_id)
+void send_db2_get_object_list(FpiDeviceSynaTudorMoc *self,
+                              const obj_type_t obj_type, const db2_id_t obj_id)
 {
    const guint send_size = 21;
    const guint expected_recv_size = get_object_list_recv_size(self, obj_type);
@@ -1961,13 +1694,13 @@ void send_db2_get_object_list_async(FpiDeviceSynaTudorMoc *self,
 
    guint8 *send_data = fpi_byte_writer_reset_and_get_data(&writer);
 
-   synaptics_secure_connect_async(self, send_data, send_size,
-                                  expected_recv_size, TRUE,
-                                  recv_db2_get_object_list);
+   synaptics_secure_connect(self, send_data, send_size, expected_recv_size,
+                            TRUE, recv_db2_get_object_list);
 }
 
 /* VCSFW_CMD_DB2_GET_OBJECT_INFO async ===================================== */
 
+/* NOTE: saves raw data to self which require freeing */
 static void recv_db2_get_object_info(FpiDeviceSynaTudorMoc *self,
                                      guint8 *recv_data, gsize recv_size,
                                      GError *error)
@@ -1989,12 +1722,13 @@ error:
    if (error != NULL) {
       fpi_ssm_mark_failed(self->task_ssm, error);
       g_free(recv_data);
+   } else {
+      fpi_ssm_next_state(self->task_ssm);
    }
 }
 
-void send_db2_get_object_info_async(FpiDeviceSynaTudorMoc *self,
-                                    const obj_type_t obj_type,
-                                    const db2_id_t obj_id)
+void send_db2_get_object_info(FpiDeviceSynaTudorMoc *self,
+                              const obj_type_t obj_type, const db2_id_t obj_id)
 {
    const guint send_size = 21;
    const guint expected_recv_size = obj_type == OBJ_TYPE_USERS ? 12 : 52;
@@ -2014,13 +1748,11 @@ void send_db2_get_object_info_async(FpiDeviceSynaTudorMoc *self,
    fp_dbg("Getting object info for object of type: %u with id:", obj_type);
    fp_dbg_large_hex(obj_id, DB2_ID_SIZE);
 
-   synaptics_secure_connect_async(self, send_data, send_size,
-                                  expected_recv_size, TRUE,
-                                  recv_db2_get_object_info);
+   synaptics_secure_connect(self, send_data, send_size, expected_recv_size,
+                            TRUE, recv_db2_get_object_info);
 }
 
-/* VCSFW_CMD_GET_OBJECT_DATA ===============================================
- */
+/* VCSFW_CMD_GET_OBJECT_DATA =============================================== */
 
 static void recv_db2_get_object_data(FpiDeviceSynaTudorMoc *self,
                                      guint8 *recv_data, gsize recv_size,
@@ -2048,15 +1780,18 @@ static void recv_db2_get_object_data(FpiDeviceSynaTudorMoc *self,
    READ_OK_CHECK_ASYNC(self->task_ssm, read_ok);
 
 error:
+   g_free(recv_data);
+
    if (error != NULL) {
       fpi_ssm_mark_failed(self->task_ssm, error);
+   } else {
+      fpi_ssm_next_state(self->task_ssm);
    }
-   g_free(recv_data);
 }
 
-void send_db2_get_object_data_async(FpiDeviceSynaTudorMoc *self,
-                                    const obj_type_t obj_type,
-                                    const db2_id_t obj_id, gsize obj_data_size)
+void send_db2_get_object_data(FpiDeviceSynaTudorMoc *self,
+                              const obj_type_t obj_type, const db2_id_t obj_id,
+                              gsize obj_data_size)
 {
    g_assert(obj_data_size < 65535);
 
@@ -2082,9 +1817,8 @@ void send_db2_get_object_data_async(FpiDeviceSynaTudorMoc *self,
 
    guint8 *send_data = fpi_byte_writer_reset_and_get_data(&writer);
 
-   synaptics_secure_connect_async(self, send_data, send_size,
-                                  expected_recv_size, TRUE,
-                                  recv_db2_get_object_data);
+   synaptics_secure_connect(self, send_data, send_size, expected_recv_size,
+                            TRUE, recv_db2_get_object_data);
 }
 
 /* VCSFW_CMD_PAIR async ====================================================
@@ -2135,14 +1869,16 @@ static void recv_pair(FpiDeviceSynaTudorMoc *self, guint8 *recv_data,
    }
 
 error:
+   g_free(recv_data);
+
    if (error != NULL) {
       fpi_ssm_mark_failed(self->task_ssm, error);
+   } else {
+      fpi_ssm_next_state(self->task_ssm);
    }
-   g_free(recv_data);
 }
 
-void send_pair_async(FpiDeviceSynaTudorMoc *self,
-                     const guint8 *send_host_cert_bytes)
+void send_pair(FpiDeviceSynaTudorMoc *self, const guint8 *send_host_cert_bytes)
 {
    g_assert(send_host_cert_bytes != NULL);
 
@@ -2161,8 +1897,8 @@ void send_pair_async(FpiDeviceSynaTudorMoc *self,
 
    guint8 *send_data = fpi_byte_writer_reset_and_get_data(&writer);
 
-   synaptics_secure_connect_async(self, send_data, send_size,
-                                  expected_recv_size, TRUE, recv_pair);
+   synaptics_secure_connect(self, send_data, send_size, expected_recv_size,
+                            TRUE, recv_pair);
 }
 
 /* Wait for eevnts interrupt =============================================== */
@@ -2205,7 +1941,9 @@ static void recv_interrupt_wait_for_events(FpiUsbTransfer *transfer,
    } else {
       send_interrupt_wait_for_events(self);
    }
+
    return;
+
 error:
    fpi_ssm_mark_failed(self->task_ssm, error);
 }
@@ -2229,147 +1967,135 @@ void send_interrupt_wait_for_events(FpiDeviceSynaTudorMoc *self)
 }
 
 /* ========================================================================= */
-// /*
-//  * Sends a get_version command to force the sensor to close its TLS
-//  session
-//  * -> error 0x315 is expected (its real name is not known) */
-// gboolean send_cmd_to_force_close_sensor_tls_session(FpiDeviceSynaTudorMoc
-// *self,
-//                                                     GError **error)
-// {
-//    gboolean ret = TRUE;
-//
-//    /* deduced name */
-//    const guint16 unclosed_tls_session_status = 0x315;
-//
-//    const gsize send_size = 1;
-//    /* we may get a TLS alert message, so increase the recv_size
-//    accordingly
-//     */
-//    gsize recv_size = 38 + WRAP_RESPONSE_ADDITIONAL_SIZE;
-//
-//    g_autofree guint8 *recv_data = NULL;
-//    guint8 send_data[send_size];
-//    send_data[0] = VCSFW_CMD_GET_VERSION;
-//
-//    BOOL_CHECK(synaptics_secure_connect(self, send_data, send_size,
-//    &recv_data,
-//                                        &recv_size, FALSE, error));
-//
-//    g_assert(recv_data != NULL);
-//
-//    FpiByteReader reader;
-//    fpi_byte_reader_init(&reader, recv_data, recv_size);
-//
-//    if (recv_size < 2) {
-//       *error =
-//           set_and_report_error(FP_DEVICE_ERROR_PROTO,
-//                                "Response to get_version command was too
-//                                short");
-//       ret = FALSE;
-//       goto error;
-//    }
-//
-//    guint16 status = FP_READ_UINT16_LE(recv_data);
-//    if (sensor_status_is_result_ok(status)) {
-//       fp_dbg("TLS force close - sensor was not in TLS session");
-//    } else if (status == unclosed_tls_session_status) {
-//       fp_dbg("TLS force close - sensor was in TLS status");
-//    } else {
-//       *error = set_and_report_error(
-//           FP_DEVICE_ERROR_PROTO, "Device responded with error: 0x%04x aka
-//           %s", status, sensor_status_to_string(status));
-//    }
-//
-// error:
-//    return ret;
-// }
-//
-// static gboolean write_dft(FpiDeviceSynaTudorMoc *self, guint8 *data,
-//                           gsize data_size, GError **error)
-// {
-//    gboolean ret = TRUE;
-//
-//    fp_dbg("---> DFT");
-//    fp_dbg_large_hex(data, data_size);
-//
-//    /* Send data */
-//    g_autoptr(FpiUsbTransfer) transfer =
-//    fpi_usb_transfer_new(FP_DEVICE(self)); fpi_usb_transfer_fill_control(
-//        transfer, G_USB_DEVICE_DIRECTION_HOST_TO_DEVICE,
-//        G_USB_DEVICE_REQUEST_TYPE_VENDOR, G_USB_DEVICE_RECIPIENT_DEVICE,
-//        REQUEST_DFT_WRITE, 0, 0, data_size);
-//
-//    transfer->short_is_error = FALSE;
-//    memcpy(transfer->buffer, data, data_size);
-//
-//    BOOL_CHECK_WITH_REPORT(
-//        fpi_usb_transfer_submit_sync(transfer, USB_TRANSFER_TIMEOUT_MS,
-//        error));
-//
-// error:
-//    return ret;
-// }
-//
-// /* Bootloader functions
-// ====================================================
-//  */
-//
-// gboolean sensor_is_in_bootloader_mode(FpiDeviceSynaTudorMoc *self)
-// {
-//    return self->mis_version.product_id == PRODUCT_ID_BOOTLOADER_1 ||
-//           self->mis_version.product_id == PRODUCT_ID_BOOTLOADER_2;
-// }
-//
-// static gboolean send_bootloader_mode_exit(FpiDeviceSynaTudorMoc *self,
-//                                           GError **error)
-// {
-//    gboolean ret = TRUE;
-//
-//    fp_dbg("Exiting bootloader mode");
-//
-//    guint8 to_send[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-//    BOOL_CHECK(write_dft(self, to_send, sizeof(to_send), error));
-//
-//    g_usb_device_reset(fpi_device_get_usb_device(FP_DEVICE(self)), error);
-//
-// error:
-//    return ret;
-// }
-//
-// static gboolean send_bootloader_mode_enter(FpiDeviceSynaTudorMoc *self,
-//                                            GError **error)
-// {
-//    gboolean ret = TRUE;
-//
-//    fp_dbg("Entering bootloader mode");
-//
-//    guint8 to_send[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00};
-//    BOOL_CHECK(write_dft(self, to_send, sizeof(to_send), error));
-//    g_usb_device_reset(fpi_device_get_usb_device(FP_DEVICE(self)), error);
-//
-// error:
-//    return ret;
-// }
-//
-// gboolean exit_bootloader_mode(FpiDeviceSynaTudorMoc *self, GError **error)
-// {
-//    gboolean ret = TRUE;
-//
-//    BOOL_CHECK(send_bootloader_mode_exit(self, error));
-//    /* update MiS version data which contain if sensor is in bootloader
-//    mode
-//     */
-//    BOOL_CHECK(send_get_version(self, &self->mis_version, error));
-//
-//    if (sensor_is_in_bootloader_mode(self)) {
-//       *error = set_and_report_error(
-//           FP_DEVICE_ERROR_PROTO, "Unable to get sensor out of bootloader
-//           mode, "
-//                                  "it may not have a valid firmware");
-//       ret = FALSE;
-//    }
-//
-// error:
-//    return ret;
-// }
+
+static void recv_get_version_tls_force_close(FpiDeviceSynaTudorMoc *self,
+                                             guint8 *recv_data, gsize recv_size,
+                                             GError *error)
+{
+   if (error != NULL) {
+      goto error;
+   }
+   g_assert(recv_data != NULL);
+
+   /* deduced name */
+   const guint16 unclosed_tls_session_status = 0x315;
+
+   FpiByteReader reader;
+   fpi_byte_reader_init(&reader, recv_data, recv_size);
+
+   if (recv_size < 2) {
+      error =
+          set_and_report_error(FP_DEVICE_ERROR_PROTO,
+                               "Response to get_version command was too short");
+      goto error;
+   }
+
+   guint16 status = FP_READ_UINT16_LE(recv_data);
+   if (sensor_status_is_result_ok(status)) {
+      fp_dbg("TLS force close - sensor was not in TLS session");
+   } else if (status == unclosed_tls_session_status) {
+      fp_dbg("TLS force close - sensor was in TLS status");
+   } else {
+      error = set_and_report_error(FP_DEVICE_ERROR_PROTO,
+                                   "Device responded with error: 0x%04x aka %s",
+                                   status, sensor_status_to_string(status));
+   }
+
+error:
+   g_free(recv_data);
+
+   if (error != NULL) {
+      fpi_ssm_mark_failed(self->task_ssm, error);
+   } else {
+      fpi_ssm_next_state(self->task_ssm);
+   }
+}
+
+/* Sends a get_version command to force the sensor to close its TLS
+ session
+ * -> error 0x315 is expected (its real name is not known) */
+void send_cmd_to_force_close_sensor_tls_session(FpiDeviceSynaTudorMoc *self)
+{
+   const guint send_size = 1;
+   /* we may get a TLS alert message, so increase the recv_size accordingly */
+   const guint expected_recv_size = 38 + WRAP_RESPONSE_ADDITIONAL_SIZE;
+   guint8 *send_data = g_malloc(send_size);
+   send_data[0] = VCSFW_CMD_GET_VERSION;
+
+   synaptics_secure_connect(self, send_data, send_size, expected_recv_size,
+                            FALSE, recv_get_version_tls_force_close);
+}
+
+/* Bootloader functions ==================================================== */
+
+static void write_dft(FpiDeviceSynaTudorMoc *self, const guint8 *data,
+                      const gsize data_size, FpiUsbTransferCallback callback)
+{
+   fp_dbg("---> DFT");
+   fp_dbg_large_hex(data, data_size);
+
+   /* Send data */
+   g_autoptr(FpiUsbTransfer) transfer = fpi_usb_transfer_new(FP_DEVICE(self));
+   fpi_usb_transfer_fill_control(
+       transfer, G_USB_DEVICE_DIRECTION_HOST_TO_DEVICE,
+       G_USB_DEVICE_REQUEST_TYPE_VENDOR, G_USB_DEVICE_RECIPIENT_DEVICE,
+       REQUEST_DFT_WRITE, 0, 0, data_size);
+
+   transfer->short_is_error = FALSE;
+   memcpy(transfer->buffer, data, data_size);
+
+   fpi_usb_transfer_submit(transfer, USB_TRANSFER_TIMEOUT_MS, NULL, callback,
+                           NULL);
+}
+
+gboolean sensor_is_in_bootloader_mode(FpiDeviceSynaTudorMoc *self)
+{
+   return self->mis_version.product_id == PRODUCT_ID_BOOTLOADER_1 ||
+          self->mis_version.product_id == PRODUCT_ID_BOOTLOADER_2;
+}
+
+static void reset_usb_device_on_callback(FpiUsbTransfer *transfer,
+                                         FpDevice *device, gpointer user_data,
+                                         GError *error)
+{
+   FpiDeviceSynaTudorMoc *self = FPI_DEVICE_SYNA_TUDOR_MOC(device);
+   if (error != NULL) {
+      goto error;
+   }
+
+   g_usb_device_reset(fpi_device_get_usb_device(device), &error);
+   if (error != NULL) {
+      goto error;
+   }
+   return;
+
+error:
+   fpi_ssm_mark_failed(self->task_ssm, error);
+}
+
+/**
+ * Sends a command to enter/exit bootloader mode
+ *
+ * @param enter TRUE to enter BL mode, FALSE to exit
+ */
+void send_bootloader_mode_enter_exit(FpiDeviceSynaTudorMoc *self,
+                                     gboolean enter)
+{
+
+   const guint8 to_send_exit[8] = {0x00, 0x00, 0x00, 0x00,
+                                   0x00, 0x00, 0x00, 0x00};
+   const guint8 to_send_enter[8] = {0x00, 0x00, 0x00, 0x00,
+                                    0x00, 0x00, 0x01, 0x00};
+   const guint8 *to_send = NULL;
+
+   if (enter) {
+      fp_dbg("Entering bootloader mode");
+      to_send = to_send_enter;
+
+   } else {
+      fp_dbg("Exiting bootloader mode");
+      to_send = to_send_exit;
+   }
+
+   write_dft(self, to_send, 8, reset_usb_device_on_callback);
+}
