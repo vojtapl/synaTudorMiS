@@ -433,9 +433,7 @@ static void open_sm_run_state(FpiSsm *ssm, FpDevice *device)
       break;
    case OPEN_STATE_TLS_HS_STATE_ALERT:
       fp_err("TLS handshake state: alert");
-      fp_dbg("\t level = %d; description = %d = %s", self->tls.alert_level,
-             self->tls.alert_desc,
-             gnutls_alert_get_strname(self->tls.alert_desc));
+      fp_err_tls_alert(self->tls.alert_level, self->tls.alert_desc);
       send_tls_alert(self, self->tls.alert_level, self->tls.alert_desc);
       break;
    case OPEN_STATE_TLS_HS_STATE_FAILED:
@@ -507,7 +505,7 @@ error:
 /* close =================================================================== */
 
 typedef enum {
-   CLOSE_SEND_TLS_CLOSE,
+   CLOSE_STATE_SEND_TLS_CLOSE,
    CLOSE_NUM_STATES,
 } close_state_t;
 
@@ -515,7 +513,7 @@ static void close_sm_run_state(FpiSsm *ssm, FpDevice *device)
 {
    FpiDeviceSynaTudorMoc *self = FPI_DEVICE_SYNA_TUDOR_MOC(device);
    switch (fpi_ssm_get_cur_state(ssm)) {
-   case CLOSE_SEND_TLS_CLOSE:
+   case CLOSE_STATE_SEND_TLS_CLOSE:
       if (self->tls.established) {
          tls_close_session(self);
       } else {

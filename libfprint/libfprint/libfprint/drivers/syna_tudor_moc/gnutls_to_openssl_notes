@@ -3,13 +3,6 @@ gnutls_aead_cipher_encrypt         -> EVP_EncryptUpdate and EVP_EncryptFinal_ex
 gnutls_aead_cipher_deinit          -> EVP_CIPHER_CTX_free
 gnutls_aead_cipher_init            -> EVP_EncryptInit_ex or EVP_DecryptInit_ex
 
-gnutls_hash                        -> EVP_Digest
-gnutls_hash_fast                   -> Use EVP_Digest with a pre-defined hash function
-gnutls_hash_deinit                 -> EVP_DigestFinal_ex
-gnutls_hash_init                   -> EVP_DigestInit_ex
-
-gnutls_hmac_fast                   -> HMAC
-
 gnutls_privkey_derive_secret       -> EVP_PKEY_derive
 gnutls_privkey_export_ecc_raw      -> Use EVP_PKEY_get_raw_private_key and EVP_PKEY_get_raw_public_key
 gnutls_privkey_export_ecc_raw2     -> Similar to above, use EVP_PKEY_get_raw_private_key and EVP_PKEY_get_raw_public_key
@@ -25,15 +18,7 @@ gnutls_pubkey_import_privkey       -> Use EVP_PKEY_assign
 gnutls_pubkey_verify_data2         -> EVP_VerifyFinal
 gnutls_pubkey_verify_params        -> Use EVP_PKEY_verify
 
-gnutls_rnd                         -> RAND_bytes
-
 gnutls_privkey_deinit              -> EVP_PKEY_free
 gnutls_privkey_init                -> EVP_PKEY_new
 gnutls_pubkey_deinit               -> EVP_PKEY_free
 gnutls_pubkey_init                 -> EVP_PKEY_new
-
-gnutls_strerror                    -> Use ERR_error_string
-gnutls_alert_get_name              -> SSL_alert_type_string_long
-gnutls_alert_get_strname           -> SSL_alert_type_string_long
-alert desc                         -> SSL_alert_desc_string_long
-

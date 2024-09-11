@@ -231,6 +231,8 @@ deps = [
     gusb_dep,
     mathlib_dep,
     gnutls_dep,
+    ssl_dep,
+    crypto_dep,
 ] + optional_deps
 
 # These are empty and only exist so that the include directories are created
@@ -296,6 +298,8 @@ libfprint_dep = declare_dependency(link_with: libfprint,
         gobject_dep,
         gusb_dep,
         gnutls_dep,
+        ssl_dep,
+        crypto_dep,
     ])
 
 install_headers(['fprint.h'] + libfprint_public_headers,

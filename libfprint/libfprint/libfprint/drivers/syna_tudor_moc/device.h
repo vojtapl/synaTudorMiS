@@ -160,7 +160,7 @@ typedef struct {
 
    guint16 ciphersuit;
    guint8 compression_method;
-   gnutls_mac_algorithm_t mac_algo;
+   char *mac_algo;
 
    guint8 client_random[32]; /* note: the first 4 bytes are time */
    guint8 server_random[32]; /* note: the first 4 bytes are time */
@@ -180,8 +180,8 @@ typedef struct {
    gboolean remote_sends_encrypted;
 
    tls_handshake_state_t handshake_state;
-   gnutls_alert_level_t alert_level;
-   gnutls_alert_description_t alert_desc;
+   guint alert_level;
+   guint alert_desc;
 
    /* for hashing */
    guint8 *sent_handshake_msgs;

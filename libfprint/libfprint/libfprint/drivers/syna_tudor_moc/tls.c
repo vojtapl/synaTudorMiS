@@ -26,6 +26,7 @@
 #include "fpi-byte-reader.h"
 #include "fpi-byte-writer.h"
 #include "fpi-usb-transfer.h"
+#include "openssl/ec.h"
 #include "sample_pairing_data.h"
 #include "sensor_keys.h"
 #include "tls.h"
@@ -35,6 +36,21 @@
 #include <gnutls/abstract.h>
 #include <gnutls/crypto.h>
 #include <gnutls/gnutls.h>
+#include <openssl/core_names.h>
+#include <openssl/ec.h>
+#include <openssl/err.h>
+#include <openssl/evp.h>
+#include <openssl/hmac.h>
+#include <openssl/kdf.h>
+#include <openssl/param_build.h>
+#include <openssl/params.h>
+#include <openssl/rand.h>
+#include <openssl/sha.h>
+#include <openssl/ssl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include <stdio.h>
 
 // #define TLS_DEBUG
@@ -44,7 +60,7 @@
 /* the only ciphersuite which seemed to be usable */
 static cipher_suit_t tls_ecdh_ecdsa_with_aes_256_gcm_sha384 = {
     .id = 0xC02E,
-    .mac_algo = GNUTLS_MAC_SHA384,
+    .mac_algo = "SHA384",
 };
 /* set supported curve to 0x17=23 */
 static guint8 supported_groups_data[4] = {0x00, 0x02, 0x00, 0x17};
@@ -198,20 +214,16 @@ error:
    return ret;
 }
 
-static void log_tls_alert_msg(const guint alert_level,
-                              const guint alert_description)
+void fp_err_tls_alert(const guint alert_level, const guint alert_description)
 {
-   const char *alert_level_msg =
-       alert_level == GNUTLS_AL_WARNING ? "WARNING" : "FATAL";
-   fp_err("Received TLS alert level %d aka %s with description: %u aka %s",
-          alert_level, alert_level_msg, alert_description,
-          gnutls_alert_get_name(alert_description));
+   fp_err("TLS alert:\n\tlevel: %u = %s\n\tdescription: %u aka %s", alert_level,
+          SSL_alert_type_string_long(alert_level), alert_description,
+          SSL_alert_desc_string_long(alert_description));
 }
 
-static gboolean tls_prf(const gnutls_datum_t secret,
-                        gnutls_mac_algorithm_t mac_algo, const char *label,
-                        const guint8 *seed, gsize seed_len, guint8 **output,
-                        gsize output_len, GError **error)
+static gboolean tls_prf(const char *hmac_algo, const gnutls_datum_t secret,
+                        const char *label, const guint8 *seed, gsize seed_len,
+                        guint8 **output, gsize output_len, GError **error)
 {
    /* Validate input parameters */
    g_return_val_if_fail(label != NULL, FALSE);
@@ -222,7 +234,8 @@ static gboolean tls_prf(const gnutls_datum_t secret,
    gboolean ret = TRUE;
 
    const gsize buf_size = 128;
-   const gsize hmac_size = gnutls_hmac_get_len(mac_algo);
+   const EVP_MD *evp_md = EVP_get_digestbyname(hmac_algo);
+   const gsize hmac_size = EVP_MD_size(evp_md);
 
    g_autofree guint8 *input = NULL;
    *output = NULL;
@@ -237,7 +250,7 @@ static gboolean tls_prf(const gnutls_datum_t secret,
 
    /* Check if seed and label fit */
    if (hmac_size + label_len + seed_len > buf_size) {
-      fp_err("Input arguments too large in %s", __FUNCTION__);
+      fprintf(stderr, "Input arguments too large in %s\n", __FUNCTION__);
       return FALSE;
    }
 
@@ -247,7 +260,6 @@ static gboolean tls_prf(const gnutls_datum_t secret,
    /* prepare input = label + seed */
    gsize input_len = label_len + seed_len;
    input = g_malloc0(input_len);
-   /* note the ascii encoding */
    memcpy(input, label, label_len);
    memcpy(input + label_len, seed, seed_len);
 
@@ -259,8 +271,10 @@ static gboolean tls_prf(const gnutls_datum_t secret,
    memset(A, 0, sizeof(A));
 
    /* update A with first hash */
-   GNUTLS_CHECK(gnutls_hmac_fast(mac_algo, secret.data, secret.size, input,
-                                 input_len, A));
+   if (NULL ==
+       HMAC(evp_md, secret.data, secret.size, input, input_len, A, NULL)) {
+      goto error;
+   }
 
    gsize output_offset = 0;
    while (output_offset < output_len) {
@@ -270,8 +284,10 @@ static gboolean tls_prf(const gnutls_datum_t secret,
       memcpy(to_digest + sizeof(A), input, input_len);
 
       /* update output */
-      GNUTLS_CHECK(gnutls_hmac_fast(mac_algo, secret.data, secret.size,
-                                    to_digest, to_digest_len, buf_digested));
+      if (NULL == HMAC(evp_md, secret.data, secret.size, to_digest,
+                       to_digest_len, buf_digested, NULL)) {
+         goto error;
+      }
 
       gsize remains_to_write = output_len - output_offset;
       gsize to_write =
@@ -281,8 +297,10 @@ static gboolean tls_prf(const gnutls_datum_t secret,
       output_offset += to_write;
 
       /* update A */
-      GNUTLS_CHECK(gnutls_hmac_fast(mac_algo, secret.data, secret.size, A,
-                                    sizeof(A), A));
+      if (NULL ==
+          HMAC(evp_md, secret.data, secret.size, A, sizeof(A), A, NULL)) {
+         goto error;
+      }
    }
 
 error:
@@ -301,8 +319,7 @@ static gboolean check_server_finished_verify_data(FpiDeviceSynaTudorMoc *self,
 {
    gboolean ret = TRUE;
    *is_correct = FALSE;
-   const gnutls_digest_algorithm_t hash_algo = GNUTLS_DIG_SHA256;
-   const guint hash_size = gnutls_hash_get_len(hash_algo);
+   const guint hash_size = SHA256_DIGEST_LENGTH;
    guint8 sent_messages_hash[hash_size];
 
    g_autofree guint8 *verify_data = NULL;
@@ -324,17 +341,49 @@ static gboolean check_server_finished_verify_data(FpiDeviceSynaTudorMoc *self,
                     self->tls.sent_handshake_msgs_size);
 #endif
 
-   GNUTLS_CHECK(gnutls_hash_fast(hash_algo, self->tls.sent_handshake_msgs,
-                                 self->tls.sent_handshake_msgs_size,
-                                 sent_messages_hash));
+   SHA256(self->tls.sent_handshake_msgs, self->tls.sent_handshake_msgs_size,
+          sent_messages_hash);
+
 #ifdef TLS_DEBUG
    fp_dbg("Handshake finished sent messages hash:");
    fp_dbg_large_hex(sent_messages_hash, sizeof(sent_messages_hash));
 #endif
 
-   BOOL_CHECK(tls_prf(self->tls.master_secret, self->tls.mac_algo,
+   BOOL_CHECK(tls_prf(self->tls.mac_algo, self->tls.master_secret,
                       "server finished", sent_messages_hash, hash_size,
                       &verify_data, VERIFY_DATA_SIZE, error));
+
+   /* EVP_KDF *kdf = EVP_KDF_fetch(NULL, "TLS13-KDF", NULL);
+   EVP_KDF_CTX *kctx = EVP_KDF_CTX_new(kdf);
+   unsigned char out[VERIFY_DATA_SIZE];
+   OSSL_PARAM params[9], *p = params;
+
+   EVP_KDF_free(kdf);
+
+   // clang-format off
+   *p++ = OSSL_PARAM_construct_utf8_string("properties", "",
+   (size_t)strlen("")); *p++ = OSSL_PARAM_construct_utf8_string("digest",
+   SN_sha384, (size_t)strlen(SN_sha384)); *p++ =
+   OSSL_PARAM_construct_octet_string("key", self->tls.master_secret.data,
+   (size_t)self->tls.master_secret.size); *p++ =
+   OSSL_PARAM_construct_octet_string("salt", sent_messages_hash,
+   (size_t)hash_size); *p++ = OSSL_PARAM_construct_octet_string("prefix", "tls13
+   ", (size_t)strlen("tls13")-1); // w/o \0 *p++ =
+   OSSL_PARAM_construct_octet_string("label", "server finished",
+   (size_t)strlen("server finished")); *p++ =
+   OSSL_PARAM_construct_octet_string("data", out, (size_t)VERIFY_DATA_SIZE); int
+   test = EVP_KDF_HKDF_MODE_EXPAND_ONLY;
+   // int test = EVP_KDF_HKDF_MODE_EXTRACT_AND_EXPAND;
+   *p++ = OSSL_PARAM_construct_int("mode", &test);
+   *p = OSSL_PARAM_construct_end();
+   // clang-format on
+
+   if (EVP_KDF_derive(kctx, out, sizeof(out), params) <= 0) {
+      // error("EVP_KDF_derive");
+   }
+   EVP_KDF_CTX_free(kctx);
+
+   fp_dbg_large_hex(out, VERIFY_DATA_SIZE); */
 
 #ifdef TLS_DEBUG
    fp_dbg("tls prf server finished output:");
@@ -975,7 +1024,8 @@ static void parse_and_process_records(FpiDeviceSynaTudorMoc *self,
             self->tls.remote_sends_encrypted = FALSE;
             self->tls.established = FALSE;
          } else {
-            log_tls_alert_msg(alert_level, alert_description);
+            fp_err("Received TLS alert:");
+            fp_err_tls_alert(alert_level, alert_description);
          }
 
          goto error;
@@ -1112,8 +1162,7 @@ static gboolean append_certificate_verify_to_record(FpiDeviceSynaTudorMoc *self,
                                                     GError **error)
 {
    gboolean ret = TRUE;
-   const gnutls_digest_algorithm_t hash_algo = GNUTLS_DIG_SHA256;
-   const guint hash_size = gnutls_hash_get_len(hash_algo);
+   const guint hash_size = SHA256_DIGEST_LENGTH;
    guint8 sent_messages_hash[hash_size];
    gnutls_datum_t sent_messages_hash_datum = {.data = sent_messages_hash,
                                               .size = hash_size};
@@ -1125,9 +1174,8 @@ static gboolean append_certificate_verify_to_record(FpiDeviceSynaTudorMoc *self,
                     self->tls.sent_handshake_msgs_size);
 #endif
 
-   GNUTLS_CHECK(gnutls_hash_fast(
-       GNUTLS_DIG_SHA256, self->tls.sent_handshake_msgs,
-       self->tls.sent_handshake_msgs_size, &sent_messages_hash));
+   SHA256(self->tls.sent_handshake_msgs, self->tls.sent_handshake_msgs_size,
+          &sent_messages_hash);
 
 #ifdef TLS_DEBUG
    fp_dbg("Siging hash:");
@@ -1177,7 +1225,7 @@ static gboolean encrypt_record(FpiDeviceSynaTudorMoc *self,
 
    /* create random nonce */
    guint64 nonce;
-   GNUTLS_CHECK(gnutls_rnd(GNUTLS_RND_NONCE, &nonce, sizeof(nonce)));
+   OPENSSL_CHECK(RAND_bytes((guint8 *)&nonce, sizeof(nonce)));
 
    /* create GCM IV = encryption_iv + nonce */
    g_assert(self->tls.encryption_iv.size != 0);
@@ -1267,9 +1315,8 @@ static gboolean append_encrypted_handshake_finish_to_record(
 {
    gboolean ret = TRUE;
 
-   const gsize sha256_size = 32;
    const gsize prf_size = 12;
-   guint8 sent_messages_sha256[sha256_size];
+   guint8 sent_messages_sha256[SHA256_DIGEST_LENGTH];
    g_autofree guint8 *tls_prf_output = NULL;
    g_autofree guint8 *to_encrypt = NULL;
    gsize to_encrypt_size = 0;
@@ -1283,17 +1330,17 @@ static gboolean append_encrypted_handshake_finish_to_record(
                     self->tls.sent_handshake_msgs_size);
 #endif
 
-   GNUTLS_CHECK(gnutls_hash_fast(
-       GNUTLS_DIG_SHA256, self->tls.sent_handshake_msgs,
-       self->tls.sent_handshake_msgs_size, sent_messages_sha256));
+   SHA256(self->tls.sent_handshake_msgs, self->tls.sent_handshake_msgs_size,
+          sent_messages_sha256);
+
 #ifdef TLS_DEBUG
    fp_dbg("Handshake finished sent messages hash:");
    fp_dbg_large_hex(sent_messages_sha256, sizeof(sent_messages_sha256));
 #endif
 
-   BOOL_CHECK(tls_prf(self->tls.master_secret, self->tls.mac_algo,
-                      "client finished", sent_messages_sha256, sha256_size,
-                      &tls_prf_output, prf_size, error));
+   BOOL_CHECK(tls_prf(self->tls.mac_algo, self->tls.master_secret,
+                      "client finished", sent_messages_sha256,
+                      SHA256_DIGEST_LENGTH, &tls_prf_output, prf_size, error));
 
 #ifdef TLS_DEBUG
    fp_dbg("tls prf client finished output:");
@@ -1335,7 +1382,7 @@ static gboolean generate_and_store_aead_keys(FpiDeviceSynaTudorMoc *self,
    g_autofree guint8 *data = NULL;
 
    gsize key_size = self->tls.encryption_key.size;
-   if (!tls_prf(self->tls.master_secret, self->tls.mac_algo, "key expansion",
+   if (!tls_prf(self->tls.mac_algo, self->tls.master_secret, "key expansion",
                 self->tls.derive_input, sizeof(self->tls.derive_input), &data,
                 4 * key_size, error)) {
       ret = FALSE;
@@ -1464,7 +1511,7 @@ gboolean tls_unwrap(FpiDeviceSynaTudorMoc *self, guint8 *ctext,
        decrypt_record(self, &encrypted_record, ptext, ptext_size, error));
 
    if (encrypted_record.type == RECORD_TYPE_ALERT) {
-      log_tls_alert_msg((*ptext)[0], (*ptext)[1]);
+      fp_err_tls_alert((*ptext)[0], (*ptext)[1]);
       self->tls.established = FALSE;
       self->tls.remote_sends_encrypted = FALSE;
       ret = FALSE;
@@ -1481,9 +1528,8 @@ error:
    return ret;
 }
 
-static void send_tls_alert(FpiDeviceSynaTudorMoc *self,
-                           gnutls_alert_level_t alert_level,
-                           gnutls_alert_description_t alert_desc)
+static void send_tls_alert(FpiDeviceSynaTudorMoc *self, guint alert_level,
+                           guint alert_desc)
 {
    g_autofree guint8 *encrypted = NULL;
    const guint expected_recv_size = 256;
@@ -1673,10 +1719,11 @@ static gboolean calculate_master_secret(FpiDeviceSynaTudorMoc *self,
    fp_dbg_large_hex(self->tls.derive_input, sizeof(self->tls.derive_input));
 #endif
 
-   ret &= tls_prf(premaster_secret, self->tls.mac_algo, "master secret",
+   ret &= tls_prf(self->tls.mac_algo, premaster_secret, "master secret",
                   self->tls.derive_input, sizeof(self->tls.derive_input),
                   &self->tls.master_secret.data, self->tls.master_secret.size,
                   error);
+
 #ifdef TLS_DEBUG
    fp_dbg("master_secret:");
    fp_dbg_large_hex(self->tls.master_secret.data, self->tls.master_secret.size);
@@ -1875,12 +1922,11 @@ gboolean verify_sensor_certificate(FpiDeviceSynaTudorMoc *self, GError **error)
 {
    gboolean ret = TRUE;
    gboolean pubkey_initialized = FALSE;
+   gnutls_pubkey_t pubkey;
 
    gboolean key_flag = (self->mis_version.security & 0x20) != 0;
 
    /* get sensor public key */
-   gnutls_pubkey_t pubkey;
-   GNUTLS_CHECK(gnutls_pubkey_init(&pubkey));
    pubkey_initialized = TRUE;
 
    fp_dbg("Sensor certificate verify key_flag: %d", key_flag);
@@ -1892,9 +1938,11 @@ gboolean verify_sensor_certificate(FpiDeviceSynaTudorMoc *self, GError **error)
    }
 
    BOOL_CHECK(sensor_pub_key_compatibility_check(self, &sensor_pub_key, error));
+   gnutls_pubkey_init(&pubkey);
    GNUTLS_CHECK(gnutls_pubkey_import_ecc_raw(pubkey, GNUTLS_ECC_CURVE_SECP256R1,
                                              &sensor_pub_key.x,
                                              &sensor_pub_key.y));
+
    GNUTLS_CHECK(gnutls_pubkey_verify_params(pubkey));
 
    /* everything up to signature */
@@ -1969,7 +2017,7 @@ static gboolean generate_hs_priv_key(gnutls_privkey_t *privkey, GError **error)
 
    g_autofree guint8 *output = NULL;
    const gsize output_len = 32;
-   BOOL_CHECK(tls_prf(secret_datum, GNUTLS_MAC_SHA256, label, seed,
+   BOOL_CHECK(tls_prf("SHA256", secret_datum, label, seed,
                       sizeof(seed), &output, output_len, error)); */
 
    /* gnutls expects big-endian, while output is in little */

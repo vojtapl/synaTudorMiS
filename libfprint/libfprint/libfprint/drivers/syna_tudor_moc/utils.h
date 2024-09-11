@@ -26,6 +26,7 @@
 #include "fpi-log.h"
 #include <glib.h>
 #include <gnutls/gnutls.h>
+#include <openssl/err.h>
 
 #pragma once
 
@@ -137,6 +138,31 @@
              ssm,                                                              \
              set_and_report_error(FP_DEVICE_ERROR_GENERAL, "GnuTLS error: %s", \
                                   gnutls_strerror(gnutls_ret)));               \
+         return;                                                               \
+      }                                                                        \
+   } while (0)
+#define OPENSSL_CHECK(func_call)                                               \
+   do {                                                                        \
+      if (!func_call) {                                                        \
+         gint err_num = ERR_get_error();                                       \
+         char *err_msg = ERR_error_string(err_num, NULL);                      \
+         FP_ERR_FANCY("OpenSSL error in " #func_call ": %s", err_msg);         \
+         *error = set_and_report_error(FP_DEVICE_ERROR_PROTO,                  \
+                                       "OpenSSL error: %s", err_msg);          \
+         ret = FALSE;                                                          \
+         goto error;                                                           \
+      }                                                                        \
+   } while (0)
+
+#define OPENSSL_CHECK_ASYNC(ssm, func_call)                                    \
+   do {                                                                        \
+      if (!func_call) {                                                        \
+         gint err_num = ERR_get_error();                                       \
+         char *err_msg = ERR_error_string(err_num, NULL);                      \
+         FP_ERR_FANCY("OpenSSL error in " #func_call ": %s", err_msg);         \
+         fpi_ssm_mark_failed(                                                  \
+             ssm, set_and_report_error(FP_DEVICE_ERROR_GENERAL,                \
+                                       "OpenSSL error: %s", err_msg));         \
          return;                                                               \
       }                                                                        \
    } while (0)

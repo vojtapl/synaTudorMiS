@@ -73,7 +73,7 @@ typedef enum {
 
 typedef struct {
    guint16 id;
-   gnutls_mac_algorithm_t mac_algo;
+   char *mac_algo;
 } cipher_suit_t;
 
 typedef struct {
@@ -139,3 +139,4 @@ void tls_handshake_state_prepare(FpiDeviceSynaTudorMoc *self);
 void tls_handshake_state_start(FpiDeviceSynaTudorMoc *self);
 void tls_handshake_state_end(FpiDeviceSynaTudorMoc *self);
 void tls_handshake_cleanup(FpiDeviceSynaTudorMoc *self);
+void fp_err_tls_alert(const guint alert_level, const guint alert_description);
