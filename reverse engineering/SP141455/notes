@@ -27,6 +27,12 @@
     -> 7: ????
 
 
+### Product IDs
+- all: A, B, C, E, F, G, others are "unexpected"
+- B, C, F, G - sensor in bootloader mode
+- A, D - sensor not in bootloader mode
+
+
 ### requests (cmd_ids):
 - some are unused in decompiled code
 - base structure:
@@ -36,7 +42,6 @@
 - 0x01: get version (VCSFW_CMD_GET_VERSION)
     - req: size: 1
     - resp: size: 38
-        somewhere: prodcert
         2-5: FW build time
         6-9: FW build num
         10: FW version major
@@ -52,6 +57,7 @@
         25: interface
         26-: ?
         34-35: device type
+           & 1 = prodcert
         36: ?
         37: provision state (& 0xf)
 
@@ -203,6 +209,7 @@
     - param_2 = 4 or 1
     - param_2 |= 0x1010 or 0x8
     - req: size: 9 + (8 or 16)
+        somewhere: img retain time, pImgRtOpt->flags
         1-4: param_2
         5-8: number of frames
         9-11: (1)
@@ -331,6 +338,13 @@
     - resp: size: 802
         2-0x45: host certificate echo
         0x46-0x89: device certificate
+    - (from synaWudfBioUsb162.dll)
+       - adds *basic* pairing
+          - req: size: 181
+             1-181:
+          - resp: size: param_4 + 838
+             2-: data (of size x + 836)
+             834-837: wrapped psk size = x
 
 - 0x96: enroll start/commit (non-original name VCSFW_CMD_ENROLL)
     - in misEnrollStartCmd (used in misEnrollStart)
@@ -608,6 +622,7 @@
          3 = VCSFW_SUBCMD_EXTSIG_WRITE
       5-9:
       9-16:
+         12: state
       17-:
    - resp: size 2
 
@@ -631,11 +646,70 @@
          8: SSO status, if == 1, then SSO data are available
          9: SSO counter
 
-
 - 0xae: VCSFW_CMD_OPINFO_GET
-    - req: size: 1 + sizeof(paramBlob)
-    - resp: size: ?
-    - something: VCSFW_OPINFO_GET_CMD_READ_BY_TAGID
+    - req: size: varies
+       1-2: type
+          if type == 0: request size = 1
+          elif type in {1, 2}: request size >= 4 (should match the number of tag IDs sent)
+          elif type == 3: request size = 6
+          - type 2 = VCSFW_OPINFO_GET_CMD_READ_BY_TAGID
+       3-4: number of tag IDs
+       5-: tag IDs
+
+    - resp: size: >= 6, else "Invalid reply length"
+       2: tag ID
+       3: tag version
+       4-5: length
+       6-: data
+          if tag ID == 0x00c && len == 0x34: (Tag 00C AutoInfoV2)
+             0-3: autonomous state
+                printed with "Autonomous State        = %d, %s"
+                0: "\"DELINK mode: IDLE, CMD mode: Image retained function is disabled\""
+                1: "\"DELINK mode: Wait for S3 S4 S5, CMD mode: Image retained function is enabled\""
+                2: "\"S3 S4 S5 detected\""
+                3: "\"Wait for finger up\""
+                4: "\"Wait for finger down\""
+                5: "\"Timing running\""
+                6: "\"Clean image memory\""
+                7: "\"Stop autonomous mode\""
+                8: "\"Frame read received\""
+                9: "\"Identify received\""
+                10: "\"Frame finish received\""
+             4-7: x
+                "DELINK Active           = %.3f ms (0x%08x)", x/100.0, x
+             8-11: x
+                "DELINK Inactive         = %.3f ms (0x%08x)", x/100.0, x
+             12-15: x
+                "Enter Autonomous mode   = %.3f ms (0x%08x)", x/100.0, x
+             16-19: x
+                "Finger Down             = %.3f ms (0x%08x)", x/100.0, x
+             20-23: x
+                "Finger Up               = %.3f ms (0x%08x)", x/100.0, x
+             24-27: x
+                "Image Ready             = %.3f ms (0x%08x)", x/100.0, x
+             28-31: x
+                "Image Clean             = %.3f ms (0x%08x)", x/100.0, x
+             32-35: image clean reason
+                printed with: "Image Clean Reason      = %d, %s"
+                0: "None"
+                1: "\"Active DELINK(system in S3 - S5) detected\""
+                2: "\"USB configuration timeout\""
+                3: "\"New finger detected\""
+                4: "\"Host send FRAME_FINISH IDENTIFY FRAME_READ command\""
+                5: "\"Image timeout due to no authentication\""
+                6: "\"Image timeout because finger - up is detected but DELINK state is still active(system in S3 - S5)\""
+                7: "\"Dome switch triggers but without image captured after releasing dome switch\""
+                8: "\"Not acq frame is defined in Power Button IOTA for this trigger mode\""
+                others: "Unknown Image Clean Reason: %d"
+             36-39: x
+                "Dome Switch Active      = %.3f ms (0x%08x)", x/100.0, x
+             40-43: x
+                "Dome Switch Inactive    = %.3f ms (0x%08x)", x/100.0, x
+             44-:
+          else:
+             printed out with a for loop
+
+
 
 
 - 0xaf: VCSFW_CMD_HW_INFO_GET
@@ -671,6 +745,36 @@
          not done, more info in sunaWudfBioUsb110.dll
 
 - 0xb4: (from synaWudfBioUsb162.dll) VCSFW_CMD_GET_VERSION2
+   - in tudorCmdGetVersion2; may not be supported if recv status not in (0, 0xd1)
+      - req: size: 1
+      - resp: size: 0x4a
+         2-5: FW build time
+         6-9: FW build num
+         10: FW version major
+         11: FW version minor
+         12: FW version target
+         13: ProductId
+         14: silicon revision
+         15: formal release
+         16: platform
+         17: patch
+         18-23: serial number
+         24: security
+         25: interface
+         26-29:
+         30:
+         31:
+         32:
+         33:
+         34-35: device type
+            & 1 = prodcert
+         36:
+         37: provision state (& 0xf)
+         38-41:
+         42:
+         43:
+         44-
+
 - 0xe5: (from synaWudfBioUsb162.dll) VCSFW_CMD_EXT_COMMAND
    - in synaWudfBioUsb110.dll
    - in tudorCmdAutonomousModeSuppress
