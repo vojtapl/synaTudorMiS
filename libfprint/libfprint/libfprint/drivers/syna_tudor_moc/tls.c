@@ -2157,7 +2157,8 @@ void pair(FpiDeviceSynaTudorMoc *self)
    }
 
    if (!sensor_supports_advanced_security(self)) {
-      fp_warn("Skipping pairing: only advanced security is supporeted");
+      fp_warn("Skipping pairing: only advanced security is supported (per "
+              "Windows driver)");
       return;
    }
 

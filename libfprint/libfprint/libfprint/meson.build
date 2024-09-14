@@ -139,8 +139,11 @@ driver_sources = {
         [ 'drivers/virtual-device-storage.c' ],
     'synaptics' :
         [ 'drivers/synaptics/synaptics.c', 'drivers/synaptics/bmkt_message.c' ],
-    'syna_tudor_moc' :
-        [ 'drivers/syna_tudor_moc/syna_tudor_moc.c' ],
+    'synatlsmoc' :
+        [ 'drivers/synatlsmoc/synatlsmoc.c',
+          'drivers/synatlsmoc/tagval.c',
+          'drivers/synatlsmoc/tls_session.c',
+          'drivers/synatlsmoc/utils.c' ],
     'goodixmoc' :
         [ 'drivers/goodixmoc/goodix.c', 'drivers/goodixmoc/goodix_proto.c' ],
     'fpcmoc' :
@@ -230,9 +233,7 @@ deps = [
     gobject_dep,
     gusb_dep,
     mathlib_dep,
-    gnutls_dep,
-    ssl_dep,
-    crypto_dep,
+    openssl_dep,
 ] + optional_deps
 
 # These are empty and only exist so that the include directories are created
@@ -297,9 +298,7 @@ libfprint_dep = declare_dependency(link_with: libfprint,
         glib_dep,
         gobject_dep,
         gusb_dep,
-        gnutls_dep,
-        ssl_dep,
-        crypto_dep,
+        openssl_dep,
     ])
 
 install_headers(['fprint.h'] + libfprint_public_headers,

@@ -1,6 +1,7 @@
 /*
  * Synaptics Tudor Match-In-Sensor driver for libfprint
  *
+ * FIXME: missing Francesco's attribution
  * Copyright (c) 2024 Vojtěch Pluskal
  *
  * some parts are based on work of Popax21 see:
@@ -21,8 +22,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-/* WARNING: current implementation starts a new TLS session on each device open
- */
+/* WARN: current implementation starts a new TLS session on each device open */
 
 #include "communication.c"
 #include "device.h"
@@ -49,7 +49,8 @@ static const FpIdEntry id_table[] = {
     // { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x00D1, },
     // { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x00E7, },
     /* only 00FF is tested */
-    { .vid = SYNAPTICS_VENDOR_ID, .pid = 0x00FF, },
+   // FIXME:
+    // { .vid = SYNAPTICS_VENDOR_ID, .pid = 0x00FF, },
     // { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x0124, },
     // { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x0169, },
     {.vid = 0, .pid = 0, .driver_data = 0}, /* terminating entry */
@@ -396,6 +397,7 @@ static void open_sm_run_state(FpiSsm *ssm, FpDevice *device)
       send_get_version(self);
       break;
    case OPEN_STATE_EXIT_BOOTLOADER_MODE:
+      // TODO: this may be wrong
       if (sensor_is_in_bootloader_mode(self)) {
          send_bootloader_mode_enter_exit(self, FALSE);
       }

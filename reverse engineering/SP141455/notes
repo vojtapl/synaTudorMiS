@@ -54,7 +54,9 @@
         17: patch
         18-23: serial number
         24: security
+         & 0x1 = supports advanced security
         25: interface
+         & 0x20 = key flag
         26-: ?
         34-35: device type
            & 1 = prodcert
@@ -94,7 +96,7 @@
 
 - 0x16: TLS handshake data
 
-- 0x17 TLS application data
+- 0x17: TLS application data
 
 - 0x19: VCSFW_CMD_GET_STARTINFO
   - in get_start_info:
@@ -124,7 +126,7 @@
            -> elements are of size 12 (maybe evety 36 is possibly smt.)
            i: id
            i+1:
-           i+2-i+3: if == 2 then is hostPartitionEntry
+           i+2-i+3: partition id
            i+4-i+7:
            i+8-i+11: partition size
 
@@ -179,11 +181,6 @@
     - req: size: 3
         1-2: timeout (ms*1000/80)
     - resp: size: 2
-
-- 0x69: exit/enter bootloader mode
-    - req: (maybe reversed)
-        00000000 - exit (SSI_IOCTL_CODE_BL_ENTER)
-        00000010 - enter (VCSDRV_IOCTL_WRITE_DFT)
 
 - 0x7d: bootloader patch (VCSFW_CMD_BOOTLDR_PATCH)
     - req:
@@ -508,7 +505,7 @@
            for type 1:
                 2-: something; if == 1: then the id sent is common
            for type 2:
-                18-33: user ID of owner?
+                20-35: user ID of owner?
            for type 2 and 3:
                 4-19: some part of host certifiacte
                 20-33: tuidt
@@ -949,7 +946,7 @@ certificate:
    0x14 - resume device
 
 ### tudorUsbProtoIoControl
-   (1, 4, 5, 6, 0x12 -> palUsbDriverIoControl)
+   (1, 4, 5, 6, 0x11, 0x12 -> palUsbDriverIoControl)
    0x01 - get pipe timeout / reset?
    0x02 = VCSDRV_IOCTL_GET_VID_PID
    0x03 = VCSDRV_IOCTL_INTERRUPT_DATA_GET
@@ -957,6 +954,7 @@ certificate:
    0x05 = VCSDRV_IOCTL_GET_PIPE_TIMEOUT
    0x06 = VCSDRV_IOCTL_SET_PIPE_TIMEOUT
    0x07 = VCSDRV_IOCTL_DEVICE_EVENT_LISTEN
+   0x11 = VCSDRV_IOCTL_INTERRUPT_DATA_READ
    0x12 - set power policy
 
    0x65 - VCSDRV_IOCTL_DEVICE_INFO

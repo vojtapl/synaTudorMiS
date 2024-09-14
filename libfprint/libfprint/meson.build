@@ -89,9 +89,7 @@ gio_dep = dependency('gio-unix-2.0', version: '>=' + glib_min_version)
 gobject_dep = dependency('gobject-2.0', version: '>=' + glib_min_version)
 gusb_dep = dependency('gusb', version: '>= 0.2.0')
 mathlib_dep = cc.find_library('m', required: false)
-gnutls_dep = cc.find_library('gnutls', required: true)
-ssl_dep = cc.find_library('ssl', required: true)
-crypto_dep = cc.find_library('crypto', required: true)
+openssl_dep = dependency('openssl', version: '>= 3.0.0')
 
 # The following dependencies are only used for tests
 sh = find_program('sh', required: true)
@@ -127,7 +125,7 @@ default_drivers = [
     'egismoc',
     'vcom5s',
     'synaptics',
-    'syna_tudor_moc',
+    'synatlsmoc',
     'elan',
     'elanmoc',
     'uru4000',
@@ -161,7 +159,6 @@ endian_independent_drivers = virtual_drivers + [
     'nb1010',
     'realtek',
     'synaptics',
-    # 'syna_tudor_moc',
     'upeksonly',
     'upektc',
     'upektc_img',

@@ -715,7 +715,7 @@ void send_enroll_start(FpiDeviceSynaTudorMoc *self)
    const gsize nonce_buffer_size = 0;
 
    const guint send_size = 13;
-   const guint expected_recv_size = 5;
+   const guint expected_recv_size = 6 + nonce_buffer_size;
 
    FpiByteWriter writer;
    fpi_byte_writer_init_with_size(&writer, send_size, TRUE);
@@ -744,6 +744,7 @@ static gboolean parse_enroll_stats(FpiByteReader *reader,
    /* skip over unknown */
    read_ok &= fpi_byte_reader_skip(reader, 2);
    read_ok &= fpi_byte_reader_get_uint16_le(reader, &result->progress);
+   /* the template id is read beforehand, so do not read it again */
    read_ok &= fpi_byte_reader_skip(reader, 16);
    read_ok &= fpi_byte_reader_get_uint32_le(reader, &result->quality);
    read_ok &= fpi_byte_reader_get_uint32_le(reader, &result->redundant);
@@ -2067,6 +2068,8 @@ static void reset_usb_device_on_callback(FpiUsbTransfer *transfer,
    if (error != NULL) {
       goto error;
    }
+
+   fpi_ssm_next_state(self->task_ssm);
    return;
 
 error:
