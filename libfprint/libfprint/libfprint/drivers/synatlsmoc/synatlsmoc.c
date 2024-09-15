@@ -23,8 +23,6 @@
 
 #define FP_COMPONENT "synatlsmoc"
 
-#include "synatlsmoc.h"
-
 #include <glib.h>
 #include <openssl/decoder.h>
 #include <openssl/ec.h>
@@ -41,6 +39,7 @@
 #include "fpi-usb-transfer.h"
 #include "sample_pairing_data.h"
 #include "sensor_public_keys.h"
+#include "synatlsmoc.h"
 #include "tagval.h"
 #include "tls_session.h"
 #include "utils.h"
@@ -253,7 +252,15 @@ static void synatlsmoc_verify_sensor_certificate(FpiDeviceSynaTlsMoc *self)
       EVP_DigestVerifyFinal(mdctx, self->pairing_data.remote_cert.sign,
                             self->pairing_data.remote_cert.sign_size) <= 0)
   {
-    g_assert_not_reached();
+    gint err_num = ERR_get_error();
+    char *err_msg = ERR_error_string(err_num, NULL);
+    fpi_ssm_mark_failed(
+        self->task_ssm,
+        fpi_device_error_new_msg(
+            FP_DEVICE_ERROR_GENERAL,
+            "OpenSSL error occured while verifying sensor certificate: %s",
+            err_msg));
+    return;
   }
 
   EVP_PKEY_free(ssm_data->pub_key);
@@ -559,9 +566,11 @@ static gboolean fpi_byte_reader_get_mis_version(FpiByteReader *reader,
   read_ok &= fpi_byte_reader_get_uint8(reader, &result->provision_state);
 
   /* sanity check that all has been read */
-  if (read_ok)
+  if (read_ok && (fpi_byte_reader_get_pos(reader) != 38))
   {
-    g_assert(fpi_byte_reader_get_pos(reader) == 38);
+    fp_err("Invalid position when reading mis version: %d, expected: %d",
+           fpi_byte_reader_get_pos(reader), 38);
+    read_ok = FALSE;
   }
 
   return read_ok;
@@ -763,7 +772,7 @@ static void send_tls_data(FpiDeviceSynaTlsMoc *self, guint8 *tdata,
   written &= fpi_byte_writer_fill(&writer, 0, 3);
   written &= fpi_byte_writer_put_data(&writer, tdata, tdata_size);
 
-  g_assert(written);
+  FAIL_TASK_SSM_AND_RETURN_IF_NOT_WRITTEN(written);
 
   gsize send_len = fpi_byte_writer_get_pos(&writer);
   g_autofree guint8 *send_data = fpi_byte_writer_reset_and_get_data(&writer);
@@ -863,8 +872,9 @@ static void send_frame_acquire(FpiDeviceSynaTlsMoc *self, guint8 capture_flags)
   written &= fpi_byte_writer_put_uint8(&writer, 1);
   written &= fpi_byte_writer_put_uint8(&writer, 0);
 
-  g_assert(written);
-  g_assert(fpi_byte_writer_get_pos(&writer) == send_size);
+  FAIL_TASK_SSM_AND_RETURN_IF_NOT_WRITTEN(written);
+  FAIL_TASK_SSM_AND_RETURN_ON_WRONG_SEND_SIZE(writer, send_size);
+
   g_autofree guint8 *cmd = fpi_byte_writer_reset_and_get_data(&writer);
 
   /* Do not check the response status as there is a status on which we
@@ -942,8 +952,8 @@ static void send_event_config(FpiDeviceSynaTlsMoc *self, guint32 mask)
   }
   fpi_byte_writer_put_uint32_le(&writer, mask != 0 ? 0 : 4);
 
-  g_assert(written);
-  g_assert(fpi_byte_writer_get_pos(&writer) == send_size);
+  FAIL_TASK_SSM_AND_RETURN_IF_NOT_WRITTEN(written);
+  FAIL_TASK_SSM_AND_RETURN_ON_WRONG_SEND_SIZE(writer, send_size);
 
   g_autofree guint8 *cmd = fpi_byte_writer_reset_and_get_data(&writer);
 
@@ -1089,8 +1099,8 @@ static void send_event_read(FpiDeviceSynaTlsMoc *self)
   if (!self->event_read_in_legacy_mode)
     written &= fpi_byte_writer_put_uint32_le(&writer, 1);
 
-  g_assert(written);
-  g_assert(fpi_byte_writer_get_pos(&writer) == send_size);
+  FAIL_TASK_SSM_AND_RETURN_IF_NOT_WRITTEN(written);
+  FAIL_TASK_SSM_AND_RETURN_ON_WRONG_SEND_SIZE(writer, send_size);
 
   cmd = fpi_byte_writer_reset_and_get_data(&writer);
 
@@ -1171,8 +1181,8 @@ static void send_pair(FpiDeviceSynaTlsMoc *self,
   fpi_byte_writer_put_uint8(&writer, VCSFW_CMD_PAIR);
   fpi_byte_writer_put_data(&writer, send_host_cert_bytes, CERTIFICATE_SIZE);
 
-  g_assert(written);
-  g_assert(fpi_byte_writer_get_pos(&writer) == send_size);
+  FAIL_TASK_SSM_AND_RETURN_IF_NOT_WRITTEN(written);
+  FAIL_TASK_SSM_AND_RETURN_ON_WRONG_SEND_SIZE(writer, send_size);
 
   g_autofree guint8 *cmd = fpi_byte_writer_reset_and_get_data(&writer);
 
@@ -1236,8 +1246,8 @@ static void send_enroll_start(FpiDeviceSynaTlsMoc *self)
   fpi_byte_writer_put_uint32_le(&writer, nonce_buffer_size != 0);
   fpi_byte_writer_put_uint32_le(&writer, nonce_buffer_size);
 
-  g_assert(written);
-  g_assert(fpi_byte_writer_get_pos(&writer) == send_size);
+  FAIL_TASK_SSM_AND_RETURN_IF_NOT_WRITTEN(written);
+  FAIL_TASK_SSM_AND_RETURN_ON_WRONG_SEND_SIZE(writer, send_size);
 
   g_autofree guint8 *cmd = fpi_byte_writer_reset_and_get_data(&writer);
 
@@ -1339,7 +1349,7 @@ static void recv_add_image(FpDevice *device, guint8 *buffer_in, gsize length_in,
 
   EnrollStats enroll_stats;
   read_ok &= fpi_byte_reader_get_enroll_stats(&reader, &enroll_stats);
-  g_assert(read_ok);
+  FAIL_TASK_SSM_AND_RETURN_IF_NOT_READ(read_ok);
   fp_dbg_enroll_stats(&enroll_stats);
 
   GError *retry = NULL;
@@ -1397,8 +1407,8 @@ static void send_add_image(FpiDeviceSynaTlsMoc *self)
   written &= fpi_byte_writer_put_uint8(&writer, VCSFW_CMD_ENROLL);
   written &= fpi_byte_writer_put_uint32_le(&writer, ENROLL_SUBCMD_ADD_IMAGE);
 
-  g_assert(written);
-  g_assert(fpi_byte_writer_get_pos(&writer) == send_size);
+  FAIL_TASK_SSM_AND_RETURN_IF_NOT_WRITTEN(written);
+  FAIL_TASK_SSM_AND_RETURN_ON_WRONG_SEND_SIZE(writer, send_size);
 
   g_autofree guint8 *cmd = fpi_byte_writer_reset_and_get_data(&writer);
 
@@ -1427,8 +1437,8 @@ static void send_enroll_commit(FpiDeviceSynaTlsMoc *self,
   written &= fpi_byte_writer_put_data(&writer, enroll_commit_data,
                                       enroll_commit_data_size);
 
-  g_assert(written);
-  g_assert(fpi_byte_writer_get_pos(&writer) == send_size);
+  FAIL_TASK_SSM_AND_RETURN_IF_NOT_WRITTEN(written);
+  FAIL_TASK_SSM_AND_RETURN_ON_WRONG_SEND_SIZE(writer, send_size);
 
   g_autofree guint8 *cmd = fpi_byte_writer_reset_and_get_data(&writer);
 
@@ -1449,8 +1459,8 @@ static void send_enroll_finish(FpiDeviceSynaTlsMoc *self)
   written &= fpi_byte_writer_put_uint8(&writer, VCSFW_CMD_ENROLL);
   written &= fpi_byte_writer_put_uint32_le(&writer, ENROLL_SUBCMD_FINISH);
 
-  g_assert(written);
-  g_assert(fpi_byte_writer_get_pos(&writer) == send_size);
+  FAIL_TASK_SSM_AND_RETURN_IF_NOT_WRITTEN(written);
+  FAIL_TASK_SSM_AND_RETURN_ON_WRONG_SEND_SIZE(writer, send_size);
 
   g_autofree guint8 *cmd = fpi_byte_writer_reset_and_get_data(&writer);
 
@@ -1481,7 +1491,7 @@ static void recv_identify_match_cb(FpDevice *device, guint8 *buffer_in,
   read_ok &= fpi_byte_reader_get_uint16_le(&reader, &status);
 
   // Should have no way of failing
-  g_assert(read_ok);
+  FAIL_TASK_SSM_AND_RETURN_IF_NOT_READ(read_ok);
 
   /* we get VCS_RESULT_GEN_OBJECT_DOESNT_EXIST_2 if we send
    * template_ids_to_match and VCS_RESULT_MATCHER_MATCH_FAILED otherwise
@@ -1527,7 +1537,7 @@ static void recv_identify_match_cb(FpDevice *device, guint8 *buffer_in,
   read_ok &= fpi_byte_reader_get_uint32_le(&reader, &y_len);
   read_ok &= fpi_byte_reader_get_uint32_le(&reader, &z_len);
 
-  g_assert(read_ok);
+  FAIL_TASK_SSM_AND_RETURN_IF_NOT_READ(read_ok);
 
   if (qm_struct_size != 36)
   {
@@ -1551,13 +1561,13 @@ static void recv_identify_match_cb(FpDevice *device, guint8 *buffer_in,
   }
 
   read_ok &= fpi_byte_reader_get_data(&reader, qm_struct_size, &qm_struct);
-  g_assert(read_ok);
+  FAIL_TASK_SSM_AND_RETURN_IF_NOT_READ(read_ok);
 
   match_score = FP_READ_UINT32_LE(qm_struct);
   if (match_score == 0) fp_warn("Match score is 0");
 
   read_ok &= fpi_byte_reader_dup_data(&reader, z_len, &z_data);
-  g_assert(read_ok);
+  FAIL_TASK_SSM_AND_RETURN_IF_NOT_READ(read_ok);
 
   g_autoptr(TagVal) tagval = NULL;
   gboolean tagval_ok = TRUE;
@@ -1657,8 +1667,8 @@ static void send_identify_match(FpiDeviceSynaTlsMoc *self,
     fpi_byte_writer_put_data(&writer, data_2, data_2_size);
   }
 
-  g_assert(fpi_byte_writer_get_pos(&writer) == send_size);
-  g_assert(written);
+  FAIL_TASK_SSM_AND_RETURN_IF_NOT_WRITTEN(written);
+  FAIL_TASK_SSM_AND_RETURN_ON_WRONG_SEND_SIZE(writer, send_size);
 
   g_autofree guint8 *cmd = fpi_byte_writer_reset_and_get_data(&writer);
 
@@ -1712,7 +1722,7 @@ static void recv_get_image_metrics(FpDevice *device, guint8 *buffer_in,
 
         guint32 ipl_coverage;
         read_ok &= fpi_byte_reader_get_uint32_le(&reader, &ipl_coverage);
-        g_assert(read_ok);
+        FAIL_TASK_SSM_AND_RETURN_IF_NOT_READ(read_ok);
 
         fp_dbg("IPL finger coverage: %u", ipl_coverage);
         break;
@@ -1723,7 +1733,7 @@ static void recv_get_image_metrics(FpDevice *device, guint8 *buffer_in,
         read_ok &= fpi_byte_reader_get_uint32_le(&reader, &matcher_img_quality);
         read_ok &=
             fpi_byte_reader_get_uint32_le(&reader, &matcher_sensor_coverage);
-        g_assert(read_ok);
+        FAIL_TASK_SSM_AND_RETURN_IF_NOT_READ(read_ok);
 
         fp_dbg("Matcher image quality: %d%%", matcher_img_quality);
         fp_dbg("Matcher sensor coverage: %d%%", matcher_sensor_coverage);
@@ -1780,8 +1790,8 @@ static void send_get_image_metrics(FpiDeviceSynaTlsMoc *self,
   written &= fpi_byte_writer_put_uint8(&writer, VCSFW_CMD_GET_IMAGE_METRICS);
   written &= fpi_byte_writer_put_uint32_le(&writer, type);
 
-  g_assert(written);
-  g_assert(fpi_byte_writer_get_pos(&writer) == send_size);
+  FAIL_TASK_SSM_AND_RETURN_IF_NOT_WRITTEN(written);
+  FAIL_TASK_SSM_AND_RETURN_ON_WRONG_SEND_SIZE(writer, send_size);
 
   g_autofree guint8 *cmd = fpi_byte_writer_reset_and_get_data(&writer);
 
@@ -1955,7 +1965,7 @@ static void recv_db2_get_template_list(FpDevice *device, guint8 *buffer_in,
   read_ok &= fpi_byte_reader_skip(&reader, SENSOR_FW_REPLY_STATUS_HEADER_LEN);
   read_ok &= fpi_byte_reader_get_uint16_le(&reader, &num_templates);
 
-  g_assert(read_ok);
+  FAIL_TASK_SSM_AND_RETURN_IF_NOT_READ(read_ok);
   fp_dbg(
       "Received object list of obj_type OBJ_TYPE_TEMPLATES with %d elements:",
       num_templates);
@@ -1965,7 +1975,7 @@ static void recv_db2_get_template_list(FpDevice *device, guint8 *buffer_in,
     g_autofree guint8 *template_id = NULL;
     fpi_byte_reader_dup_data(&reader, DB2_ID_SIZE, &template_id);
 
-    g_assert(read_ok);
+    FAIL_TASK_SSM_AND_RETURN_IF_NOT_READ(read_ok);
     g_autofree gchar *template_str = bin2hex(template_id, DB2_ID_SIZE);
     fp_dbg("\tat idx %d is: %s", i, template_str);
 
@@ -2005,7 +2015,7 @@ static void recv_db2_get_payload_list(FpDevice *device, guint8 *buffer_in,
   read_ok &= fpi_byte_reader_skip(&reader, SENSOR_FW_REPLY_STATUS_HEADER_LEN);
   read_ok &= fpi_byte_reader_get_uint16_le(&reader, &num_payloads);
 
-  g_assert(read_ok);
+  FAIL_TASK_SSM_AND_RETURN_IF_NOT_READ(read_ok);
   fp_dbg("Received object list of obj_type OBJ_TYPE_PAYLOADS with %d elements ",
          num_payloads);
 
@@ -2014,7 +2024,7 @@ static void recv_db2_get_payload_list(FpDevice *device, guint8 *buffer_in,
     g_autofree guint8 *payload = NULL;
     fpi_byte_reader_dup_data(&reader, DB2_ID_SIZE, &payload);
 
-    g_assert(read_ok);
+    FAIL_TASK_SSM_AND_RETURN_IF_NOT_READ(read_ok);
     g_autofree gchar *payload_str = bin2hex(payload, DB2_ID_SIZE);
     fp_dbg("\tat idx %d is: %s", i, payload_str);
 
@@ -2057,8 +2067,8 @@ static void send_db2_get_object_list(FpiDeviceSynaTlsMoc *self,
   fpi_byte_writer_put_uint32_le(&writer, obj_type);
   fpi_byte_writer_put_data(&writer, obj_id, DB2_ID_SIZE);
 
-  g_assert(written);
-  g_assert(fpi_byte_writer_get_pos(&writer) == send_size);
+  FAIL_TASK_SSM_AND_RETURN_IF_NOT_WRITTEN(written);
+  FAIL_TASK_SSM_AND_RETURN_ON_WRONG_SEND_SIZE(writer, send_size);
 
   g_autofree guint8 *cmd = fpi_byte_writer_reset_and_get_data(&writer);
 
@@ -2203,8 +2213,8 @@ static void send_db2_get_object_info(FpiDeviceSynaTlsMoc *self,
   fpi_byte_writer_put_uint32_le(&writer, obj_type);
   fpi_byte_writer_put_data(&writer, obj_id, DB2_ID_SIZE);
 
-  g_assert(written);
-  g_assert(fpi_byte_writer_get_pos(&writer) == send_size);
+  FAIL_TASK_SSM_AND_RETURN_IF_NOT_WRITTEN(written);
+  FAIL_TASK_SSM_AND_RETURN_ON_WRONG_SEND_SIZE(writer, send_size);
 
   g_autofree guint8 *cmd = fpi_byte_writer_reset_and_get_data(&writer);
 
@@ -2341,8 +2351,8 @@ static void send_db2_get_object_data(FpiDeviceSynaTlsMoc *self,
   fpi_byte_writer_put_uint32_le(&writer, obj_type);
   fpi_byte_writer_put_data(&writer, obj_id, DB2_ID_SIZE);
 
-  g_assert(written);
-  g_assert(fpi_byte_writer_get_pos(&writer) == send_size);
+  FAIL_TASK_SSM_AND_RETURN_IF_NOT_WRITTEN(written);
+  FAIL_TASK_SSM_AND_RETURN_ON_WRONG_SEND_SIZE(writer, send_size);
 
   g_autofree guint8 *cmd = fpi_byte_writer_reset_and_get_data(&writer);
 
@@ -2412,8 +2422,8 @@ static void send_db2_delete_object(FpiDeviceSynaTlsMoc *self,
   fpi_byte_writer_put_uint32_le(&writer, obj_type);
   fpi_byte_writer_put_data(&writer, obj_id, DB2_ID_SIZE);
 
-  g_assert(written);
-  g_assert(fpi_byte_writer_get_pos(&writer) == send_size);
+  FAIL_TASK_SSM_AND_RETURN_IF_NOT_WRITTEN(written);
+  FAIL_TASK_SSM_AND_RETURN_ON_WRONG_SEND_SIZE(writer, send_size);
 
   g_autofree guint8 *cmd = fpi_byte_writer_reset_and_get_data(&writer);
 
@@ -2444,7 +2454,7 @@ static void recv_db2_cleanup(FpDevice *device, guchar *buffer_in,
   guint32 new_partition_version = 0;
   read_ok &= fpi_byte_reader_get_uint32_le(&reader, &new_partition_version);
 
-  g_assert(read_ok);
+  FAIL_TASK_SSM_AND_RETURN_IF_NOT_READ(read_ok);
 
   fp_dbg("DB2 cleanup succeeded with:");
   fp_dbg("\tNumber of erased slots: %u", num_erased_slots);
@@ -2526,8 +2536,8 @@ static void send_db2_format(FpiDeviceSynaTlsMoc *self)
   written &= fpi_byte_writer_put_uint8(&writer, 1);
   written &= fpi_byte_writer_fill(&writer, 0, 10);
 
-  g_assert(written);
-  g_assert(fpi_byte_writer_get_pos(&writer) == send_size);
+  FAIL_TASK_SSM_AND_RETURN_IF_NOT_WRITTEN(written);
+  FAIL_TASK_SSM_AND_RETURN_ON_WRONG_SEND_SIZE(writer, send_size);
 
   g_autofree guint8 *cmd = fpi_byte_writer_reset_and_get_data(&writer);
 
@@ -2705,8 +2715,8 @@ static gboolean sensor_certificate_from_raw(Certificate *self, guint8 *data,
     return FALSE;
   }
 
-  // This should have no way of failing
-  g_assert(read_ok);
+  // This should have no way of failing though
+  RETURN_FALSE_AND_SET_ERROR_IF_NOT_READ(read_ok);
 
   /* the keys are stored in little endian - reverse them as OpenSSL expects big
    * endian */

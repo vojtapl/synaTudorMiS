@@ -4,6 +4,7 @@ NOTE: currently requires (this merge request)[https://gitlab.freedesktop.org/lib
 
 # Roadmap to libfprint merge request:
 - fixing pairing and loading / storing of pairing data in persistent storage
+- adding alert stage to TLS
 - Fix naming scheme
   - What to name the driver
   - Naming of variables

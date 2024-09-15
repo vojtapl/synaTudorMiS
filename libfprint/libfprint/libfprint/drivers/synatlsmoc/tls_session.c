@@ -23,8 +23,6 @@
 
 #define FP_COMPONENT "synamoc-TlsSession"
 
-#include "tls_session.h"
-
 #include <glib.h>
 #include <openssl/conf.h>
 #include <openssl/core_names.h>
@@ -38,6 +36,7 @@
 #include "fpi-byte-writer.h"
 #include "fpi-device.h"
 #include "fpi-log.h"
+#include "tls_session.h"
 #include "utils.h"
 
 #define DEBUG_SSL TRUE
@@ -55,7 +54,7 @@ typedef enum
   CLIENT_HELLO_SENT,
   SUITE_HANDSHAKE,
   SERVER_DONE,
-  FINISHED
+  FINISHED,
 } HandshakePhase;
 
 typedef struct
@@ -74,6 +73,14 @@ typedef struct
   guint8 *fragment;
   gchar *repr;
 } TlsRecord;
+
+typedef struct
+{
+  guint16 id;
+  guint16 len;
+  guint8 *data;
+
+} Extenstion;
 
 typedef enum
 {
@@ -126,6 +133,12 @@ struct _TlsSession
   guint16 suites_size;
   guint8 *suites;
 
+  guint num_supported_extensions;
+  Extenstion *supported_extensions;
+
+  // FIXME: currently only set and not read
+  guint8 raised_alert_desc;
+
   FpiByteWriter send_buffer;
 
   FpiByteWriter content_buffer;
@@ -141,6 +154,38 @@ struct _TlsSession
   // gboolean established;
   // gboolean remote_established;
 };
+
+static gboolean fpi_byte_writer_put_extension(FpiByteWriter *writer,
+                                              Extenstion *extension)
+{
+  gboolean written = TRUE;
+  written &= fpi_byte_writer_put_uint16_be(writer, extension->id);
+  written &= fpi_byte_writer_put_uint16_be(writer, extension->len);
+  written &= fpi_byte_writer_put_data(writer, extension->data, extension->len);
+  return written;
+}
+
+static gboolean get_serialized_extensions(TlsSession *self, guint8 **serialized,
+                                          gsize *serialized_len)
+{
+  FpiByteWriter writer;
+  fpi_byte_writer_init(&writer);
+
+  gboolean written = TRUE;
+  for (gint i = 0; i < self->num_supported_extensions && written; ++i)
+  {
+    written &=
+        fpi_byte_writer_put_extension(&writer, &self->supported_extensions[i]);
+  }
+
+  if (written)
+  {
+    *serialized_len = fpi_byte_writer_get_pos(&writer);
+    *serialized = fpi_byte_writer_reset_and_get_data(&writer);
+  }
+
+  return written;
+}
 
 void tls_session_free(TlsSession *self)
 {
@@ -214,7 +259,7 @@ static void tls_plaintext_free(TlsRecord *record)
 G_DEFINE_AUTOPTR_CLEANUP_FUNC(TlsRecord, tls_plaintext_free);
 
 static gboolean tls_session_handshake_hash(TlsSession *self, guint8 *out,
-                                           gsize *outlen)
+                                           gsize *outlen, GError **error)
 {
   g_autoptr(EVP_MD_CTX) ctx = EVP_MD_CTX_new();
   guint hash_len;
@@ -228,7 +273,14 @@ static gboolean tls_session_handshake_hash(TlsSession *self, guint8 *out,
   if (ctx == NULL || !EVP_DigestInit_ex(ctx, EVP_sha256(), NULL) ||
       !EVP_DigestUpdate(ctx, hdata, hdata_len) ||
       !EVP_DigestFinal_ex(ctx, out, &hash_len))
-    g_assert_not_reached();
+  {
+    g_propagate_error(
+        error, fpi_device_error_new_msg(
+                   FP_DEVICE_ERROR_GENERAL,
+                   "OpenSSL error occured while calculating handshake hash: %s",
+                   ERR_error_string(ERR_get_error(), NULL)));
+    return FALSE;
+  }
 
   *outlen = hash_len;
 
@@ -239,7 +291,7 @@ static gboolean gcm_encrypt(unsigned char *plaintext, int plaintext_len,
                             unsigned char *aad, int aad_len, unsigned char *key,
                             unsigned char *iv, int iv_len,
                             unsigned char *ciphertext, int *ciphertext_len,
-                            unsigned char *tag)
+                            unsigned char *tag, GError **error)
 {
   int len, discard_len;
   // Create and initialise the context
@@ -259,8 +311,14 @@ static gboolean gcm_encrypt(unsigned char *plaintext, int plaintext_len,
       // Finalise: note get no output for GCM
       !EVP_EncryptFinal_ex(ctx, ciphertext + len, &discard_len) ||
       // Get the tag
-      !EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, 16, tag))
-    g_assert_not_reached();
+      !EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, AES_GCM_TAG_SIZE, tag))
+  {
+    g_propagate_error(error, fpi_device_error_new_msg(
+                                 FP_DEVICE_ERROR_GENERAL,
+                                 "OpenSSL error occured in gcm_encrypt: %s",
+                                 ERR_error_string(ERR_get_error(), NULL)));
+    return FALSE;
+  }
 
   *ciphertext_len = len;
 
@@ -270,7 +328,8 @@ static gboolean gcm_encrypt(unsigned char *plaintext, int plaintext_len,
 static gboolean gcm_decrypt(unsigned char *ciphertext, int ciphertext_len,
                             unsigned char *aad, int aad_len, unsigned char *tag,
                             unsigned char *key, unsigned char *iv, int iv_len,
-                            unsigned char *plaintext, gsize *plaintext_len)
+                            unsigned char *plaintext, gsize *plaintext_len,
+                            GError **error)
 {
   int len, discard_len;
 
@@ -289,10 +348,16 @@ static gboolean gcm_decrypt(unsigned char *ciphertext, int ciphertext_len,
       // Provide the message to be decrypted, and obtain the plaintext output
       !EVP_DecryptUpdate(ctx, plaintext, &len, ciphertext, ciphertext_len) ||
       /* Set expected tag value. Works in OpenSSL 1.0.1d and later */
-      !EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, 16, tag) ||
+      !EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, AES_GCM_TAG_SIZE, tag) ||
       // Finalise the decryption
       !EVP_DecryptFinal_ex(ctx, plaintext + len, &discard_len))
-    g_assert_not_reached();
+  {
+    g_propagate_error(error, fpi_device_error_new_msg(
+                                 FP_DEVICE_ERROR_GENERAL,
+                                 "OpenSSL error occured in gcm_decrypt: %s",
+                                 ERR_error_string(ERR_get_error(), NULL)));
+    return FALSE;
+  }
 
   *plaintext_len = len;
 
@@ -318,7 +383,7 @@ static gboolean tls_session_encrypt(TlsSession *self, guint8 type,
     {
       written &= fpi_byte_writer_put_uint16_be(&writer, ptext_size);
       written &= fpi_byte_writer_put_data(&writer, ptext, ptext_size);
-      g_assert(written);
+      RETURN_FALSE_AND_SET_ERROR_IF_NOT_WRITTEN(written);
 
       *ctext_size = fpi_byte_writer_get_pos(&writer);
       *ctext = fpi_byte_writer_reset_and_get_data(&writer);
@@ -326,16 +391,16 @@ static gboolean tls_session_encrypt(TlsSession *self, guint8 type,
     }
     case TLS_ECDH_ECDSA_WITH_AES_256_GCM_SHA384:
     {
-      g_autofree guint8 *gcm_iv;
+      g_autofree guint8 *gcm_iv = NULL;
 
       // Create random nonce & add it to output
-      guint8 nonce[8];
-      RAND_bytes(nonce, 8);
+      guint8 nonce[NONCE_SIZE];
+      RAND_bytes(nonce, NONCE_SIZE);
 
       // encr_iv + nonce
-      gcm_iv = g_malloc(12);
-      memcpy(gcm_iv, self->encr_iv, 4);
-      memcpy(gcm_iv + self->encr_iv_len, nonce, 8);
+      gcm_iv = g_malloc(AES_GCM_IV_SIZE + NONCE_SIZE);
+      memcpy(gcm_iv, self->encr_iv, AES_GCM_IV_SIZE);
+      memcpy(gcm_iv + self->encr_iv_len, nonce, NONCE_SIZE);
 
       // additional_data = seq_num + TLSCompressed.type + TLSCompressed.version
       // + TLSCompressed.length;
@@ -346,26 +411,32 @@ static gboolean tls_session_encrypt(TlsSession *self, guint8 type,
       written &= fpi_byte_writer_put_uint16_be(&adwriter, self->version);
       written &= fpi_byte_writer_put_uint16_be(&adwriter, ptext_size);
 
-      g_assert(written);
+      RETURN_FALSE_AND_SET_ERROR_IF_NOT_WRITTEN(written);
 
       gsize additional_size = fpi_byte_writer_get_pos(&adwriter);
       g_autofree guint8 *additional =
           fpi_byte_writer_reset_and_get_data(&adwriter);
 
-      gint cdata_size = ptext_size + 16;
+      gint cdata_size = ptext_size + AES_GCM_TAG_SIZE;
       g_autofree guint8 *cdata = g_malloc(cdata_size);
 
       /* Buffer for the tag */
-      unsigned char tag[16];
+      unsigned char tag[AES_GCM_TAG_SIZE];
 
-      gcm_encrypt(ptext, ptext_size, additional, additional_size,
-                  self->encr_key, gcm_iv, 12, cdata, &cdata_size, tag);
+      if (!gcm_encrypt(ptext, ptext_size, additional, additional_size,
+                       self->encr_key, gcm_iv, NONCE_SIZE + AES_GCM_IV_SIZE,
+                       cdata, &cdata_size, tag, &local_error))
+      {
+        g_propagate_error(error, local_error);
+        return FALSE;
+      }
 
-      written &= fpi_byte_writer_put_uint16_be(&writer, 8 + cdata_size + 16);
-      written &= fpi_byte_writer_put_data(&writer, nonce, 8);
+      written &= fpi_byte_writer_put_uint16_be(
+          &writer, NONCE_SIZE + cdata_size + AES_GCM_TAG_SIZE);
+      written &= fpi_byte_writer_put_data(&writer, nonce, NONCE_SIZE);
       written &= fpi_byte_writer_put_data(&writer, cdata, cdata_size);
-      written &= fpi_byte_writer_put_data(&writer, tag, 16);
-      g_assert(written);
+      written &= fpi_byte_writer_put_data(&writer, tag, AES_GCM_TAG_SIZE);
+      RETURN_FALSE_AND_SET_ERROR_IF_NOT_WRITTEN(written);
 
       self->encr_seq_num += 1;
       *ctext_size = fpi_byte_writer_get_pos(&writer);
@@ -409,16 +480,17 @@ static gboolean tls_session_decrypt(TlsSession *self, guint8 type,
       g_autofree guint8 *tag;
 
       fpi_byte_reader_init(&reader, ctext, ctext_size);
-      read_ok &= fpi_byte_reader_dup_data(&reader, 8, &nonce);
-      read_ok &= fpi_byte_reader_dup_data(&reader, ctext_size - 8 - 16, &cdata);
-      read_ok &= fpi_byte_reader_dup_data(&reader, 16, &tag);
-      g_assert(read_ok);
+      read_ok &= fpi_byte_reader_dup_data(&reader, NONCE_SIZE, &nonce);
+      read_ok &= fpi_byte_reader_dup_data(
+          &reader, ctext_size - NONCE_SIZE - AES_GCM_TAG_SIZE, &cdata);
+      read_ok &= fpi_byte_reader_dup_data(&reader, AES_GCM_TAG_SIZE, &tag);
+      RETURN_FALSE_AND_SET_ERROR_IF_NOT_READ(read_ok);
 
       // encr_iv + nonce
-      gcm_iv_size = 8 + self->decr_iv_len;
+      gcm_iv_size = NONCE_SIZE + self->decr_iv_len;
       gcm_iv = g_malloc(gcm_iv_size);
       memcpy(gcm_iv, self->decr_iv, self->decr_iv_len);
-      memcpy(gcm_iv + self->decr_iv_len, nonce, 8);
+      memcpy(gcm_iv + self->decr_iv_len, nonce, NONCE_SIZE);
 
       FpiByteWriter adwriter;
       gboolean written = TRUE;
@@ -427,19 +499,26 @@ static gboolean tls_session_decrypt(TlsSession *self, guint8 type,
       written &= fpi_byte_writer_put_uint64_be(&adwriter, self->decr_seq_num);
       written &= fpi_byte_writer_put_uint8(&adwriter, type);
       written &= fpi_byte_writer_put_uint16_be(&adwriter, version);
-      written &= fpi_byte_writer_put_uint16_be(&adwriter, ctext_size - 8 - 16);
+      written &= fpi_byte_writer_put_uint16_be(
+          &adwriter, ctext_size - NONCE_SIZE - AES_GCM_TAG_SIZE);
 
-      g_assert(written);
+      RETURN_FALSE_AND_SET_ERROR_IF_NOT_WRITTEN(written);
 
       gsize additional_size = fpi_byte_writer_get_pos(&adwriter);
       g_autofree guint8 *additional =
           fpi_byte_writer_reset_and_get_data(&adwriter);
 
-      *ptext_size = ctext_size - 8 - 16;
+      *ptext_size = ctext_size - NONCE_SIZE - AES_GCM_TAG_SIZE;
       *ptext = g_malloc(*ptext_size);
 
-      gcm_decrypt(cdata, ctext_size - 8 - 16, additional, additional_size, tag,
-                  self->decr_key, gcm_iv, gcm_iv_size, *ptext, ptext_size);
+      GError *local_error = NULL;
+      if (!gcm_decrypt(cdata, ctext_size - NONCE_SIZE - AES_GCM_TAG_SIZE,
+                       additional, additional_size, tag, self->decr_key, gcm_iv,
+                       gcm_iv_size, *ptext, ptext_size, &local_error))
+      {
+        g_propagate_error(error, local_error);
+        return FALSE;
+      }
 
       self->decr_seq_num += 1;
     }
@@ -544,7 +623,7 @@ static gboolean tls_session_send_alert(TlsSession *self, guint8 level,
   written &= fpi_byte_writer_put_uint8(&writer, level);
   written &= fpi_byte_writer_put_uint8(&writer, description);
 
-  g_assert(written);
+  RETURN_FALSE_AND_SET_ERROR_IF_NOT_WRITTEN(written);
 
   record->type = SSL3_RT_ALERT;
   record->length = fpi_byte_writer_get_pos(&writer);
@@ -598,7 +677,7 @@ static gboolean tls_session_send_handshake_msg(TlsSession *self, Handshake *msg,
   written &= fpi_byte_writer_put_uint24_be(&writer, msg->length);
   written &= fpi_byte_writer_put_data(&writer, msg->body, msg->length);
 
-  g_assert(written);
+  RETURN_FALSE_AND_SET_ERROR_IF_NOT_WRITTEN(written);
 
   record->type = SSL3_RT_HANDSHAKE;
   record->version = TLS1_2_VERSION;
@@ -614,7 +693,7 @@ static gboolean tls_session_send_handshake_msg(TlsSession *self, Handshake *msg,
   {
     written &= fpi_byte_writer_put_data(&self->handshake_buffer,
                                         record->fragment, record->length);
-    g_assert(written);
+    RETURN_FALSE_AND_SET_ERROR_IF_NOT_WRITTEN(written);
   }
 
   if (!tls_session_send(self, record, &local_error))
@@ -648,21 +727,15 @@ static gboolean tls_session_send_client_hello(TlsSession *self, GError **error)
   // BROKEN The windows driver doesn't advertise the NULL compression method
   written &= fpi_byte_writer_put_uint8(&writer, 0);
 
-  guint8 supported_groups_data[4] = {0x00, 0x02, 0x00, 0x17};
-  written &= fpi_byte_writer_put_uint16_be(&writer, 0x0a);
-  written &=
-      fpi_byte_writer_put_uint16_be(&writer, sizeof(supported_groups_data));
-  written &= fpi_byte_writer_put_data(&writer, supported_groups_data,
-                                      sizeof(supported_groups_data));
+  g_autofree guint8 *serialized_extensions = NULL;
+  gsize serialized_extensions_size = 0;
+  written &= get_serialized_extensions(self, &serialized_extensions,
+                                       &serialized_extensions_size);
 
-  guint8 ec_point_formats_data[2] = {0x01, 0x00};
-  written &= fpi_byte_writer_put_uint16_be(&writer, 0x0b);
-  written &=
-      fpi_byte_writer_put_uint16_be(&writer, sizeof(ec_point_formats_data));
-  written &= fpi_byte_writer_put_data(&writer, ec_point_formats_data,
-                                      sizeof(ec_point_formats_data));
+  written &= fpi_byte_writer_put_data(&writer, serialized_extensions,
+                                      serialized_extensions_size);
 
-  g_assert(written);
+  RETURN_FALSE_AND_SET_ERROR_IF_NOT_WRITTEN(written);
 
   g_autoptr(Handshake) msg = g_new(Handshake, 1);
 
@@ -673,10 +746,14 @@ static gboolean tls_session_send_client_hello(TlsSession *self, GError **error)
   g_autofree gchar *ses_id_str =
       bin2hex(self->session_id, self->session_id_size);
   g_autofree gchar *rand_str = bin2hex(self->client_random, RANDOM_SIZE);
+  g_autofree gchar *extensions_str =
+      bin2hex(serialized_extensions, serialized_extensions_size);
+  g_autofree gchar *suites_str = bin2hex(self->suites, self->suites_size);
+
   asprintf(&msg->repr,
-           "ClientHello(ver=0x%04x, rand=%s, ses_id=%s, cipher_suites=TODO, "
-           "compr_methods=[], extensions=TODO)",
-           self->version, rand_str, ses_id_str);
+           "ClientHello(ver=0x%04x, rand=%s, ses_id=%s, cipher_suites=%s, "
+           "compr_methods=[], extensions=%s)",
+           self->version, rand_str, ses_id_str, suites_str, extensions_str);
 
   if (!tls_session_send_handshake_msg(self, msg, &local_error))
   {
@@ -693,19 +770,18 @@ static gboolean tls_session_send_finished(TlsSession *self, guint8 *verify_data,
   GError *local_error = NULL;
   FpiByteWriter writer;
   gboolean written = TRUE;
-  const guint verify_data_size = 12;
 
-  fpi_byte_writer_init_with_size(&writer, verify_data_size, TRUE);
-  written &= fpi_byte_writer_put_data(&writer, verify_data, verify_data_size);
+  fpi_byte_writer_init_with_size(&writer, VERIFY_DATA_SIZE, TRUE);
+  written &= fpi_byte_writer_put_data(&writer, verify_data, VERIFY_DATA_SIZE);
 
-  g_assert(written);
+  RETURN_FALSE_AND_SET_ERROR_IF_NOT_WRITTEN(written);
 
   g_autoptr(Handshake) msg = g_new(Handshake, 1);
 
   msg->msg_type = SSL3_MT_FINISHED;
   msg->length = fpi_byte_writer_get_pos(&writer);
   msg->body = fpi_byte_writer_reset_and_get_data(&writer);
-  g_autofree gchar *verify_data_str = bin2hex(verify_data, verify_data_size);
+  g_autofree gchar *verify_data_str = bin2hex(verify_data, VERIFY_DATA_SIZE);
   asprintf(&msg->repr, "Finished(verify_data=%s)", verify_data_str);
 
   if (!tls_session_send_handshake_msg(self, msg, &local_error))
@@ -735,7 +811,7 @@ static gboolean tls_session_send_certificate(TlsSession *self, GError **error)
   written &= fpi_byte_writer_put_data(
       &writer, self->pairing_data->client_cert_raw, CERTIFICATE_SIZE);
 
-  g_assert(written);
+  RETURN_FALSE_AND_SET_ERROR_IF_NOT_WRITTEN(written);
 
   g_autoptr(Handshake) msg = g_new(Handshake, 1);
 
@@ -791,7 +867,7 @@ static gboolean tls_session_send_certificate_verify(TlsSession *self,
   fpi_byte_writer_init(&writer);
   written &= fpi_byte_writer_put_data(&writer, signature, signature_len);
 
-  g_assert(written);
+  RETURN_FALSE_AND_SET_ERROR_IF_NOT_WRITTEN(written);
 
   g_autoptr(Handshake) msg = g_new(Handshake, 1);
 
@@ -821,7 +897,7 @@ static gboolean tls_session_send_change_cipher_spec(TlsSession *self,
   fpi_byte_writer_init(&writer);
   // Dummy
   written &= fpi_byte_writer_put_uint8(&writer, 1);
-  g_assert(written);
+  RETURN_FALSE_AND_SET_ERROR_IF_NOT_WRITTEN(written);
 
   g_autoptr(TlsRecord) record = g_new0(TlsRecord, 1);
 
@@ -862,7 +938,7 @@ static gboolean tls_session_receive_handshake(TlsSession *self, Handshake *msg,
     written &= fpi_byte_writer_put_data(&self->handshake_buffer, msg->body,
                                         msg->length);
 
-    g_assert(written);
+    RETURN_FALSE_AND_SET_ERROR_IF_NOT_WRITTEN(written);
   }
 
   fpi_byte_reader_init(&reader, msg->body, msg->length);
@@ -870,7 +946,16 @@ static gboolean tls_session_receive_handshake(TlsSession *self, Handshake *msg,
   {
     case SSL3_MT_SERVER_HELLO:
     {
-      if (self->handshake_phase != CLIENT_HELLO_SENT) g_assert(FALSE);
+      if (self->handshake_phase != CLIENT_HELLO_SENT)
+      {
+        g_propagate_error(
+            error, fpi_device_error_new_msg(
+                       FP_DEVICE_ERROR_GENERAL,
+                       "Invalid handshake phase when server server hello "
+                       "is received: %d",
+                       self->handshake_phase));
+        return FALSE;
+      }
 
       guint16 proto_ver, cipher_suite;  // extension_len;
       guint8 session_id_len, compr_method, extensions_num = 0;
@@ -885,13 +970,14 @@ static gboolean tls_session_receive_handshake(TlsSession *self, Handshake *msg,
       read_ok &= fpi_byte_reader_get_uint16_be(&reader, &cipher_suite);
       read_ok &= fpi_byte_reader_get_uint8(&reader, &compr_method);
 
+      // FIXME: remove or implement fully
       // while (fpi_byte_reader_get_remaining(&reader) > 0) {
       //   read_ok &= fpi_byte_reader_get_uint16_be(&reader2,
       //   &extension_len); read_ok &= fpi_byte_reader_skip(&reader2,
       //   extension_len); extensions_num++;
       // }
 
-      g_assert(read_ok);
+      RETURN_FALSE_AND_SET_ERROR_IF_NOT_READ(read_ok);
 
       g_autofree gchar *ses_id_str = bin2hex(session_id, session_id_len);
       g_autofree gchar *rand_str = bin2hex(random, RANDOM_SIZE);
@@ -912,18 +998,28 @@ static gboolean tls_session_receive_handshake(TlsSession *self, Handshake *msg,
       // used
       self->session_id = g_memdup2(session_id, session_id_len);
 
-      // TODO:
-      // raise
-      // data.TlsAlertException(data.TlsAlertDescription.HANDSHAKE_FAILURE)
-      g_assert(cipher_suite == TLS_ECDH_ECDSA_WITH_AES_256_GCM_SHA384);
+      if (cipher_suite != TLS_ECDH_ECDSA_WITH_AES_256_GCM_SHA384)
+      {
+        self->raised_alert_desc = SSL3_AD_HANDSHAKE_FAILURE;
+        g_propagate_error(error, fpi_device_error_new_msg(
+                                     FP_DEVICE_ERROR_PROTO,
+                                     "Received request for unimplemented "
+                                     "ciphersuite in server hello"));
+        return FALSE;
+      }
       self->pending_cs = cipher_suite;
 
       // As we don't advertise any compression methods (NOT STANDARD COMPLIANT),
       // just fallback to the null one
-      // TODO:
-      // raise
-      // data.TlsAlertException(data.TlsAlertDescription.HANDSHAKE_FAILURE)
-      g_assert(compr_method == 0x00);
+      if (compr_method != 0x00)
+      {
+        self->raised_alert_desc = SSL3_AD_HANDSHAKE_FAILURE;
+        g_propagate_error(error, fpi_device_error_new_msg(
+                                     FP_DEVICE_ERROR_PROTO,
+                                     "Received request for unimplemented "
+                                     "compression method in server hello"));
+        return FALSE;
+      }
 
       // At this point, the cipher suite takes over handshake negotiation
       fp_dbg("Starting cipher suite handshake...");
@@ -932,21 +1028,44 @@ static gboolean tls_session_receive_handshake(TlsSession *self, Handshake *msg,
     }
     case SSL3_MT_CERTIFICATE_REQUEST:
     {
-      if (self->handshake_phase != SUITE_HANDSHAKE) g_assert(FALSE);
+      if (self->handshake_phase != SUITE_HANDSHAKE)
+      {
+        g_propagate_error(error, fpi_device_error_new_msg(
+                                     FP_DEVICE_ERROR_GENERAL,
+                                     "Invalid handshake phase when certificate "
+                                     "request is received: %d",
+                                     self->handshake_phase));
+        return FALSE;
+      }
 
-      if (self->cert_request != 0) g_assert(FALSE);
+      if (self->cert_request != 0)
+      {
+        g_propagate_error(error,
+                          fpi_device_error_new_msg(
+                              FP_DEVICE_ERROR_PROTO,
+                              "Received certificate request more than once"));
+        return FALSE;
+      }
 
       guint8 certs_num;
       guint8 certificate_type;
 
       read_ok &= fpi_byte_reader_get_uint8(&reader, &certs_num);
-      g_assert(certs_num == 1);
+      if (certs_num != 1)
+      {
+        g_propagate_error(error, fpi_device_error_new_msg(
+                                     FP_DEVICE_ERROR_PROTO,
+                                     "Received request with unimplemented "
+                                     "number of certificates: %d",
+                                     certs_num));
+        return FALSE;
+      }
 
       read_ok &= fpi_byte_reader_get_uint8(&reader, &certificate_type);
 
       // Some garbage bytes
       fpi_byte_reader_skip(&reader, 2);
-      g_assert(read_ok);
+      RETURN_FALSE_AND_SET_ERROR_IF_NOT_READ(read_ok);
 
 #if DEBUG_SSL
       fp_dbg(
@@ -960,7 +1079,15 @@ static gboolean tls_session_receive_handshake(TlsSession *self, Handshake *msg,
     }
     case SSL3_MT_SERVER_DONE:
     {
-      if (self->handshake_phase != SUITE_HANDSHAKE) g_assert(FALSE);
+      if (self->handshake_phase != SUITE_HANDSHAKE)
+      {
+        g_propagate_error(error, fpi_device_error_new_msg(
+                                     FP_DEVICE_ERROR_GENERAL,
+                                     "Invalid handshake phase when server done "
+                                     "is received: %d",
+                                     self->handshake_phase));
+        return FALSE;
+      }
 
 #if DEBUG_SSL
       fp_dbg("<- HandshakeMessage(type=0x%02x, content=ServerHelloDone())",
@@ -969,14 +1096,17 @@ static gboolean tls_session_receive_handshake(TlsSession *self, Handshake *msg,
 
       // End the suite handshake
       // The server must have requested a certificate
-      // TODO:
-      // if ( self.cert_request == None
-      //     or not data.TlsCertificateType.ECDSA_SIGN in
-      //     self.cert_request.cert_types
-      // ):
-      //     raise
-      //     data.TlsAlertException(data.TlsAlertDescription.HANDSHAKE_FAILURE)
-      g_assert(self->cert_request == ECDSA_SIGN);
+      if (self->cert_request != ECDSA_SIGN)
+      {
+        g_propagate_error(error,
+                          fpi_device_error_new_msg(
+                              FP_DEVICE_ERROR_GENERAL,
+                              "Received unimplemented certificate request: %d",
+                              self->cert_request));
+        self->raised_alert_desc = SSL_AD_HANDSHAKE_FAILURE;
+        return FALSE;
+      }
+
       if (!tls_session_send_certificate(self, &local_error))
       {
         g_propagate_error(error, local_error);
@@ -989,7 +1119,13 @@ static gboolean tls_session_receive_handshake(TlsSession *self, Handshake *msg,
       guint8 *eph_pubkey = NULL;
       gsize eph_pubkey_len =
           EVP_PKEY_get1_encoded_public_key(eph_key, &eph_pubkey);
-      if (eph_pubkey_len == 0) g_assert_not_reached();
+      if (eph_pubkey_len == 0)
+      {
+        g_propagate_error(error, fpi_device_error_new_msg(
+                                     FP_DEVICE_ERROR_GENERAL,
+                                     "Ephemeral public key has zero length"));
+        return FALSE;
+      }
 
       if (!tls_session_send_client_key_exchange(self, eph_pubkey,
                                                 eph_pubkey_len, &local_error))
@@ -1013,12 +1149,27 @@ static gboolean tls_session_receive_handshake(TlsSession *self, Handshake *msg,
                               self->pairing_data->remote_key) ||
           !EVP_DigestSignUpdate(ctx, hdata, hdata_len) ||
           !EVP_DigestSignFinal(ctx, NULL, &signature_len))
-        g_assert_not_reached();
+      {
+        g_propagate_error(error,
+                          fpi_device_error_new_msg(
+                              FP_DEVICE_ERROR_GENERAL,
+                              "OpenSSL error occured while getting signature "
+                              "length of handshake sent messages hash: %s",
+                              ERR_error_string(ERR_get_error(), NULL)));
+        return FALSE;
+      }
 
       signature = g_malloc(signature_len);
 
       if (!EVP_DigestSignFinal(ctx, signature, &signature_len))
-        g_assert_not_reached();
+      {
+        g_propagate_error(error, fpi_device_error_new_msg(
+                                     FP_DEVICE_ERROR_GENERAL,
+                                     "OpenSSL error occured while siging "
+                                     "handshake sent messages hash: %s",
+                                     ERR_error_string(ERR_get_error(), NULL)));
+        return FALSE;
+      }
 
       if (!tls_session_send_certificate_verify(self, signature, signature_len,
                                                &local_error))
@@ -1036,12 +1187,26 @@ static gboolean tls_session_receive_handshake(TlsSession *self, Handshake *msg,
           !EVP_PKEY_derive_set_peer(pctx,
                                     self->pairing_data->remote_cert.pub_key) ||
           !EVP_PKEY_derive(pctx, NULL, &premaster_secret_len))
-        g_assert_not_reached();
+      {
+        g_propagate_error(error, fpi_device_error_new_msg(
+                                     FP_DEVICE_ERROR_GENERAL,
+                                     "OpenSSL error occured while getting "
+                                     "premaster secret length: %s",
+                                     ERR_error_string(ERR_get_error(), NULL)));
+        return FALSE;
+      }
 
       premaster_secret = g_malloc(premaster_secret_len);
 
       if (!EVP_PKEY_derive(pctx, premaster_secret, &premaster_secret_len))
-        g_assert_not_reached();
+      {
+        g_propagate_error(error, fpi_device_error_new_msg(
+                                     FP_DEVICE_ERROR_GENERAL,
+                                     "OpenSSL error occured while deriving "
+                                     "premaster secret: %s",
+                                     ERR_error_string(ERR_get_error(), NULL)));
+        return FALSE;
+      }
 
       fp_dbg("Cipher suite handshake ended");
 
@@ -1078,20 +1243,20 @@ static gboolean tls_session_receive_handshake(TlsSession *self, Handshake *msg,
 
       guint8 *key_block_ptr = key_block;
 
-      self->encr_key_len = 32;
-      self->encr_key = g_memdup2(key_block_ptr, 32);
-      key_block_ptr += 32;
+      self->encr_key_len = AES_GCM_KEY_SIZE;
+      self->encr_key = g_memdup2(key_block_ptr, AES_GCM_KEY_SIZE);
+      key_block_ptr += AES_GCM_KEY_SIZE;
 
-      self->decr_key_len = 32;
-      self->decr_key = g_memdup2(key_block_ptr, 32);
-      key_block_ptr += 32;
+      self->decr_key_len = AES_GCM_KEY_SIZE;
+      self->decr_key = g_memdup2(key_block_ptr, AES_GCM_KEY_SIZE);
+      key_block_ptr += AES_GCM_KEY_SIZE;
 
-      self->encr_iv_len = 4;
-      self->encr_iv = g_memdup2(key_block_ptr, 4);
-      key_block_ptr += 4;
+      self->encr_iv_len = AES_GCM_IV_SIZE;
+      self->encr_iv = g_memdup2(key_block_ptr, AES_GCM_IV_SIZE);
+      key_block_ptr += AES_GCM_IV_SIZE;
 
-      self->decr_iv_len = 4;
-      self->decr_iv = g_memdup2(key_block_ptr, 4);
+      self->decr_iv_len = AES_GCM_IV_SIZE;
+      self->decr_iv = g_memdup2(key_block_ptr, AES_GCM_IV_SIZE);
 
       self->client_cs = self->pending_cs;
 
@@ -1101,7 +1266,11 @@ static gboolean tls_session_receive_handshake(TlsSession *self, Handshake *msg,
       gsize digest_size = EVP_MD_size(EVP_sha256());
       guint8 digest[digest_size];
 
-      tls_session_handshake_hash(self, digest, &digest_size);
+      if (!tls_session_handshake_hash(self, digest, &digest_size, &local_error))
+      {
+        g_propagate_error(error, local_error);
+        return FALSE;
+      }
 
       if (!tls_prf(self->master_secret, MASTER_SECRET_SIZE, label,
                    strlen(label), digest, digest_size, verify_data,
@@ -1123,17 +1292,35 @@ static gboolean tls_session_receive_handshake(TlsSession *self, Handshake *msg,
     }
     case SSL3_MT_FINISHED:
     {
-      if (self->handshake_phase != SERVER_DONE) g_assert(FALSE);
+      if (self->handshake_phase != SERVER_DONE)
+      {
+        g_propagate_error(error,
+                          fpi_device_error_new_msg(
+                              FP_DEVICE_ERROR_GENERAL,
+                              "Invalid handshake phase when server finished "
+                              "is received: %d",
+                              self->handshake_phase));
+        return FALSE;
+      }
 
       // Server must have sent "Change Cipher Spec"
-      if (self->server_cs != self->client_cs) g_assert(FALSE);
+      if (self->server_cs != self->client_cs)
+      {
+        g_propagate_error(
+            error, fpi_device_error_new_msg(
+                       FP_DEVICE_ERROR_GENERAL,
+                       "Server unexpectedly did not send change cipher spec"));
+        return FALSE;
+      }
 
       g_autofree guint8 *remote_verify_data;
-      read_ok &= fpi_byte_reader_dup_data(&reader, 12, &remote_verify_data);
-      g_assert(read_ok);
+      read_ok &= fpi_byte_reader_dup_data(&reader, VERIFY_DATA_SIZE,
+                                          &remote_verify_data);
+      RETURN_FALSE_AND_SET_ERROR_IF_NOT_READ(read_ok);
 
 #if DEBUG_SSL
-      g_autofree gchar *verify_data_str = bin2hex(remote_verify_data, 12);
+      g_autofree gchar *verify_data_str =
+          bin2hex(remote_verify_data, VERIFY_DATA_SIZE);
       fp_dbg(
           "<- HandshakeMessage(type=0x%02x, content=Finished(verify_data=%s))",
           msg->msg_type, verify_data_str);
@@ -1146,7 +1333,11 @@ static gboolean tls_session_receive_handshake(TlsSession *self, Handshake *msg,
       gsize digest_size = EVP_MD_size(EVP_sha256());
       guint8 digest[digest_size];
 
-      tls_session_handshake_hash(self, digest, &digest_size);
+      if (!tls_session_handshake_hash(self, digest, &digest_size, &local_error))
+      {
+        g_propagate_error(error, local_error);
+        return FALSE;
+      }
 
       if (!tls_prf(self->master_secret, MASTER_SECRET_SIZE, label,
                    strlen(label), digest, digest_size, verify_data,
@@ -1158,11 +1349,10 @@ static gboolean tls_session_receive_handshake(TlsSession *self, Handshake *msg,
 
       if (memcmp(verify_data, remote_verify_data, VERIFY_DATA_SIZE) != 0)
       {
-        fp_err("Verify data do not match");
-        g_assert_not_reached();
-        // if ver_data != msg.verify_data:
-        //     raise
-        //     data.TlsAlertException(data.TlsAlertDescription.DECRYPT_ERROR)
+        g_propagate_error(error, fpi_device_error_new_msg(
+                                     FP_DEVICE_ERROR_PROTO,
+                                     "Handshake verify messages do not match"));
+        return FALSE;
       }
 
       // The handshake is now done
@@ -1189,15 +1379,25 @@ static gboolean tls_session_receive(TlsSession *self, TlsRecord *record,
     {
       case SSL3_RT_CHANGE_CIPHER_SPEC:
       {
-        guint8 dummy;
-
-        read_ok &= fpi_byte_reader_get_uint8(&reader, &dummy);
-
-        g_assert(read_ok && dummy == 1);
-
 #if DEBUG_SSL
         fp_dbg("<- ChangeCipherSpec");
 #endif
+
+        guint8 change_cipher_spec_val;
+
+        read_ok &= fpi_byte_reader_get_uint8(&reader, &change_cipher_spec_val);
+
+        RETURN_FALSE_AND_SET_ERROR_IF_NOT_READ(read_ok);
+        if (change_cipher_spec_val != 1)
+        {
+          g_propagate_error(
+              error,
+              fpi_device_error_new_msg(
+                  FP_DEVICE_ERROR_PROTO,
+                  "Got invalid content of change cipher spec message: %d",
+                  change_cipher_spec_val));
+          return FALSE;
+        }
 
         // Switch encryption algorithms
         self->server_cs = self->pending_cs;
@@ -1213,8 +1413,11 @@ static gboolean tls_session_receive(TlsSession *self, TlsRecord *record,
 
         if (!read_ok)
         {
-          fp_err("Invalid length of received TLS alert message");
-          g_assert(FALSE);
+          g_propagate_error(
+              error, set_and_report_error(
+                         FP_DEVICE_ERROR_PROTO,
+                         "Invalid length of received TLS alert message"));
+          return FALSE;
         }
 
 #if DEBUG_SSL
@@ -1237,8 +1440,10 @@ static gboolean tls_session_receive(TlsSession *self, TlsRecord *record,
               g_propagate_error(error, local_error);
               return FALSE;
             }
-            fp_err("Remote closed session unexpectedly");
-            g_assert(FALSE);
+            g_propagate_error(error, set_and_report_error(
+                                         FP_DEVICE_ERROR_PROTO,
+                                         "Remote closed session unexpectedly"));
+            return FALSE;
           }
 
           self->recv_closed = TRUE;
@@ -1265,7 +1470,7 @@ static gboolean tls_session_receive(TlsSession *self, TlsRecord *record,
         read_ok &= fpi_byte_reader_get_uint24_be(&reader, &msg->length);
         read_ok &= fpi_byte_reader_dup_data(&reader, msg->length, &msg->body);
 
-        g_assert(read_ok);
+        RETURN_FALSE_AND_SET_ERROR_IF_NOT_READ(read_ok);
 
         if (!tls_session_receive_handshake(self, msg, &local_error))
         {
@@ -1293,10 +1498,12 @@ static gboolean tls_session_receive(TlsSession *self, TlsRecord *record,
         break;
       }
       default:
-        fp_err("Got unimplemented record type: %d", record->type);
-        // TODO:
-        // raise data.TlsAlertException(data.TlsAlertDescription.DECODE_ERROR)
-        g_assert(FALSE);
+        g_propagate_error(
+            error, fpi_device_error_new_msg(FP_DEVICE_ERROR_PROTO,
+                                            "Got unimplemented record type: %d",
+                                            record->type));
+        self->raised_alert_desc = SSL_AD_DECODE_ERROR;
+        return FALSE;
         break;
     }
   }
@@ -1328,11 +1535,17 @@ gboolean tls_session_receive_ciphertext(TlsSession *self, guint8 *data,
     read_ok &= fpi_byte_reader_get_uint16_be(&reader, &cfrag_size);
     read_ok &= fpi_byte_reader_dup_data(&reader, cfrag_size, &cfrag);
 
-    g_assert(read_ok);
+    RETURN_FALSE_AND_SET_ERROR_IF_NOT_READ(read_ok);
 
-    // TODO: if ptext.proto_ver != data.TlsProtocolVersion.current:
-    // raise data.TlsAlertException(data.TlsAlertDescription.PROTOCOL_VERSION)
-    g_assert(version == self->version);
+    if (version != self->version)
+    {
+      g_propagate_error(
+          error, fpi_device_error_new_msg(
+                     FP_DEVICE_ERROR_PROTO,
+                     "Received invalid ciphertext version: %d", version));
+      self->raised_alert_desc = SSL_AD_PROTOCOL_VERSION;
+      return FALSE;
+    }
 
     // Read TlsCiphertext and convert to plaintext
     tls_session_decrypt(self, content_type, version, cfrag, cfrag_size, &pfrag,
@@ -1362,7 +1575,16 @@ gboolean tls_session_has_data(TlsSession *self)
 gboolean tls_session_establish(TlsSession *self, GError **error)
 {
   GError *local_error = NULL;
-  g_assert(self->handshake_phase == HANDSHAKE_BEGIN);
+  if (self->handshake_phase != HANDSHAKE_BEGIN)
+  {
+    g_propagate_error(
+        error,
+        set_and_report_error(
+            FP_DEVICE_ERROR_GENERAL,
+            "Invalid handshake phase when calling tls session establish: %d",
+            self->handshake_phase));
+    return FALSE;
+  }
 
   fp_dbg("Starting TLS handshake...");
 
@@ -1399,6 +1621,23 @@ gboolean tls_session_init(TlsSession *self, SensorPairingData *pairing_data,
   self->suites = g_malloc(2);
   FP_WRITE_UINT16_BE(self->suites, TLS_ECDH_ECDSA_WITH_AES_256_GCM_SHA384);
   self->hash_algo = SN_sha384;
+
+  /* TLS handshake supported extensions */
+  self->num_supported_extensions = 2;
+  self->supported_extensions =
+      g_new(Extenstion, self->num_supported_extensions);
+
+  /* set supported curve to 0x17=23 */
+  static guint8 supported_groups_data[4] = {0x00, 0x02, 0x00, 0x17};
+  self->supported_extensions[0].id = 0xa;
+  self->supported_extensions[0].len = sizeof(supported_groups_data);
+  self->supported_extensions[0].data = supported_groups_data;
+
+  /* set ec_point_formats to 0 */
+  static guint8 ec_point_formats_data[2] = {0x01, 0x00};
+  self->supported_extensions[1].id = 0xb;
+  self->supported_extensions[1].len = sizeof(ec_point_formats_data);
+  self->supported_extensions[1].data = ec_point_formats_data;
 
   self->server_cs = TLS_NULL_WITH_NULL_NULL;
   self->client_cs = TLS_NULL_WITH_NULL_NULL;
@@ -1559,7 +1798,7 @@ gboolean create_host_certificate(SensorPairingData pairing_data,
 
   // g_assert(fpi_byte_writer_get_pos(&writer) ==
   //          CERTIFICATE_DATA_SIZE);
-  // g_assert(written);
+  // RETURN_FALSE_AND_SET_ERROR_IF_NOT_WRITTEN(written);
 
   // if (!generate_hs_priv_key(&hs_privkey, error)) {
   //    ret = FALSE;

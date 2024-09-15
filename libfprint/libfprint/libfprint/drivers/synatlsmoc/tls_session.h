@@ -33,6 +33,12 @@
 #define CERTIFICATE_MAGIC 0x5F3F
 #define CERTIFICATE_CURVE 23
 
+#define AES_GCM_KEY_SIZE 32
+#define AES_GCM_IV_SIZE 4
+#define AES_GCM_TAG_SIZE 16
+
+#define NONCE_SIZE 8
+
 typedef struct
 {
   guint16 magic;

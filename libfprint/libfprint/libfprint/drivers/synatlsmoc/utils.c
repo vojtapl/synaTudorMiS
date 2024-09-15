@@ -21,9 +21,12 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "utils.h"
-
+#include <glib.h>
 #include <stdio.h>
+
+#include "fpi-device.h"
+#include "fpi-log.h"
+#include "utils.h"
 
 const char *status_to_str(guint16 status)
 {
@@ -48,7 +51,7 @@ const char *status_to_str(guint16 status)
     case 0x689: ret = "VCS_RESULT_GEN_OPERATION_DENIED_2"; break;
     case 0x6EA: ret = "RESPONSE_PROCESSING_FRAME"; break;
     case 0x70e: ret = "VCS_RESULT_OK_4"; break;
-    case 0x315: ret = "last TLS session was not closed"; break;
+    case 0x315: ret = "last TLS session was not properly closed"; break;
     default: ret = "generic VCS_RESULT_SENSOR_MALFUNCTIONED";
   }
 
@@ -179,4 +182,21 @@ const char *obj_type_to_str(guint8 obj_type)
     default: ret = "not implemented"; break;
   }
   return ret;
+}
+
+GError *set_and_report_error(FpDeviceError device_error, const gchar *msg, ...)
+{
+  va_list args;
+  va_start(args, msg);
+
+  // Create a formatted error message
+  g_autofree gchar *formatted_msg = g_strdup_vprintf(msg, args);
+
+  // Now pass the formatted message to the error functions
+  GError *error = fpi_device_error_new_msg(device_error, "%s", formatted_msg);
+  FP_ERR_FANCY("%s", formatted_msg);
+
+  va_end(args);
+
+  return error;
 }

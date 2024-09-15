@@ -397,17 +397,17 @@ static void open_sm_run_state(FpiSsm *ssm, FpDevice *device)
       send_get_version(self);
       break;
    case OPEN_STATE_EXIT_BOOTLOADER_MODE:
-      // TODO: this may be wrong
       if (sensor_is_in_bootloader_mode(self)) {
          send_bootloader_mode_enter_exit(self, FALSE);
+      } else {
+         fpi_ssm_next_state(ssm);
       }
-      fpi_ssm_next_state(ssm);
       break;
    case OPEN_STATE_LOAD_PAIRING_DATA:
       fetch_pairing_data(self);
       fpi_ssm_next_state(ssm);
       break;
-   case OPEN_STATE_VERIFY_SENSOR_CERTIFICATE:;
+   case OPEN_STATE_VERIFY_SENSOR_CERTIFICATE:
       verify_sensor_certificate(self, &error);
       if (error != NULL) {
          fpi_ssm_mark_failed(ssm, error);
