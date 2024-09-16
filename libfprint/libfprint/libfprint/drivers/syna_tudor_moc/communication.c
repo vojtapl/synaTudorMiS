@@ -1822,8 +1822,7 @@ void send_db2_get_object_data(FpiDeviceSynaTudorMoc *self,
                             TRUE, recv_db2_get_object_data);
 }
 
-/* VCSFW_CMD_PAIR async ====================================================
- */
+/* VCSFW_CMD_PAIR async ==================================================== */
 
 static void recv_pair(FpiDeviceSynaTudorMoc *self, guint8 *recv_data,
                       gsize recv_size, GError *error)

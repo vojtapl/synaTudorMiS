@@ -50,8 +50,6 @@
 #define CERTIFICATE_MAX_KEY_SIZE 68
 #define SIGNATURE_SIZE 256
 
-typedef enum
-{
 #define DEBUG_SSL TRUE
 
 #define RANDOM_SIZE 32
@@ -61,6 +59,18 @@ typedef enum
 #define MAX_HASH_SIZE 64
 #define MAX_KEY_BLOCK_SIZE 128
 
+#define ASPRINTF_ERROR_CHECK(msg, ...)       \
+  do {                                       \
+    if (asprintf(&msg, ##__VA_ARGS__) == -1) \
+    {                                        \
+      msg = asprintf_error_msg;              \
+    }                                        \
+  } while (0)
+
+static char *asprintf_error_msg = "asprintf error";
+
+typedef enum
+{
   HANDSHAKE_BEGIN,
   CLIENT_HELLO_SENT,
   SUITE_HANDSHAKE,
@@ -482,14 +492,14 @@ static gboolean tls_session_decrypt(TlsSession *self, guint8 type,
     break;
     case TLS_ECDH_ECDSA_WITH_AES_256_GCM_SHA384:
     {
-      g_autofree guint8 *gcm_iv;
+      g_autofree guint8 *gcm_iv = NULL;
       gsize gcm_iv_size;
       FpiByteReader reader;
       gboolean read_ok = TRUE;
 
-      g_autofree guint8 *nonce;
-      g_autofree guint8 *cdata;
-      g_autofree guint8 *tag;
+      g_autofree guint8 *nonce = NULL;
+      g_autofree guint8 *cdata = NULL;
+      g_autofree guint8 *tag = NULL;
 
       fpi_byte_reader_init(&reader, ctext, ctext_size);
       read_ok &= fpi_byte_reader_dup_data(&reader, NONCE_SIZE, &nonce);
@@ -641,9 +651,10 @@ static gboolean tls_session_send_alert(TlsSession *self, guint8 level,
   record->length = fpi_byte_writer_get_pos(&writer);
   record->fragment = fpi_byte_writer_reset_and_get_data(&writer);
 
-  asprintf(&record->repr, "TlsAlert(level=\"%s\", description=\"%s\")",
-           level == SSL3_AL_WARNING ? "warning" : "fatal",
-           SSL_alert_desc_string_long(description));
+  ASPRINTF_ERROR_CHECK(record->repr,
+                       "TlsAlert(level=\"%s\", description=\"%s\")",
+                       level == SSL3_AL_WARNING ? "warning" : "fatal",
+                       SSL_alert_desc_string_long(description));
 
   if (!tls_session_send(self, record, NULL))
   {
@@ -695,8 +706,9 @@ static gboolean tls_session_send_handshake_msg(TlsSession *self, Handshake *msg,
   record->version = TLS1_2_VERSION;
   record->length = fpi_byte_writer_get_pos(&writer);
   record->fragment = fpi_byte_writer_reset_and_get_data(&writer);
-  asprintf(&record->repr, "HandshakeMessage(type=0x%02x, content=%s)",
-           msg->msg_type, msg->repr);
+  ASPRINTF_ERROR_CHECK(record->repr,
+                       "HandshakeMessage(type=0x%02x, content=%s)",
+                       msg->msg_type, msg->repr);
 
   // Update hash
   // BROKEN The windows driver only updates it when the message isn't
@@ -762,10 +774,11 @@ static gboolean tls_session_send_client_hello(TlsSession *self, GError **error)
       bin2hex(serialized_extensions, serialized_extensions_size);
   g_autofree gchar *suites_str = bin2hex(self->suites, self->suites_size);
 
-  asprintf(&msg->repr,
-           "ClientHello(ver=0x%04x, rand=%s, ses_id=%s, cipher_suites=%s, "
-           "compr_methods=[], extensions=%s)",
-           self->version, rand_str, ses_id_str, suites_str, extensions_str);
+  ASPRINTF_ERROR_CHECK(
+      msg->repr,
+      "ClientHello(ver=0x%04x, rand=%s, ses_id=%s, cipher_suites=%s, "
+      "compr_methods=[], extensions=%s)",
+      self->version, rand_str, ses_id_str, suites_str, extensions_str);
 
   if (!tls_session_send_handshake_msg(self, msg, &local_error))
   {
@@ -794,7 +807,7 @@ static gboolean tls_session_send_finished(TlsSession *self, guint8 *verify_data,
   msg->length = fpi_byte_writer_get_pos(&writer);
   msg->body = fpi_byte_writer_reset_and_get_data(&writer);
   g_autofree gchar *verify_data_str = bin2hex(verify_data, VERIFY_DATA_SIZE);
-  asprintf(&msg->repr, "Finished(verify_data=%s)", verify_data_str);
+  ASPRINTF_ERROR_CHECK(msg->repr, "Finished(verify_data=%s)", verify_data_str);
 
   if (!tls_session_send_handshake_msg(self, msg, &local_error))
   {
@@ -833,7 +846,8 @@ static gboolean tls_session_send_certificate(TlsSession *self, GError **error)
 
   g_autofree gchar *cert_str =
       bin2hex(self->pairing_data->server_cert_raw, CERTIFICATE_SIZE);
-  asprintf(&msg->repr, "Certificate(cert=TlsCertificate(data=%s))", cert_str);
+  ASPRINTF_ERROR_CHECK(msg->repr, "Certificate(cert=TlsCertificate(data=%s))",
+                       cert_str);
 
   if (!tls_session_send_handshake_msg(self, msg, &local_error))
   {
@@ -856,7 +870,7 @@ static gboolean tls_session_send_client_key_exchange(TlsSession *self,
   msg->length = key_len;
   msg->body = key;
   g_autofree gchar *key_str = bin2hex(key, key_len);
-  asprintf(&msg->repr, "ClientKeyExchange(data=%s)", key_str);
+  ASPRINTF_ERROR_CHECK(msg->repr, "ClientKeyExchange(data=%s)", key_str);
 
   if (!tls_session_send_handshake_msg(self, msg, &local_error))
   {
@@ -888,7 +902,8 @@ static gboolean tls_session_send_certificate_verify(TlsSession *self,
   msg->body = fpi_byte_writer_reset_and_get_data(&writer);
 
   g_autofree gchar *sign_str = bin2hex(signature, signature_len);
-  asprintf(&msg->repr, "CertificateVerify(signed_hash=%s)", sign_str);
+  ASPRINTF_ERROR_CHECK(msg->repr, "CertificateVerify(signed_hash=%s)",
+                       sign_str);
 
   if (!tls_session_send_handshake_msg(self, msg, &local_error))
   {
@@ -916,7 +931,7 @@ static gboolean tls_session_send_change_cipher_spec(TlsSession *self,
   record->type = SSL3_RT_CHANGE_CIPHER_SPEC;
   record->length = fpi_byte_writer_get_pos(&writer);
   record->fragment = fpi_byte_writer_reset_and_get_data(&writer);
-  asprintf(&record->repr, "ChangeCipherSpec()");
+  ASPRINTF_ERROR_CHECK(record->repr, "ChangeCipherSpec()");
 
   tls_session_send(self, record, &local_error);
   if (local_error) g_propagate_error(error, local_error);
@@ -969,7 +984,7 @@ static gboolean tls_session_receive_handshake(TlsSession *self, Handshake *msg,
         return FALSE;
       }
 
-      guint16 proto_ver, cipher_suite;  // extension_len;
+      guint16 proto_ver = 0, cipher_suite;  // extension_len;
       guint8 session_id_len, compr_method, extensions_num = 0;
       g_autofree guint8 *session_id = NULL;
       g_autofree guint8 *random = NULL;
@@ -977,8 +992,9 @@ static gboolean tls_session_receive_handshake(TlsSession *self, Handshake *msg,
       read_ok &= fpi_byte_reader_get_uint16_be(&reader, &proto_ver);
       read_ok &= fpi_byte_reader_dup_data(&reader, RANDOM_SIZE, &random);
       read_ok &= fpi_byte_reader_get_uint8(&reader, &session_id_len);
-      g_assert(session_id_len <= MAX_SESSION_ID_SIZE);
-      read_ok &= fpi_byte_reader_dup_data(&reader, session_id_len, &session_id);
+      if (read_ok)
+        read_ok &=
+            fpi_byte_reader_dup_data(&reader, session_id_len, &session_id);
       read_ok &= fpi_byte_reader_get_uint16_be(&reader, &cipher_suite);
       read_ok &= fpi_byte_reader_get_uint8(&reader, &compr_method);
 
@@ -990,6 +1006,8 @@ static gboolean tls_session_receive_handshake(TlsSession *self, Handshake *msg,
       // }
 
       RETURN_FALSE_AND_SET_ERROR_IF_NOT_READ(read_ok);
+
+      g_assert(session_id_len <= MAX_SESSION_ID_SIZE);
 
       g_autofree gchar *ses_id_str = bin2hex(session_id, session_id_len);
       g_autofree gchar *rand_str = bin2hex(random, RANDOM_SIZE);
@@ -1325,7 +1343,7 @@ static gboolean tls_session_receive_handshake(TlsSession *self, Handshake *msg,
         return FALSE;
       }
 
-      g_autofree guint8 *server_verify_data;
+      g_autofree guint8 *server_verify_data = NULL;
       read_ok &= fpi_byte_reader_dup_data(&reader, VERIFY_DATA_SIZE,
                                           &server_verify_data);
       RETURN_FALSE_AND_SET_ERROR_IF_NOT_READ(read_ok);
@@ -1443,7 +1461,7 @@ static gboolean tls_session_receive(TlsSession *self, TlsRecord *record,
         {
           if (self->send_closed)
           {
-            fp_dbg("Remote confirmed session close");
+            fp_dbg("Server confirmed session close");
           }
           else
           {
@@ -1454,7 +1472,7 @@ static gboolean tls_session_receive(TlsSession *self, TlsRecord *record,
             }
             g_propagate_error(error, set_and_report_error(
                                          FP_DEVICE_ERROR_PROTO,
-                                         "Remote closed session unexpectedly"));
+                                         "Server closed session unexpectedly"));
             return FALSE;
           }
 
@@ -1493,7 +1511,7 @@ static gboolean tls_session_receive(TlsSession *self, TlsRecord *record,
       case SSL3_RT_APPLICATION_DATA:
       {
         gsize app_data_size;
-        const guint8 *app_data;
+        const guint8 *app_data = NULL;
 
         app_data_size = fpi_byte_reader_get_remaining(&reader);
         read_ok = fpi_byte_reader_get_data(&reader, app_data_size, &app_data);
@@ -1534,10 +1552,10 @@ gboolean tls_session_receive_ciphertext(TlsSession *self, guint8 *data,
   fpi_byte_reader_init(&reader, data, size);
   while ((fpi_byte_reader_get_remaining(&reader) != 0) && read_ok)
   {
-    guint16 version;
-    guint8 content_type;
-    guint16 cfrag_size;
-    gsize pfrag_size;
+    guint16 version = 0;
+    guint8 content_type = 0;
+    guint16 cfrag_size = 0;
+    gsize pfrag_size = 0;
     g_autofree guint8 *cfrag = NULL;
     g_autofree guint8 *pfrag = NULL;
 
@@ -1676,7 +1694,7 @@ static gboolean tls_session_send_application_data(TlsSession *self,
   record->length = length;
   record->fragment = g_memdup2(data, length);
   g_autofree gchar *data_str = bin2hex(data, length);
-  asprintf(&record->repr, "ApplicationData(data=%s)", data_str);
+  ASPRINTF_ERROR_CHECK(record->repr, "ApplicationData(data=%s)", data_str);
 
   if (!tls_session_send(self, record, &local_error))
   {

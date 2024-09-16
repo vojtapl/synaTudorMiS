@@ -3,15 +3,12 @@ This folder will hopefully contain a patched version of libfprint, which should 
 NOTE: currently requires (this merge request)[https://gitlab.freedesktop.org/libfprint/fprintd/-/merge_requests/190/] on the fprintd side.
 
 # Roadmap to libfprint merge request:
-- fixing pairing and loading / storing of pairing data in persistent storage
+- fixing segfault on sending TLS data after opening device again
 - adding alert stage to TLS
 - Fix naming scheme
-  - What to name the driver
   - Naming of variables
-- Fix read_ok/written asserts
 - fix asserts
 - What to do on full storage
-- unification of error messages
 - verifying endian independence
 - writing test
 - having the right clang-format settings

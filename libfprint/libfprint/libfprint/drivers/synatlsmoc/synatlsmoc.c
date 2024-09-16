@@ -53,7 +53,7 @@
 
 /* Needed for testing with libfprint examples they do not support storage of
  * pairing data */
-// #define USE_SAMPLE_PAIRING_DATA
+#define USE_SAMPLE_PAIRING_DATA
 
 guint8 cache_tuid[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
                        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
@@ -86,6 +86,7 @@ struct _FpiDeviceSynaTlsMoc
   guint8 provision_state;
 
   SensorPairingData pairing_data;
+  /* NOTE: host/this driver is the client, sensor is server */
   TlsSession *session;
   gboolean server_established;
 
@@ -149,9 +150,9 @@ static gboolean load_uncompressed_public_key(guint8 *key, gsize key_len,
       !OSSL_PARAM_BLD_push_octet_string(param_bld, "pub", key, key_len))
   {
     g_propagate_error(
-        error, fpi_device_error_new_msg(
-                   FP_DEVICE_ERROR_GENERAL, "Failed to parse public key: %s",
-                   ERR_error_string(ERR_get_error(), NULL)));
+        error, set_and_report_error(FP_DEVICE_ERROR_GENERAL,
+                                    "Failed to parse public key: %s",
+                                    ERR_error_string(ERR_get_error(), NULL)));
     return FALSE;
   }
 
@@ -162,9 +163,9 @@ static gboolean load_uncompressed_public_key(guint8 *key, gsize key_len,
       !EVP_PKEY_fromdata(ctx, pkey, EVP_PKEY_PUBLIC_KEY, params))
   {
     g_propagate_error(
-        error, fpi_device_error_new_msg(
-                   FP_DEVICE_ERROR_GENERAL, "Failed to load public key: %s",
-                   ERR_error_string(ERR_get_error(), NULL)));
+        error, set_and_report_error(FP_DEVICE_ERROR_GENERAL,
+                                    "Failed to load public key: %s",
+                                    ERR_error_string(ERR_get_error(), NULL)));
     return FALSE;
   }
 
@@ -179,26 +180,26 @@ static gboolean sensor_pub_key_compatibility_check(
   if (sensor_pubkey->keyflag != synatlsmoc_key_flag(self))
   {
     ret = FALSE;
-    *error = fpi_device_error_new_msg(FP_DEVICE_ERROR_NOT_SUPPORTED,
-                                      "Sensor pubkey keyflag does not match");
+    *error = set_and_report_error(FP_DEVICE_ERROR_NOT_SUPPORTED,
+                                  "Sensor pubkey keyflag does not match");
   }
   else if (sensor_pubkey->fw_version_major != self->fw_version_major)
   {
     ret = FALSE;
-    *error = fpi_device_error_new_msg(FP_DEVICE_ERROR_NOT_SUPPORTED,
-                                      "Sensor pubkey fw_version_major does "
-                                      "not match - expected: %d, got: %d",
-                                      sensor_pubkey->fw_version_major,
-                                      self->fw_version_major);
+    *error = set_and_report_error(FP_DEVICE_ERROR_NOT_SUPPORTED,
+                                  "Sensor pubkey fw_version_major does "
+                                  "not match - expected: %d, got: %d",
+                                  sensor_pubkey->fw_version_major,
+                                  self->fw_version_major);
   }
   else if (sensor_pubkey->fw_version_minor != self->fw_version_minor)
   {
     ret = FALSE;
-    *error = fpi_device_error_new_msg(FP_DEVICE_ERROR_NOT_SUPPORTED,
-                                      "Sensor pubkey fw_version_minor does "
-                                      "not match - expected: %d, got: %d",
-                                      sensor_pubkey->fw_version_minor,
-                                      self->fw_version_minor);
+    *error = set_and_report_error(FP_DEVICE_ERROR_NOT_SUPPORTED,
+                                  "Sensor pubkey fw_version_minor does "
+                                  "not match - expected: %d, got: %d",
+                                  sensor_pubkey->fw_version_minor,
+                                  self->fw_version_minor);
   }
   return ret;
 }
@@ -210,13 +211,9 @@ static void synatlsmoc_load_sensor_key(FpiDeviceSynaTlsMoc *self)
 
   sensor_pub_key_t *sensor_pub_key;
   if (synatlsmoc_key_flag(self))
-  {
     sensor_pub_key = &pubkey_v10_1_kf;
-  }
   else
-  {
     sensor_pub_key = &pubkey_v10_1;
-  }
 
   if (!sensor_pub_key_compatibility_check(self, sensor_pub_key, &local_error))
   {
@@ -230,9 +227,9 @@ static void synatlsmoc_load_sensor_key(FpiDeviceSynaTlsMoc *self)
   {
     fpi_ssm_mark_failed(
         self->task_ssm,
-        fpi_device_error_new_msg(FP_DEVICE_ERROR_NOT_SUPPORTED,
-                                 "Error while loading sensor key: %s",
-                                 local_error->message));
+        set_and_report_error(FP_DEVICE_ERROR_NOT_SUPPORTED,
+                             "Error while loading sensor key: %s",
+                             local_error->message));
     g_error_free(local_error);
     return;
   }
@@ -256,7 +253,7 @@ static void synatlsmoc_verify_sensor_certificate(FpiDeviceSynaTlsMoc *self)
   {
     fpi_ssm_mark_failed(
         self->task_ssm,
-        fpi_device_error_new_msg(
+        set_and_report_error(
             FP_DEVICE_ERROR_GENERAL,
             "OpenSSL error occured while verifying sensor certificate: %s",
             ERR_error_string(ERR_get_error(), NULL)));
@@ -279,10 +276,10 @@ static gboolean sensor_certificate_from_raw(Certificate *self, guint8 *data,
 
   if (len != CERTIFICATE_SIZE)
   {
-    g_propagate_error(error,
-                      fpi_device_error_new_msg(
-                          FP_DEVICE_ERROR_PROTO,
-                          "Certificate with incorrect length: %lu", len));
+    g_propagate_error(
+        error,
+        set_and_report_error(FP_DEVICE_ERROR_PROTO,
+                             "Certificate with incorrect length: %lu", len));
     return FALSE;
   }
 
@@ -302,7 +299,7 @@ static gboolean sensor_certificate_from_raw(Certificate *self, guint8 *data,
   if (self->magic != CERTIFICATE_MAGIC || self->curve != CERTIFICATE_CURVE)
   {
     g_propagate_error(error,
-                      fpi_device_error_new_msg(
+                      set_and_report_error(
                           FP_DEVICE_ERROR_PROTO,
                           "Unsupported certificate: magic=0x%04x, curve=0x%02x",
                           self->magic, self->curve));
@@ -331,8 +328,8 @@ static gboolean sensor_certificate_from_raw(Certificate *self, guint8 *data,
     return FALSE;
   }
 
-  g_autofree gchar *x_str = bin2hex(self->x, 32);
-  g_autofree gchar *y_str = bin2hex(self->y, 32);
+  g_autofree gchar *x_str = bin2hex(self->x, ECC_KEY_SIZE);
+  g_autofree gchar *y_str = bin2hex(self->y, ECC_KEY_SIZE);
   g_autofree gchar *sign_str = bin2hex(self->sign, self->sign_size);
   fp_dbg("Certificate:");
   fp_dbg("\tmagic: 0x%04x", self->magic);
@@ -355,9 +352,9 @@ static gboolean parse_certificates_within_self(FpiDeviceSynaTlsMoc *self,
           self->pairing_data.client_cert_len, &local_error))
   {
     g_propagate_error(
-        error, fpi_device_error_new_msg(FP_DEVICE_ERROR_PROTO,
-                                        "Cannot parse client certificate: %s",
-                                        local_error->message));
+        error, set_and_report_error(FP_DEVICE_ERROR_PROTO,
+                                    "Cannot parse client certificate: %s",
+                                    local_error->message));
     return FALSE;
   }
 
@@ -366,9 +363,9 @@ static gboolean parse_certificates_within_self(FpiDeviceSynaTlsMoc *self,
           self->pairing_data.server_cert_len, &local_error))
   {
     g_propagate_error(
-        error, fpi_device_error_new_msg(FP_DEVICE_ERROR_PROTO,
-                                        "Cannot parse server certificate: %s",
-                                        local_error->message));
+        error, set_and_report_error(FP_DEVICE_ERROR_PROTO,
+                                    "Cannot parse server certificate: %s",
+                                    local_error->message));
     return FALSE;
   }
 
@@ -424,8 +421,8 @@ static void synatlsmoc_cmd_receive_cb(FpiUsbTransfer *transfer,
   CmdCallback callback;
   GError *local_error = NULL;
   guint16 status = 0xFFFF; /* 0 would mean success */
-  g_autofree guint8 *unwrapped;
-  gsize unwrapped_len;
+  g_autofree guint8 *unwrapped = NULL;
+  gsize unwrapped_len = 0;
 
   if (error)
   {
@@ -466,7 +463,7 @@ static void synatlsmoc_cmd_receive_cb(FpiUsbTransfer *transfer,
     {
       fpi_ssm_mark_failed(
           transfer->ssm,
-          fpi_device_error_new_msg(FP_DEVICE_ERROR_PROTO, "Invalid response"));
+          set_and_report_error(FP_DEVICE_ERROR_PROTO, "Invalid response"));
       return;
     }
 
@@ -476,10 +473,10 @@ static void synatlsmoc_cmd_receive_cb(FpiUsbTransfer *transfer,
 
     if (data->check_res && !status_is_success(status))
     {
-      fpi_ssm_mark_failed(transfer->ssm, fpi_device_error_new_msg(
-                                             FP_DEVICE_ERROR_PROTO,
-                                             "Command failed with status: %s",
-                                             status_to_str(status)));
+      fpi_ssm_mark_failed(transfer->ssm,
+                          set_and_report_error(FP_DEVICE_ERROR_PROTO,
+                                               "Command failed with status: %s",
+                                               status_to_str(status)));
       return;
     }
   }
@@ -507,9 +504,9 @@ static void synatlsmoc_cmd_run_state(FpiSsm *ssm, FpDevice *device)
       if (self->cmd_transfer)
       {
         self->cmd_transfer->ssm = ssm;
-        fpi_usb_transfer_submit(
-            g_steal_pointer(&self->cmd_transfer), SYNATLSMOC_USB_SEND_TIMEOUT,
-            fpi_device_get_cancellable(device), fpi_ssm_usb_transfer_cb, NULL);
+        fpi_usb_transfer_submit(g_steal_pointer(&self->cmd_transfer),
+                                SYNATLSMOC_USB_SEND_TIMEOUT, NULL,
+                                fpi_ssm_usb_transfer_cb, NULL);
       }
       break;
     case CMD_RECV:
@@ -579,10 +576,10 @@ static void synatlsmoc_exec_cmd(FpiDeviceSynaTlsMoc *self, gboolean raw,
     if (local_error)
     {
       fpi_ssm_start(self->cmd_ssm, synatlsmoc_cmd_ssm_done);
-      fpi_ssm_mark_failed(self->cmd_ssm, fpi_device_error_new_msg(
-                                             FP_DEVICE_ERROR_PROTO,
-                                             "Error while wrapping cmd: %s",
-                                             local_error->message));
+      fpi_ssm_mark_failed(self->cmd_ssm,
+                          set_and_report_error(FP_DEVICE_ERROR_PROTO,
+                                               "Error while wrapping cmd: %s",
+                                               local_error->message));
       g_error_free(local_error);
       return;
     }
@@ -731,9 +728,9 @@ static void recv_get_version(FpDevice *device, guchar *buffer_in,
 
   if (!read_ok)
   {
-    fpi_ssm_mark_failed(self->task_ssm, fpi_device_error_new_msg(
-                                            FP_DEVICE_ERROR_PROTO,
-                                            "Get version response too short"));
+    fpi_ssm_mark_failed(self->task_ssm,
+                        set_and_report_error(FP_DEVICE_ERROR_PROTO,
+                                             "Get version response too short"));
     return;
   }
 
@@ -746,7 +743,7 @@ static void recv_get_version(FpDevice *device, guchar *buffer_in,
   self->iface = mis_version.interface;
   self->provision_state = mis_version.provision_state;
 
-  if (self->task_ssm) fpi_ssm_next_state(self->task_ssm);
+  fpi_ssm_next_state(self->task_ssm);
 }
 
 static void send_get_version(FpiDeviceSynaTlsMoc *self)
@@ -782,7 +779,7 @@ static void recv_get_version_tls_force_close(FpDevice *device,
 
   if (length_in < 2)
   {
-    error = fpi_device_error_new_msg(
+    error = set_and_report_error(
         FP_DEVICE_ERROR_PROTO, "Response to get_version command was too short");
     goto error;
   }
@@ -798,9 +795,9 @@ static void recv_get_version_tls_force_close(FpDevice *device,
   }
   else
   {
-    error = fpi_device_error_new_msg(
-        FP_DEVICE_ERROR_PROTO, "Device responded with error: 0x%04x aka %s",
-        status, status_to_str(status));
+    error = set_and_report_error(FP_DEVICE_ERROR_PROTO,
+                                 "Device responded with error: 0x%04x aka %s",
+                                 status, status_to_str(status));
   }
 
 error:
@@ -879,10 +876,10 @@ static void send_tls_data(FpiDeviceSynaTlsMoc *self, guint8 *tdata,
 
   FAIL_TASK_SSM_AND_RETURN_IF_NOT_WRITTEN(written);
 
-  gsize send_len = fpi_byte_writer_get_pos(&writer);
+  gsize send_size = fpi_byte_writer_get_pos(&writer);
   g_autofree guint8 *send_data = fpi_byte_writer_reset_and_get_data(&writer);
 
-  synatlsmoc_exec_cmd(self, TRUE, FALSE, send_data, send_len,
+  synatlsmoc_exec_cmd(self, TRUE, FALSE, send_data, send_size,
                       expected_recv_size, recv_tls_data);
 }
 
@@ -935,16 +932,16 @@ static void recv_frame_acquire(FpDevice *device, guint8 *buffer_in,
     {
       fpi_ssm_mark_failed(
           self->task_ssm,
-          fpi_device_error_new_msg(FP_DEVICE_ERROR_PROTO,
-                                   "Frame acquire max retries reached"));
+          set_and_report_error(FP_DEVICE_ERROR_PROTO,
+                               "Frame acquire max retries reached"));
     }
   }
   else
   {
-    fpi_ssm_mark_failed(self->task_ssm, fpi_device_error_new_msg(
-                                            FP_DEVICE_ERROR_PROTO,
-                                            "Command failed with status: %s",
-                                            status_to_str(status)));
+    fpi_ssm_mark_failed(self->task_ssm,
+                        set_and_report_error(FP_DEVICE_ERROR_PROTO,
+                                             "Command failed with status: %s",
+                                             status_to_str(status)));
   }
 }
 
@@ -1027,9 +1024,9 @@ static void recv_event_config(FpDevice *device, guint8 *buffer_in,
 
   if (!read_ok)
   {
-    fpi_ssm_mark_failed(self->task_ssm,
-                        fpi_device_error_new_msg(FP_DEVICE_ERROR_PROTO,
-                                                 "Cannot parse event data"));
+    fpi_ssm_mark_failed(
+        self->task_ssm,
+        set_and_report_error(FP_DEVICE_ERROR_PROTO, "Cannot parse event data"));
     return;
   }
 
@@ -1110,8 +1107,8 @@ static void recv_event_read(FpDevice *device, guint8 *buffer_in,
     {
       fpi_ssm_mark_failed(
           self->task_ssm,
-          fpi_device_error_new_msg(FP_DEVICE_ERROR_PROTO,
-                                   "received status: 0x%04x", status));
+          set_and_report_error(FP_DEVICE_ERROR_PROTO, "received status: 0x%04x",
+                               status));
       return;
     }
   }
@@ -1123,8 +1120,8 @@ static void recv_event_read(FpDevice *device, guint8 *buffer_in,
   if (!read_ok)
   {
     fpi_ssm_mark_failed(self->task_ssm,
-                        fpi_device_error_new_msg(FP_DEVICE_ERROR_PROTO,
-                                                 "Cannot parse event data 1"));
+                        set_and_report_error(FP_DEVICE_ERROR_PROTO,
+                                             "Cannot parse event data 1"));
     return;
   }
 
@@ -1156,9 +1153,9 @@ static void recv_event_read(FpDevice *device, guint8 *buffer_in,
 
     if (!read_ok)
     {
-      fpi_ssm_mark_failed(self->task_ssm, fpi_device_error_new_msg(
-                                              FP_DEVICE_ERROR_PROTO,
-                                              "Cannot parse event data 2"));
+      fpi_ssm_mark_failed(self->task_ssm,
+                          set_and_report_error(FP_DEVICE_ERROR_PROTO,
+                                               "Cannot parse event data 2"));
       return;
     }
 
@@ -1320,8 +1317,8 @@ static void recv_enroll_start(FpDevice *device, guint8 *buffer_in,
   {
     fpi_ssm_mark_failed(
         self->task_ssm,
-        fpi_device_error_new_msg(FP_DEVICE_ERROR_PROTO,
-                                 "Cannot parse enroll start response"));
+        set_and_report_error(FP_DEVICE_ERROR_PROTO,
+                             "Cannot parse enroll start response"));
     return;
   }
 
@@ -1433,7 +1430,7 @@ static void recv_add_image(FpDevice *device, guint8 *buffer_in, gsize length_in,
 
   if (!read_ok)
   {
-    fpi_ssm_mark_failed(self->task_ssm, fpi_device_error_new_msg(
+    fpi_ssm_mark_failed(self->task_ssm, set_and_report_error(
                                             FP_DEVICE_ERROR_PROTO,
                                             "Cannot parse add image response"));
     return;
@@ -1443,7 +1440,7 @@ static void recv_add_image(FpDevice *device, guint8 *buffer_in, gsize length_in,
   {
     fpi_ssm_mark_failed(
         self->task_ssm,
-        fpi_device_error_new_msg(
+        set_and_report_error(
             FP_DEVICE_ERROR_PROTO,
             "qm struct size is not valid: got %d bytes instead of 60",
             qm_struct_size));
@@ -1571,7 +1568,7 @@ static void send_enroll_finish(FpiDeviceSynaTlsMoc *self)
                       synatlsmoc_ssm_next_state_cb);
 }
 
-/* VCSFW_CMD_IDENTIFY_WBF ================================================== */
+/* VCSFW_CMD_IDENTIFY_MATCH ================================================ */
 
 static void recv_identify_match_cb(FpDevice *device, guint8 *buffer_in,
                                    gsize length_in, GError *error)
@@ -1619,10 +1616,10 @@ static void recv_identify_match_cb(FpDevice *device, guint8 *buffer_in,
 
   if (!status_is_success(status))
   {
-    fpi_ssm_mark_failed(self->task_ssm, fpi_device_error_new_msg(
-                                            FP_DEVICE_ERROR_PROTO,
-                                            "Command failed with status: %s",
-                                            status_to_str(status)));
+    fpi_ssm_mark_failed(self->task_ssm,
+                        set_and_report_error(FP_DEVICE_ERROR_PROTO,
+                                             "Command failed with status: %s",
+                                             status_to_str(status)));
     return;
   }
 
@@ -1645,7 +1642,7 @@ static void recv_identify_match_cb(FpDevice *device, guint8 *buffer_in,
   if (qm_struct_size != 36)
   {
     fpi_ssm_mark_failed(self->task_ssm,
-                        fpi_device_error_new_msg(
+                        set_and_report_error(
                             FP_DEVICE_ERROR_PROTO,
                             "qm_struct size mismatch: expected=36, received=%d",
                             qm_struct_size));
@@ -1656,7 +1653,7 @@ static void recv_identify_match_cb(FpDevice *device, guint8 *buffer_in,
   {
     fpi_ssm_mark_failed(
         self->task_ssm,
-        fpi_device_error_new_msg(
+        set_and_report_error(
             FP_DEVICE_ERROR_PROTO,
             "Unsupported identify match response: y_len=%d, z_len=%d", y_len,
             z_len));
@@ -1806,7 +1803,7 @@ static void recv_get_image_metrics(FpDevice *device, guint8 *buffer_in,
   {
     fpi_ssm_mark_failed(
         self->task_ssm,
-        fpi_device_error_new_msg(
+        set_and_report_error(
             FP_DEVICE_ERROR_PROTO,
             "The requested image metrics aren't supported by the sensor"));
     return;
@@ -1845,7 +1842,7 @@ static void recv_get_image_metrics(FpDevice *device, guint8 *buffer_in,
         {
           fpi_ssm_mark_failed(
               self->task_ssm,
-              fpi_device_error_new_msg(
+              set_and_report_error(
                   FP_DEVICE_ERROR_GENERAL,
                   "Image quality %d%% is lower than threshold %d%%",
                   matcher_img_quality, IMAGE_QUALITY_THRESHOLD));
@@ -1856,7 +1853,7 @@ static void recv_get_image_metrics(FpDevice *device, guint8 *buffer_in,
       default:
         fpi_ssm_mark_failed(
             self->task_ssm,
-            fpi_device_error_new_msg(
+            set_and_report_error(
                 FP_DEVICE_ERROR_PROTO,
                 "Received unknown image metrics: type=0x%08x, length=%d",
                 image_metrics_type, image_metrics_length));
@@ -1993,8 +1990,8 @@ static void recv_db2_get_db2_info(FpDevice *device, guint8 *buffer_in,
   {
     fpi_ssm_mark_failed(
         self->task_ssm,
-        fpi_device_error_new_msg(FP_DEVICE_ERROR_PROTO,
-                                 "Response to get DB2 info was too short"));
+        set_and_report_error(FP_DEVICE_ERROR_PROTO,
+                             "Response to get DB2 info was too short"));
     return;
   }
 
@@ -2223,8 +2220,8 @@ static void recv_db2_get_payload_info(FpDevice *device, guint8 *buffer_in,
   {
     fpi_ssm_mark_failed(
         self->task_ssm,
-        fpi_device_error_new_msg(FP_DEVICE_ERROR_PROTO,
-                                 "Response to get payload info was too short"));
+        set_and_report_error(FP_DEVICE_ERROR_PROTO,
+                             "Response to get payload info was too short"));
     return;
   }
 
@@ -2278,7 +2275,7 @@ static void recv_db2_get_template_info(FpDevice *device, guint8 *buffer_in,
   if (!read_ok)
   {
     fpi_ssm_mark_failed(self->task_ssm,
-                        fpi_device_error_new_msg(
+                        set_and_report_error(
                             FP_DEVICE_ERROR_PROTO,
                             "Response to DB2 get template info was too short"));
     return;
@@ -2365,9 +2362,9 @@ static void recv_db2_get_payload_data(FpDevice *device, guint8 *buffer_in,
 
   if (!read_ok)
   {
-    fpi_ssm_mark_failed(self->task_ssm, fpi_device_error_new_msg(
-                                            FP_DEVICE_ERROR_PROTO,
-                                            "Cannot parse DB2 payload data"));
+    fpi_ssm_mark_failed(self->task_ssm,
+                        set_and_report_error(FP_DEVICE_ERROR_PROTO,
+                                             "Cannot parse DB2 payload data"));
     return;
   }
 
@@ -2498,8 +2495,8 @@ static void recv_db2_delete_object(FpDevice *device, guint8 *buffer_in,
   {
     fpi_ssm_mark_failed(
         self->task_ssm,
-        fpi_device_error_new_msg(FP_DEVICE_ERROR_PROTO,
-                                 "DB2 delete object response too short"));
+        set_and_report_error(FP_DEVICE_ERROR_PROTO,
+                             "DB2 delete object response too short"));
     return;
   }
 
@@ -2613,9 +2610,9 @@ static void recv_db2_format(FpDevice *device, guint8 *buffer_in,
 
   if (!read_ok)
   {
-    fpi_ssm_mark_failed(self->task_ssm, fpi_device_error_new_msg(
-                                            FP_DEVICE_ERROR_PROTO,
-                                            "DB2 format response too short"));
+    fpi_ssm_mark_failed(self->task_ssm,
+                        set_and_report_error(FP_DEVICE_ERROR_PROTO,
+                                             "DB2 format response too short"));
     return;
   }
 
@@ -2783,14 +2780,14 @@ static void synatlsmoc_load_sample_pairing_data(FpiDeviceSynaTlsMoc *self)
 {
   GError *local_error = NULL;
 
-  guint8 *client_cert_raw, *server_cert_raw, *privkey_pem;
-  gsize client_cert_len, server_cert_len, privkey_pem_len;
+  guint8 *privkey_pem;
+  gsize privkey_pem_len;
 
-  client_cert_raw = sample_recv_host_cert;
-  client_cert_len = CERTIFICATE_SIZE;
+  guint8 *client_cert_raw = sample_recv_host_cert;
+  gsize client_cert_len = CERTIFICATE_SIZE;
 
-  server_cert_raw = sample_sensor_cert;
-  server_cert_len = CERTIFICATE_SIZE;
+  guint8 *server_cert_raw = sample_sensor_cert;
+  gsize server_cert_len = CERTIFICATE_SIZE;
 
   privkey_pem = sample_privkey_pem;
   privkey_pem_len = sizeof(sample_privkey_pem);
@@ -2827,7 +2824,7 @@ static void synatlsmoc_load_sample_pairing_data(FpiDeviceSynaTlsMoc *self)
                                    client_cert_raw, client_cert_len,
                                    &local_error))
   {
-    fpi_ssm_mark_failed(self->task_ssm, fpi_device_error_new_msg(
+    fpi_ssm_mark_failed(self->task_ssm, set_and_report_error(
                                             FP_DEVICE_ERROR_PROTO,
                                             "Cannot parse host certificate: %s",
                                             local_error->message));
@@ -2841,9 +2838,9 @@ static void synatlsmoc_load_sample_pairing_data(FpiDeviceSynaTlsMoc *self)
   {
     fpi_ssm_mark_failed(
         self->task_ssm,
-        fpi_device_error_new_msg(FP_DEVICE_ERROR_PROTO,
-                                 "Cannot parse sensor certificate: %s",
-                                 local_error->message));
+        set_and_report_error(FP_DEVICE_ERROR_PROTO,
+                             "Cannot parse sensor certificate: %s",
+                             local_error->message));
     g_error_free(local_error);
     return;
   }
@@ -2877,8 +2874,8 @@ static void synatlsmoc_event_interrupt_cb(FpiUsbTransfer *transfer,
 
   if (!read_ok)
   {
-    error = fpi_device_error_new_msg(FP_DEVICE_ERROR_PROTO,
-                                     "Interrupt data too short");
+    error =
+        set_and_report_error(FP_DEVICE_ERROR_PROTO, "Interrupt data too short");
     fpi_ssm_mark_failed(transfer->ssm, error);
   }
 
@@ -2902,22 +2899,21 @@ static void synatlsmoc_wait_for_events(FpiDeviceSynaTlsMoc *self)
                           synatlsmoc_event_interrupt_cb, NULL);
 }
 
-// FIXME: do I work? (was generated by gpt model)
 static char *export_private_key_to_pem(EVP_PKEY *pkey, GError **error)
 {
   BIO *bio = BIO_new(BIO_s_mem());  // Create a memory BIO
   if (bio == NULL)
   {
-    *error = fpi_device_error_new_msg(FP_DEVICE_ERROR_GENERAL,
-                                      "Failed to create BIO");
+    *error =
+        set_and_report_error(FP_DEVICE_ERROR_GENERAL, "Failed to create BIO");
     return NULL;
   }
 
   // Write the private key to the BIO in PEM format
   if (PEM_write_bio_PrivateKey(bio, pkey, NULL, NULL, 0, NULL, NULL) != 1)
   {
-    *error = fpi_device_error_new_msg(FP_DEVICE_ERROR_GENERAL,
-                                      "Failed to write private key to BIO");
+    *error = set_and_report_error(FP_DEVICE_ERROR_GENERAL,
+                                  "Failed to write private key to BIO");
     BIO_free(bio);
     return NULL;
   }
@@ -2926,8 +2922,7 @@ static char *export_private_key_to_pem(EVP_PKEY *pkey, GError **error)
   long pem_length = BIO_ctrl_pending(bio);
   if (pem_length <= 0)
   {
-    *error =
-        fpi_device_error_new_msg(FP_DEVICE_ERROR_GENERAL, "No data in BIO");
+    *error = set_and_report_error(FP_DEVICE_ERROR_GENERAL, "No data in BIO");
     BIO_free(bio);
     return NULL;
   }
@@ -2936,8 +2931,8 @@ static char *export_private_key_to_pem(EVP_PKEY *pkey, GError **error)
   char *pem_data = (char *) malloc(pem_length + 1);
   if (pem_data == NULL)
   {
-    *error = fpi_device_error_new_msg(FP_DEVICE_ERROR_GENERAL,
-                                      "Failed to allocate memory for PEM data");
+    *error = set_and_report_error(FP_DEVICE_ERROR_GENERAL,
+                                  "Failed to allocate memory for PEM data");
     BIO_free(bio);
     return NULL;
   }
@@ -2954,12 +2949,17 @@ static char *export_private_key_to_pem(EVP_PKEY *pkey, GError **error)
 
 static void store_pairing_data(FpiDeviceSynaTlsMoc *self)
 {
-  GVariant *host_cert_var = g_variant_new_fixed_array(
-      G_VARIANT_TYPE_BYTE, &self->pairing_data.client_cert, CERTIFICATE_SIZE,
-      1);
-  GVariant *sensor_cert_var = g_variant_new_fixed_array(
-      G_VARIANT_TYPE_BYTE, &self->pairing_data.server_cert, CERTIFICATE_SIZE,
-      1);
+  // FIXME: raw cert lengths from pairing data and check on loading
+
+  guint8 *client_cert_raw_cpy =
+      g_memdup2(self->pairing_data.client_cert_raw, CERTIFICATE_SIZE);
+  GVariant *client_cert_var = g_variant_new_fixed_array(
+      G_VARIANT_TYPE_BYTE, client_cert_raw_cpy, CERTIFICATE_SIZE, 1);
+
+  guint8 *server_cert_raw_cpy =
+      g_memdup2(self->pairing_data.server_cert_raw, CERTIFICATE_SIZE);
+  GVariant *server_cert_var = g_variant_new_fixed_array(
+      G_VARIANT_TYPE_BYTE, server_cert_raw_cpy, CERTIFICATE_SIZE, 1);
 
   GError *error = NULL;
   g_autofree char *privkey_pem =
@@ -2972,21 +2972,21 @@ static void store_pairing_data(FpiDeviceSynaTlsMoc *self)
 
   GVariant *privkey_pem_var = g_variant_new_string(privkey_pem);
 
-  GVariant *pairing_data = g_variant_new("(@ay@ay@s)", host_cert_var,
-                                         sensor_cert_var, privkey_pem_var);
+  GVariant *pairing_data = g_variant_new("(@ay@ay@s)", client_cert_var,
+                                         server_cert_var, privkey_pem_var);
 
   g_object_set(FP_DEVICE(self), "fpi-persistent-data", pairing_data, NULL);
 
 #ifdef DEBUG
   g_autofree char *client_cert_str =
-      bin2hex(self->pairing_data.client_cert_raw, CERTIFICATE_SIZE);
+      bin2hex(client_cert_raw_cpy, CERTIFICATE_SIZE);
   g_autofree char *server_cert_str =
-      bin2hex(self->pairing_data.server_cert_raw, CERTIFICATE_SIZE);
+      bin2hex(server_cert_raw_cpy, CERTIFICATE_SIZE);
 
   fp_dbg("Successfully stored pairing data:");
-  fp_dbg("\tSensor certificate: %s", client_cert_str);
-  fp_dbg("\tRemote certificate: %s", server_cert_str);
-  fp_dbg("\tPEM private key: \n\t%s", privkey_pem);
+  fp_dbg("\tClient certificate: %s", client_cert_str);
+  fp_dbg("\tServer certificate: %s", server_cert_str);
+  fp_dbg("\tPEM private key:\n%s", privkey_pem);
 #endif
 
   fpi_ssm_next_state(self->task_ssm);
@@ -2996,9 +2996,13 @@ static void load_pairing_data(FpiDeviceSynaTlsMoc *self)
 {
   GError *local_error = NULL;
 
+#ifdef DEBUG
+  fp_dbg("Loading pairing data form persistent storage:");
+#endif
+
   g_autoptr(GVariant) pairing_data = NULL;
   g_autoptr(GVariant) client_cert_var = NULL;
-  g_autoptr(GVariant) host_cert_var = NULL;
+  g_autoptr(GVariant) server_cert_var = NULL;
   g_autoptr(GVariant) privkey_pem_var = NULL;
 
   g_object_get(FP_DEVICE(self), "fpi-persistent-data", &pairing_data, NULL);
@@ -3007,8 +3011,8 @@ static void load_pairing_data(FpiDeviceSynaTlsMoc *self)
   {
     fpi_ssm_mark_failed(
         self->task_ssm,
-        fpi_device_error_new_msg(FP_DEVICE_ERROR_GENERAL,
-                                 "Received NULL as stored pairing data"));
+        set_and_report_error(FP_DEVICE_ERROR_GENERAL,
+                             "Received NULL as stored pairing data"));
     return;
   }
 
@@ -3016,46 +3020,67 @@ static void load_pairing_data(FpiDeviceSynaTlsMoc *self)
   {
     fpi_ssm_mark_failed(
         self->task_ssm,
-        fpi_device_error_new_msg(FP_DEVICE_ERROR_GENERAL,
-                                 "Stored pairing data have incorrect format"));
+        set_and_report_error(FP_DEVICE_ERROR_GENERAL,
+                             "Stored pairing data have incorrect format"));
     return;
   }
 
-  g_variant_get(pairing_data, "(@ay@ayu@s)", &host_cert_var, &client_cert_var,
+  g_variant_get(pairing_data, "(@ay@ay@s)", &client_cert_var, &server_cert_var,
                 &privkey_pem_var);
-
-  gsize host_cert_data_size = 0;
-  guint8 *host_cert_data = (guint8 *) g_variant_get_fixed_array(
-      host_cert_var, &host_cert_data_size, 1);
-  if (host_cert_data_size != CERTIFICATE_SIZE)
-  {
-    fpi_ssm_mark_failed(self->task_ssm,
-                        fpi_device_error_new_msg(
-                            FP_DEVICE_ERROR_GENERAL,
-                            "Stored host certificate has invalid size: %lu",
-                            host_cert_data_size));
-    return;
-  }
-  memcpy(&self->pairing_data.server_cert_raw, host_cert_data, CERTIFICATE_SIZE);
 
   gsize client_cert_data_size = 0;
   guint8 *client_cert_data = (guint8 *) g_variant_get_fixed_array(
       client_cert_var, &client_cert_data_size, 1);
   if (client_cert_data_size != CERTIFICATE_SIZE)
   {
-    fpi_ssm_mark_failed(self->task_ssm,
-                        fpi_device_error_new_msg(
-                            FP_DEVICE_ERROR_GENERAL,
-                            "Stored client certificate has invalid size: %lu",
-                            client_cert_data_size));
+    fpi_ssm_mark_failed(
+        self->task_ssm,
+        set_and_report_error(
+            FP_DEVICE_ERROR_GENERAL,
+            "Stored sensor/client certificate has invalid size: %lu",
+            client_cert_data_size));
     return;
   }
-  memcpy(&self->pairing_data.server_cert_raw, client_cert_data,
-         CERTIFICATE_SIZE);
+  self->pairing_data.client_cert_raw =
+      g_memdup2(client_cert_data, CERTIFICATE_SIZE);
+  self->pairing_data.client_cert_len = CERTIFICATE_SIZE;
+
+#ifdef DEBUG
+  g_autofree char *client_cert_str =
+      bin2hex(self->pairing_data.client_cert_raw, CERTIFICATE_SIZE);
+  fp_dbg("\tClient certificate: %s", client_cert_str);
+#endif
+
+  gsize server_cert_data_size = 0;
+  guint8 *server_cert_data = (guint8 *) g_variant_get_fixed_array(
+      server_cert_var, &server_cert_data_size, 1);
+  if (server_cert_data_size != CERTIFICATE_SIZE)
+  {
+    fpi_ssm_mark_failed(
+        self->task_ssm,
+        set_and_report_error(
+            FP_DEVICE_ERROR_GENERAL,
+            "Stored host/server certificate has invalid size: %lu",
+            server_cert_data_size));
+    return;
+  }
+  self->pairing_data.server_cert_raw =
+      g_memdup2(server_cert_data, CERTIFICATE_SIZE);
+  self->pairing_data.server_cert_len = CERTIFICATE_SIZE;
+
+#ifdef DEBUG
+  g_autofree char *server_cert_str =
+      bin2hex(self->pairing_data.server_cert_raw, CERTIFICATE_SIZE);
+  fp_dbg("\tServer certificate: %s", server_cert_str);
+#endif
 
   gsize privkey_pem_size = 0;
-  char *privkey_pem =
-      (char *) g_variant_get_string(privkey_pem_var, &privkey_pem_size);
+  g_autofree const gchar *privkey_pem =
+      g_variant_get_string(privkey_pem_var, &privkey_pem_size);
+
+#ifdef DEBUG
+  fp_dbg("\tPEM private key:\n%s", privkey_pem);
+#endif
 
   g_autoptr(OSSL_DECODER_CTX) dctx = OSSL_DECODER_CTX_new_for_pkey(
       &self->pairing_data.client_key, "PEM", NULL, "EC",
@@ -3067,23 +3092,11 @@ static void load_pairing_data(FpiDeviceSynaTlsMoc *self)
                              &privkey_pem_size) <= 0)
     g_assert_not_reached();
 
-#ifdef DEBUG
-  g_autofree char *client_cert_str =
-      bin2hex(self->pairing_data.client_cert_raw, CERTIFICATE_SIZE);
-  g_autofree char *server_cert_str =
-      bin2hex(self->pairing_data.server_cert_raw, CERTIFICATE_SIZE);
-
-  fp_dbg("Successfully loaded pairing data:");
-  fp_dbg("\tSensor certificate: %s", client_cert_str);
-  fp_dbg("\tRemote certificate: %s", server_cert_str);
-  fp_dbg("\tPEM private key: \n\t%s", privkey_pem);
-#endif
-
   if (!sensor_certificate_from_raw(
           &self->pairing_data.client_cert, self->pairing_data.client_cert_raw,
           self->pairing_data.client_cert_len, &local_error))
   {
-    fpi_ssm_mark_failed(self->task_ssm, fpi_device_error_new_msg(
+    fpi_ssm_mark_failed(self->task_ssm, set_and_report_error(
                                             FP_DEVICE_ERROR_PROTO,
                                             "Cannot parse host certificate: %s",
                                             local_error->message));
@@ -3097,20 +3110,19 @@ static void load_pairing_data(FpiDeviceSynaTlsMoc *self)
   {
     fpi_ssm_mark_failed(
         self->task_ssm,
-        fpi_device_error_new_msg(FP_DEVICE_ERROR_PROTO,
-                                 "Cannot parse sensor certificate: %s",
-                                 local_error->message));
+        set_and_report_error(FP_DEVICE_ERROR_PROTO,
+                             "Cannot parse sensor certificate: %s",
+                             local_error->message));
     g_error_free(local_error);
     return;
   }
 
-  fpi_ssm_next_state(self->task_ssm);
+  /* jump over pairing */
+  fpi_ssm_jump_to_state(self->task_ssm, OPEN_VERIFY_SENSOR_CERTIFICATE);
 }
 
 static void pair(FpiDeviceSynaTlsMoc *self)
 {
-  g_autofree guint8 *host_certificate = g_malloc(CERTIFICATE_SIZE);
-
   if (!synatlsmoc_is_provisioned(self))
   {
     fp_warn("Skipping pairing: sensor is already paired or insecure");
@@ -3122,6 +3134,7 @@ static void pair(FpiDeviceSynaTlsMoc *self)
     fp_warn(
         "Skipping pairing: only advanced security is supported (per "
         "Windows driver)");
+    fpi_ssm_next_state(self->task_ssm);
     return;
   }
 
@@ -3143,7 +3156,7 @@ static void pair(FpiDeviceSynaTlsMoc *self)
   send_pair(self, host_certificate_raw);
 }
 
-static void try_to_load_pairing_data(FpiDeviceSynaTlsMoc *self)
+static void fetch_pairing_data(FpiDeviceSynaTlsMoc *self)
 {
 #ifdef USE_SAMPLE_PAIRING_DATA
   fp_warn(
@@ -3154,16 +3167,12 @@ static void try_to_load_pairing_data(FpiDeviceSynaTlsMoc *self)
   g_object_get(FP_DEVICE(self), "fpi-persistent-data", &pairing_data, NULL);
 
   // FIXME: how to check if pairing_data are not present
-  if (synatlsmoc_is_provisioned(self) || pairing_data == NULL)
+  if ((!synatlsmoc_is_provisioned(self)) || pairing_data == NULL)
   {
     if (pairing_data == NULL)
-    {
-      fp_warn("Previous pairing data in persistent storage are NULL");
-    }
-    else
-    {
-      fp_warn("Sensor is not provisioned");
-    }
+      fp_warn("Pairing data in persistent storage are NULL");
+    if (!synatlsmoc_is_provisioned(self)) fp_warn("Sensor is not provisioned");
+
     fp_warn("Need to pair sensor");
     fpi_ssm_next_state(self->task_ssm); /* OPEN_SEND_PAIR */
   }
@@ -3232,7 +3241,7 @@ static void synatlsmoc_open_run_state(FpiSsm *ssm, FpDevice *dev)
       {
         if (open_ssm_data->tried_to_exit_bootloader_mode)
         {
-          fpi_ssm_mark_failed(ssm, fpi_device_error_new_msg(
+          fpi_ssm_mark_failed(ssm, set_and_report_error(
                                        FP_DEVICE_ERROR_NOT_SUPPORTED,
                                        "Sensor doesn't have a valid firmware, "
                                        "need to update to a valid one first!"));
@@ -3253,15 +3262,15 @@ static void synatlsmoc_open_run_state(FpiSsm *ssm, FpDevice *dev)
       if (synatlsmoc_is_provisioned(self) ||
           synatlsmoc_has_advanced_security(self))
       {
-        try_to_load_pairing_data(self);
+        fetch_pairing_data(self);
       }
       else
       {
         fpi_ssm_mark_failed(
-            ssm, fpi_device_error_new_msg(
+            ssm, set_and_report_error(
                      FP_DEVICE_ERROR_NOT_SUPPORTED,
                      "Sensor is unprovisioned or does not support advanced "
-                     "security, not establishing TLS session"));
+                     "security, cannot establishing TLS session"));
       }
       break;
     case OPEN_SEND_PAIR:
@@ -3567,8 +3576,8 @@ static gboolean get_template_id_from_fp_print(FpPrint *print, Db2Id template_id,
 
   if (!g_variant_check_format_string(fpi_data, "(y@ay@ay)", FALSE))
   {
-    *error = fpi_device_error_new_msg(FP_DEVICE_ERROR_DATA_INVALID,
-                                      "Print data has invalid fpi-data format");
+    *error = set_and_report_error(FP_DEVICE_ERROR_DATA_INVALID,
+                                  "Print data has invalid fpi-data format");
     ret = FALSE;
     goto error;
   }
@@ -3580,7 +3589,7 @@ static gboolean get_template_id_from_fp_print(FpPrint *print, Db2Id template_id,
   tid = g_variant_get_fixed_array(tid_var, &tid_len, 1);
   if (tid_len != DB2_ID_SIZE)
   {
-    *error = fpi_device_error_new_msg(
+    *error = set_and_report_error(
         FP_DEVICE_ERROR_DATA_INVALID,
         "Stored template id in print data has invalid size of %lu", tid_len);
     ret = FALSE;

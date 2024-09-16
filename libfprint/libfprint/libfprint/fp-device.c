@@ -866,7 +866,7 @@ fp_device_set_persistent_data (FpDevice *device,
     }
   g_assert (data);
 
-  copy = g_memdup (data, length);
+  copy = g_memdup2 (data, length);
   stored = g_variant_new_from_data (G_VARIANT_TYPE ("(issv)"), copy, length, FALSE, g_free, copy);
 
   if (!stored)

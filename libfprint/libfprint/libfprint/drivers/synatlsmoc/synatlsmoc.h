@@ -107,9 +107,12 @@ typedef enum
   VCSFW_CMD_DB2_FORMAT = 0xa5,
   /* ? 0xa6 */
   VCSFW_CMD_RESET_SBL_MODE = 0xaa, /* non-original name */
+  VCSFW_CMD_EXTSIG = 0xab,
   VCSFW_CMD_SSO = 0xac,
   VCSFW_CMD_OPINFO_GET = 0xae,
   VCSFW_CMD_HW_INFO_GET = 0xaf,
+  VCSFW_CMD_GET_VERSION2 = 0xb4,
+  VCSFW_CMD_EXT_COMMAND = 0xe5,
 } VCSFW_CMD;
 
 typedef enum

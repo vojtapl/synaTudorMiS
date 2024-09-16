@@ -112,8 +112,10 @@ G_DEFINE_AUTOPTR_CLEANUP_FUNC(BIGNUM, BN_free);
 #define FP_ERR_WITH_LOCATION(msg, ...) \
   fp_err("%s: %s: %d:" msg, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
 
-#define FP_DBG_HIGHLIGHTED(msg, ...) \
-  fp_dbg("====================" msg "====================", ##__VA_ARGS__)
+#define FP_DBG_HIGHLIGHTED(msg, ...)                     \
+  fp_dbg("======================================== " msg \
+         " ========================================",    \
+         ##__VA_ARGS__)
 
 gchar *bin2hex(const guint8 *arr, const gsize size);
 const char *status_to_str(guint16 status);

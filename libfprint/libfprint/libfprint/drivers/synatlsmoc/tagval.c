@@ -66,9 +66,9 @@ gboolean tagval_new_from_bytes(TagVal **container, guint8 *data, gsize length,
   fpi_byte_reader_init(&reader, data, length);
   while (fpi_byte_reader_get_remaining(&reader) > 0)
   {
-    guint16 tag;
-    guint32 val_size;
-    guint8 *val;
+    guint16 tag = 0;
+    guint32 val_size = 0;
+    guint8 *val = NULL;
 
     read_ok &= fpi_byte_reader_get_uint16_le(&reader, &tag);
     read_ok &= fpi_byte_reader_get_uint32_le(&reader, &val_size);
