@@ -194,7 +194,7 @@ GError *set_and_report_error(FpDeviceError device_error, const gchar *msg, ...)
 
   // Now pass the formatted message to the error functions
   GError *error = fpi_device_error_new_msg(device_error, "%s", formatted_msg);
-  FP_ERR_FANCY("%s", formatted_msg);
+  fp_err("%s", formatted_msg);
 
   va_end(args);
 

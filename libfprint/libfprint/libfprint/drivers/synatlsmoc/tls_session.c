@@ -47,9 +47,20 @@
 #define MAX_SESSION_ID_SIZE 32
 #define MAX_HASH_SIZE 64
 #define MAX_KEY_BLOCK_SIZE 128
+#define CERTIFICATE_MAX_KEY_SIZE 68
+#define SIGNATURE_SIZE 256
 
 typedef enum
 {
+#define DEBUG_SSL TRUE
+
+#define RANDOM_SIZE 32
+#define MASTER_SECRET_SIZE 48
+#define VERIFY_DATA_SIZE 12
+#define MAX_SESSION_ID_SIZE 32
+#define MAX_HASH_SIZE 64
+#define MAX_KEY_BLOCK_SIZE 128
+
   HANDSHAKE_BEGIN,
   CLIENT_HELLO_SENT,
   SUITE_HANDSHAKE,
@@ -152,7 +163,7 @@ struct _TlsSession
   guint8 cert_request;
   SensorPairingData *pairing_data;
   // gboolean established;
-  // gboolean remote_established;
+  // gboolean server_established;
 };
 
 static gboolean fpi_byte_writer_put_extension(FpiByteWriter *writer,
@@ -192,6 +203,7 @@ void tls_session_free(TlsSession *self)
   // FIXME: session ID does not get freed somehow
   g_free(self->session_id);
   g_free(self->suites);
+  g_free(self->supported_extensions);
 
   g_free(self->encr_key);
   g_free(self->decr_key);
@@ -207,7 +219,7 @@ void tls_session_free(TlsSession *self)
   g_free(self);
 }
 
-static gboolean tls_prf(guint8 *master, gsize master_size, gchar *label,
+static gboolean tls_prf(guint8 *secret, gsize secret_size, gchar *label,
                         gsize label_size, guint8 *seed, gsize seed_size,
                         guint8 *out, gsize outsize, char *hash_algo,
                         GError **error)
@@ -221,8 +233,8 @@ static gboolean tls_prf(guint8 *master, gsize master_size, gchar *label,
 
   *p++ = OSSL_PARAM_construct_utf8_string(OSSL_KDF_PARAM_DIGEST, hash_algo,
                                           strlen(hash_algo));
-  *p++ = OSSL_PARAM_construct_octet_string(OSSL_KDF_PARAM_SECRET, master,
-                                           master_size);
+  *p++ = OSSL_PARAM_construct_octet_string(OSSL_KDF_PARAM_SECRET, secret,
+                                           secret_size);
   *p++ =
       OSSL_PARAM_construct_octet_string(OSSL_KDF_PARAM_SEED, label, label_size);
   *p++ =
@@ -820,7 +832,7 @@ static gboolean tls_session_send_certificate(TlsSession *self, GError **error)
   msg->body = fpi_byte_writer_reset_and_get_data(&writer);
 
   g_autofree gchar *cert_str =
-      bin2hex(self->pairing_data->remote_cert_raw, CERTIFICATE_SIZE);
+      bin2hex(self->pairing_data->server_cert_raw, CERTIFICATE_SIZE);
   asprintf(&msg->repr, "Certificate(cert=TlsCertificate(data=%s))", cert_str);
 
   if (!tls_session_send_handshake_msg(self, msg, &local_error))
@@ -1051,6 +1063,12 @@ static gboolean tls_session_receive_handshake(TlsSession *self, Handshake *msg,
       guint8 certificate_type;
 
       read_ok &= fpi_byte_reader_get_uint8(&reader, &certs_num);
+      read_ok &= fpi_byte_reader_get_uint8(&reader, &certificate_type);
+      // Some garbage bytes
+      read_ok &= fpi_byte_reader_skip(&reader, 2);
+
+      RETURN_FALSE_AND_SET_ERROR_IF_NOT_READ(read_ok);
+
       if (certs_num != 1)
       {
         g_propagate_error(error, fpi_device_error_new_msg(
@@ -1060,12 +1078,6 @@ static gboolean tls_session_receive_handshake(TlsSession *self, Handshake *msg,
                                      certs_num));
         return FALSE;
       }
-
-      read_ok &= fpi_byte_reader_get_uint8(&reader, &certificate_type);
-
-      // Some garbage bytes
-      fpi_byte_reader_skip(&reader, 2);
-      RETURN_FALSE_AND_SET_ERROR_IF_NOT_READ(read_ok);
 
 #if DEBUG_SSL
       fp_dbg(
@@ -1146,7 +1158,7 @@ static gboolean tls_session_receive_handshake(TlsSession *self, Handshake *msg,
 
       if (ctx == NULL ||
           !EVP_DigestSignInit(ctx, NULL, EVP_sha256(), NULL,
-                              self->pairing_data->remote_key) ||
+                              self->pairing_data->client_key) ||
           !EVP_DigestSignUpdate(ctx, hdata, hdata_len) ||
           !EVP_DigestSignFinal(ctx, NULL, &signature_len))
       {
@@ -1185,7 +1197,7 @@ static gboolean tls_session_receive_handshake(TlsSession *self, Handshake *msg,
 
       if (ctx == NULL || !EVP_PKEY_derive_init(pctx) ||
           !EVP_PKEY_derive_set_peer(pctx,
-                                    self->pairing_data->remote_cert.pub_key) ||
+                                    self->pairing_data->server_cert.pub_key) ||
           !EVP_PKEY_derive(pctx, NULL, &premaster_secret_len))
       {
         g_propagate_error(error, fpi_device_error_new_msg(
@@ -1313,14 +1325,14 @@ static gboolean tls_session_receive_handshake(TlsSession *self, Handshake *msg,
         return FALSE;
       }
 
-      g_autofree guint8 *remote_verify_data;
+      g_autofree guint8 *server_verify_data;
       read_ok &= fpi_byte_reader_dup_data(&reader, VERIFY_DATA_SIZE,
-                                          &remote_verify_data);
+                                          &server_verify_data);
       RETURN_FALSE_AND_SET_ERROR_IF_NOT_READ(read_ok);
 
 #if DEBUG_SSL
       g_autofree gchar *verify_data_str =
-          bin2hex(remote_verify_data, VERIFY_DATA_SIZE);
+          bin2hex(server_verify_data, VERIFY_DATA_SIZE);
       fp_dbg(
           "<- HandshakeMessage(type=0x%02x, content=Finished(verify_data=%s))",
           msg->msg_type, verify_data_str);
@@ -1347,7 +1359,7 @@ static gboolean tls_session_receive_handshake(TlsSession *self, Handshake *msg,
         return FALSE;
       }
 
-      if (memcmp(verify_data, remote_verify_data, VERIFY_DATA_SIZE) != 0)
+      if (memcmp(verify_data, server_verify_data, VERIFY_DATA_SIZE) != 0)
       {
         g_propagate_error(error, fpi_device_error_new_msg(
                                      FP_DEVICE_ERROR_PROTO,
@@ -1450,16 +1462,15 @@ static gboolean tls_session_receive(TlsSession *self, TlsRecord *record,
           return TRUE;
         }
 
-        if (alert_level == SSL3_AL_FATAL)
+        // TLS session seems to be closed even on warnings
+        // if (alert_level == SSL3_AL_FATAL)
+        if (!tls_session_close(self, &local_error))
         {
-          if (!tls_session_close(self, &local_error))
-          {
-            g_propagate_error(error, local_error);
-            return FALSE;
-          }
-          g_assert_not_reached();
-          // TODO: raise data.TlsAlertException(alert.descr, True)
+          g_propagate_error(error, local_error);
+          return FALSE;
         }
+        g_assert_not_reached();
+        // TODO: raise data.TlsAlertException(alert.descr, True)
         break;
       }
       case SSL3_RT_HANDSHAKE:
@@ -1718,123 +1729,212 @@ gboolean tls_session_unwrap(TlsSession *self, guint8 *cdata, gsize cdata_size,
   return TRUE;
 }
 
-static gboolean generate_hs_priv_key(EVP_PKEY *privkey, GError **error)
+static gboolean generate_hs_priv_key(EVP_PKEY **hs_privkey, GError **error)
 {
-  gboolean ret = TRUE;
-
   guint8 secret[] = {0x71, 0x7c, 0xd7, 0x2d, 0x09, 0x62, 0xbc, 0x4a,
                      0x28, 0x46, 0x13, 0x8d, 0xbb, 0x2c, 0x24, 0x19};
   guint8 seed[] = {0x25, 0x12, 0xa7, 0x64, 0x07, 0x06, 0x5f, 0x38, 0x38,
                    0x46, 0x13, 0x9d, 0x4b, 0xec, 0x20, 0x33, 0xaa, 0xaa};
-  char *label = "HS_KEY_PAIR_GEN";
+  gchar *label = "HS_KEY_PAIR_GEN";
 
-  g_autofree guint8 *privkey_k = NULL;
-  const gsize privkey_k_size = ECC_KEY_SIZE;
+  guint8 privkey_k[ECC_KEY_SIZE];
   if (!tls_prf(secret, sizeof(secret), label, strlen(label), seed, sizeof(seed),
-               privkey_k, privkey_k_size, SN_sha256, error))
+               privkey_k, ECC_KEY_SIZE, SN_sha256, error))
   {
-    ret = FALSE;
-    goto error;
+    return FALSE;
   }
 
-  /* output is in little-endian, OpenSSL expects big-endian
-   * TODO: verify that openssl does not reverse array */
-  reverse_array(privkey_k, privkey_k_size);
+  /* output is in little-endian, OpenSSL expects big-endian */
+  reverse_array(privkey_k, ECC_KEY_SIZE);
 
-  // FIXME: import private key
-
-  // NOTE: expected result
-  /* HS_KEY_PAIR_GEN result, then converted to big-endian as expected by OpenSSL
+  /* NOTE: expected result (HS_KEY_PAIR_GEN), then converted to big-endian as
+   * expected by OpenSSL
+   * guint8 k[ECC_KEY_SIZE] = {0xe8, 0xa2, 0xa2, 0xb6, 0x65, 0x62, 0x54, 0xd6,
+   * 0xac, 0xb0, 0xef, 0x47, 0x9c, 0xae, 0x41, 0x40, 0xc7, 0xe8, 0xe2, 0x60,
+   * 0xdb, 0x3f, 0x64, 0x2e, 0x35, 0xd4, 0x09, 0x9c, 0x01, 0xb3, 0x6a, 0x86};
    */
-  /* guint8 k[ECC_KEY_SIZE] = {0xe8, 0xa2, 0xa2, 0xb6, 0x65, 0x62, 0x54, 0xd6,
-                            0xac, 0xb0, 0xef, 0x47, 0x9c, 0xae, 0x41, 0x40,
-                            0xc7, 0xe8, 0xe2, 0x60, 0xdb, 0x3f, 0x64, 0x2e,
-                            0x35, 0xd4, 0x09, 0x9c, 0x01, 0xb3, 0x6a, 0x86};
-  guint8 x[ECC_KEY_SIZE] = {0x89, 0xe5, 0x41, 0x30, 0x0c, 0xcf, 0x1a, 0x03,
-                            0xe6, 0x25, 0xc4, 0x3d, 0xf7, 0x25, 0xc5, 0x95,
-                            0x78, 0x7a, 0x71, 0xcb, 0x03, 0x5b, 0x4b, 0x7c,
-                            0x06, 0xd3, 0x51, 0x71, 0x42, 0x2e, 0x50, 0x57};
-  guint8 y[ECC_KEY_SIZE] = {0xeb, 0x05, 0x00, 0x8f, 0x22, 0xaa, 0x2b, 0xc6,
-                            0xfe, 0x0b, 0xf9, 0x08, 0x03, 0xa0, 0xe7, 0x3a,
-                            0x2e, 0xb2, 0x8c, 0xfd, 0x0c, 0x72, 0xa5, 0xf6,
-                            0x73, 0x35, 0xc0, 0x61, 0x22, 0x6e, 0xff, 0xec}; */
+  g_autofree char *privkey_k_str = bin2hex(privkey_k, ECC_KEY_SIZE);
+  fp_dbg("Generated hs privkey k param: %s", privkey_k_str);
 
-error:
-  return ret;
+  g_autoptr(OSSL_PARAM_BLD) param_bld = OSSL_PARAM_BLD_new();
+  g_autoptr(BIGNUM) k_bn = BN_bin2bn(privkey_k, ECC_KEY_SIZE, NULL);
+
+  // FIXME:  get private key only through the k value
+  const guint8 pubkey_data[] = {
+      POINT_CONVERSION_UNCOMPRESSED,
+      // x
+      0x89, 0xe5, 0x41, 0x30, 0x0c, 0xcf, 0x1a, 0x03, 0xe6, 0x25, 0xc4, 0x3d,
+      0xf7, 0x25, 0xc5, 0x95, 0x78, 0x7a, 0x71, 0xcb, 0x03, 0x5b, 0x4b, 0x7c,
+      0x06, 0xd3, 0x51, 0x71, 0x42, 0x2e, 0x50, 0x57,
+      // y
+      0xeb, 0x05, 0x00, 0x8f, 0x22, 0xaa, 0x2b, 0xc6, 0xfe, 0x0b, 0xf9, 0x08,
+      0x03, 0xa0, 0xe7, 0x3a, 0x2e, 0xb2, 0x8c, 0xfd, 0x0c, 0x72, 0xa5, 0xf6,
+      0x73, 0x35, 0xc0, 0x61, 0x22, 0x6e, 0xff, 0xec};
+
+  if (param_bld == NULL ||
+      !OSSL_PARAM_BLD_push_utf8_string(param_bld, "group", "prime256v1", 0) ||
+      // !OSSL_PARAM_BLD_push_octet_string(param_bld, "priv", privkey_k,
+      //                                   ECC_KEY_SIZE)
+      !OSSL_PARAM_BLD_push_BN(param_bld, "priv", k_bn) ||
+      !OSSL_PARAM_BLD_push_octet_string(param_bld, "pub", pubkey_data,
+                                        sizeof(pubkey_data)))
+  {
+    g_propagate_error(error,
+                      set_and_report_error(
+                          FP_DEVICE_ERROR_GENERAL,
+                          "Failed to generate OSSL builder for private key: %s",
+                          ERR_error_string(ERR_get_error(), NULL)));
+    return FALSE;
+  }
+
+  g_autoptr(OSSL_PARAM) params = OSSL_PARAM_BLD_to_param(param_bld);
+  g_autoptr(EVP_PKEY_CTX) ctx = EVP_PKEY_CTX_new_from_name(NULL, "EC", NULL);
+
+  if (ctx == NULL || params == NULL || !EVP_PKEY_fromdata_init(ctx) ||
+      !EVP_PKEY_fromdata(ctx, hs_privkey, EVP_PKEY_KEYPAIR, params))
+  {
+    g_propagate_error(
+        error, set_and_report_error(FP_DEVICE_ERROR_GENERAL,
+                                    "Failed to load hs private key: %s",
+                                    ERR_error_string(ERR_get_error(), NULL)));
+    return FALSE;
+  }
+
+  return TRUE;
 }
 
-gboolean create_host_certificate(SensorPairingData pairing_data,
-                                 guint8 *host_certificate, GError **error)
+gboolean create_host_certificate(EVP_PKEY *server_key,
+                                 guint8 **host_certificate_bytes,
+                                 GError **error)
 {
-  gboolean ret = TRUE;
+  *host_certificate_bytes = g_malloc(CERTIFICATE_SIZE);
 
-  // FIXME: load public key from self->pairing_data.private_key and export to
-  // certificate
+  // get x public key coordinate
+  g_autoptr(BIGNUM) x_bn = BN_new();
+  if (EVP_PKEY_get_bn_param(server_key, OSSL_PKEY_PARAM_EC_PUB_X, &x_bn) != 1)
+  {
+    g_propagate_error(
+        error, set_and_report_error(
+                   FP_DEVICE_ERROR_GENERAL,
+                   "OpenSSL error while getting x coordinate of public key: %s",
+                   ERR_error_string(ERR_get_error(), NULL)));
+    return FALSE;
+  }
 
-  /* as the size of public key x and y is up to 68 we need to zero the unused
-   * bytes */
+  gsize x_bytes_size = BN_num_bytes(x_bn);
+  g_autofree guint8 *x_bytes = g_malloc(x_bytes_size);
+  g_assert(BN_bn2bin(x_bn, x_bytes) == x_bytes_size);
+
+  // get y public key coordinate
+  g_autoptr(BIGNUM) y_bn = BN_new();
+  if (EVP_PKEY_get_bn_param(server_key, OSSL_PKEY_PARAM_EC_PUB_Y, &y_bn) != 1)
+  {
+    g_propagate_error(
+        error, set_and_report_error(
+                   FP_DEVICE_ERROR_GENERAL,
+                   "OpenSSL error while getting y coordinate of public key: %s",
+                   ERR_error_string(ERR_get_error(), NULL)));
+    return FALSE;
+  }
+  gsize y_bytes_size = BN_num_bytes(y_bn);
+  g_autofree guint8 *y_bytes = g_malloc(y_bytes_size);
+  g_assert(BN_bn2bin(y_bn, y_bytes) == y_bytes_size);
+
   FpiByteWriter writer;
-  fpi_byte_writer_init_with_data(&writer, host_certificate, CERTIFICATE_SIZE,
-                                 FALSE);
+  fpi_byte_writer_init_with_data(&writer, *host_certificate_bytes,
+                                 CERTIFICATE_SIZE, FALSE);
 
   gboolean written = TRUE;
   written &= fpi_byte_writer_put_uint16_le(&writer, CERTIFICATE_MAGIC);
   written &= fpi_byte_writer_put_uint16_le(&writer, CERTIFICATE_CURVE);
 
-  // FIXME: hs_privkey needs to be loaded and used to sign the generated
-  // certificate NOTE: everything is written in little endian
-  // reverse_array(x.data, x.size);
-  // written &= fpi_byte_writer_put_data(&writer, x.data, x.size);
-  // /* add zeros as padding */
-  // written &= fpi_byte_writer_fill(&writer, 0, 68 - x.size);
-  // reverse_array(y.data, y.size);
-  // written &= fpi_byte_writer_put_data(&writer, y.data, y.size);
-  // /* add zeros as padding */
-  // written &= fpi_byte_writer_fill(&writer, 0, 68 - y.size);
-  // /* add padding */
-  // written &= fpi_byte_writer_put_uint8(&writer, 0);
-  // /* put certificate type */
-  // written &= fpi_byte_writer_put_uint8(&writer, 0);
+  // NOTE: everything is written in little endian -> reverse some things
+  // write x public key coordinate
+  reverse_array(x_bytes, x_bytes_size);
+  written &= fpi_byte_writer_put_data(&writer, x_bytes, x_bytes_size);
+  /* add zeros as padding */
+  written &=
+      fpi_byte_writer_fill(&writer, 0, CERTIFICATE_MAX_KEY_SIZE - x_bytes_size);
 
-  // g_assert(fpi_byte_writer_get_pos(&writer) ==
-  //          CERTIFICATE_DATA_SIZE);
-  // RETURN_FALSE_AND_SET_ERROR_IF_NOT_WRITTEN(written);
+  // write y public key coordinate
+  reverse_array(y_bytes, y_bytes_size);
+  written &= fpi_byte_writer_put_data(&writer, y_bytes, y_bytes_size);
+  /* add zeros as padding */
+  written &=
+      fpi_byte_writer_fill(&writer, 0, CERTIFICATE_MAX_KEY_SIZE - y_bytes_size);
 
-  // if (!generate_hs_priv_key(&hs_privkey, error)) {
-  //    ret = FALSE;
-  //    goto error;
-  // }
-  // hs_privkey_initialized = TRUE;
+  /* add padding */
+  written &= fpi_byte_writer_put_uint8(&writer, 0);
+  /* put certificate type */
+  written &= fpi_byte_writer_put_uint8(&writer, 0);
 
-  // gnutls_datum_t to_sign = {.data = host_certificate,
-  //                           .size = CERTIFICATE_SIZE_WITHOUT_SIGNATURE};
-  // GNUTLS_CHECK(gnutls_privkey_sign_data(hs_privkey, GNUTLS_DIG_SHA256, 0,
-  //                                       &to_sign, &signature));
-  // g_assert(signature.size <= SIGNATURE_SIZE);
+  g_assert(fpi_byte_writer_get_pos(&writer) == CERTIFICATE_DATA_SIZE);
+  RETURN_FALSE_AND_SET_ERROR_IF_NOT_WRITTEN(written);
 
-  // written &= fpi_byte_writer_put_uint16_le(&writer, signature.size);
+  g_autoptr(EVP_PKEY) hs_privkey = NULL;
+  if (!generate_hs_priv_key(&hs_privkey, error))
+  {
+    return FALSE;
+  }
 
-  // written &= fpi_byte_writer_put_data(&writer, signature.data,
-  // signature.size);
-  // /* add zeros as padding */
-  // written &= fpi_byte_writer_fill(&writer, 0, SIGNATURE_SIZE -
-  // signature.size); WRITTEN_CHECK(written);
-  // g_assert(fpi_byte_writer_get_pos(&writer) == CERTIFICATE_SIZE);
+  g_autoptr(EVP_MD_CTX) ctx = EVP_MD_CTX_new();
+  gsize signature_size = 0;
 
-error:
-  return ret;
+  if (ctx == NULL ||
+      !EVP_DigestSignInit(ctx, NULL, EVP_sha256(), NULL, hs_privkey) ||
+      !EVP_DigestSignUpdate(ctx, *host_certificate_bytes,
+                            CERTIFICATE_DATA_SIZE) ||
+      !EVP_DigestSignFinal(ctx, NULL, &signature_size))
+  {
+    g_propagate_error(error,
+                      fpi_device_error_new_msg(
+                          FP_DEVICE_ERROR_GENERAL,
+                          "OpenSSL error occured while getting signature "
+                          "length of certificate data: %s",
+                          ERR_error_string(ERR_get_error(), NULL)));
+    return FALSE;
+  }
+
+  g_assert(signature_size <= SIGNATURE_SIZE);
+
+  g_autofree guint8 *signature = g_malloc(signature_size);
+
+  if (!EVP_DigestSignFinal(ctx, signature, &signature_size))
+  {
+    g_propagate_error(error, fpi_device_error_new_msg(
+                                 FP_DEVICE_ERROR_GENERAL,
+                                 "OpenSSL error occured while siging "
+                                 "handshake sent messages hash: %s",
+                                 ERR_error_string(ERR_get_error(), NULL)));
+    return FALSE;
+  }
+
+  written &= fpi_byte_writer_put_uint16_le(&writer, signature_size);
+
+  written &= fpi_byte_writer_put_data(&writer, signature, signature_size);
+  /* add zeros as padding */
+  written &= fpi_byte_writer_fill(&writer, 0, SIGNATURE_SIZE - signature_size);
+  RETURN_FALSE_AND_SET_ERROR_IF_NOT_WRITTEN(written);
+  g_assert(fpi_byte_writer_get_pos(&writer) == CERTIFICATE_SIZE);
+
+  g_autofree char *host_certificate_str =
+      bin2hex(*host_certificate_bytes, CERTIFICATE_SIZE);
+  fp_dbg("Genereted host certificate: %s", host_certificate_str);
+
+  return TRUE;
 }
 
 void free_pairing_data(SensorPairingData *pairing_data)
 {
-  g_free(pairing_data->remote_cert_raw);
-  g_free(pairing_data->remote_cert.sign);
-  g_free(pairing_data->remote_cert.x);
-  g_free(pairing_data->remote_cert.y);
+  g_free(pairing_data->server_cert_raw);
+  g_free(pairing_data->server_cert.sign);
+  g_free(pairing_data->server_cert.x);
+  g_free(pairing_data->server_cert.y);
   g_free(pairing_data->client_cert_raw);
   g_free(pairing_data->client_cert.sign);
   g_free(pairing_data->client_cert.x);
   g_free(pairing_data->client_cert.y);
   EVP_PKEY_free(pairing_data->client_cert.pub_key);
-  EVP_PKEY_free(pairing_data->remote_cert.pub_key);
+  EVP_PKEY_free(pairing_data->server_cert.pub_key);
+  EVP_PKEY_free(pairing_data->client_key);
 }

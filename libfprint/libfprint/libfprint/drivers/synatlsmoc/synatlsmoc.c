@@ -49,9 +49,11 @@
  * initialized in Windows */
 /* WARN: current implementation starts a new TLS session on each device open */
 
+#define DEBUG
+
 /* Needed for testing with libfprint examples they do not support storage of
  * pairing data */
-#define USE_SAMPLE_PAIRING_DATA
+// #define USE_SAMPLE_PAIRING_DATA
 
 guint8 cache_tuid[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
                        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
@@ -85,7 +87,7 @@ struct _FpiDeviceSynaTlsMoc
 
   SensorPairingData pairing_data;
   TlsSession *session;
-  gboolean remote_established;
+  gboolean server_established;
 
   guint16 event_seq_num;
   guint32 event_mask;
@@ -247,19 +249,17 @@ static void synatlsmoc_verify_sensor_certificate(FpiDeviceSynaTlsMoc *self)
 
   if (EVP_DigestVerifyInit(mdctx, NULL, EVP_sha256(), NULL,
                            ssm_data->pub_key) <= 0 ||
-      EVP_DigestVerifyUpdate(mdctx, self->pairing_data.remote_cert_raw,
+      EVP_DigestVerifyUpdate(mdctx, self->pairing_data.server_cert_raw,
                              CERTIFICATE_DATA_SIZE) <= 0 ||
-      EVP_DigestVerifyFinal(mdctx, self->pairing_data.remote_cert.sign,
-                            self->pairing_data.remote_cert.sign_size) <= 0)
+      EVP_DigestVerifyFinal(mdctx, self->pairing_data.server_cert.sign,
+                            self->pairing_data.server_cert.sign_size) <= 0)
   {
-    gint err_num = ERR_get_error();
-    char *err_msg = ERR_error_string(err_num, NULL);
     fpi_ssm_mark_failed(
         self->task_ssm,
         fpi_device_error_new_msg(
             FP_DEVICE_ERROR_GENERAL,
             "OpenSSL error occured while verifying sensor certificate: %s",
-            err_msg));
+            ERR_error_string(ERR_get_error(), NULL)));
     return;
   }
 
@@ -268,6 +268,111 @@ static void synatlsmoc_verify_sensor_certificate(FpiDeviceSynaTlsMoc *self)
   fp_dbg("Sensor certificate is valid");
 
   fpi_ssm_next_state(self->task_ssm);
+}
+
+static gboolean sensor_certificate_from_raw(Certificate *self, guint8 *data,
+                                            gsize len, GError **error)
+{
+  GError *local_error = NULL;
+  gboolean read_ok = TRUE;
+  FpiByteReader reader;
+
+  if (len != CERTIFICATE_SIZE)
+  {
+    g_propagate_error(error,
+                      fpi_device_error_new_msg(
+                          FP_DEVICE_ERROR_PROTO,
+                          "Certificate with incorrect length: %lu", len));
+    return FALSE;
+  }
+
+  fpi_byte_reader_init(&reader, data, len);
+
+  read_ok &= fpi_byte_reader_get_uint16_le(&reader, &self->magic);
+  read_ok &= fpi_byte_reader_get_uint16_le(&reader, &self->curve);
+  read_ok &= fpi_byte_reader_dup_data(&reader, ECC_KEY_SIZE, &self->x);
+  read_ok &= fpi_byte_reader_skip(&reader, 36);
+  read_ok &= fpi_byte_reader_dup_data(&reader, ECC_KEY_SIZE, &self->y);
+  read_ok &= fpi_byte_reader_skip(&reader, 36);
+  read_ok &= fpi_byte_reader_skip(&reader, 1);
+  read_ok &= fpi_byte_reader_get_uint8(&reader, &self->cert_type);
+  read_ok &= fpi_byte_reader_get_uint16_le(&reader, &self->sign_size);
+  read_ok &= fpi_byte_reader_dup_data(&reader, 256, &self->sign);
+
+  if (self->magic != CERTIFICATE_MAGIC || self->curve != CERTIFICATE_CURVE)
+  {
+    g_propagate_error(error,
+                      fpi_device_error_new_msg(
+                          FP_DEVICE_ERROR_PROTO,
+                          "Unsupported certificate: magic=0x%04x, curve=0x%02x",
+                          self->magic, self->curve));
+    return FALSE;
+  }
+
+  // This should have no way of failing though
+  RETURN_FALSE_AND_SET_ERROR_IF_NOT_READ(read_ok);
+
+  /* the keys are stored in little endian - reverse them as OpenSSL expects big
+   * endian */
+  reverse_array(self->x, ECC_KEY_SIZE);
+  reverse_array(self->y, ECC_KEY_SIZE);
+
+  /* uncompressed public key is stored as:
+   * POINT_CONVERSION_UNCOMPRESSED + x_coord + y_coord */
+  guint8 uncompressed_pubkey[1 + 2 * ECC_KEY_SIZE];
+  uncompressed_pubkey[0] = POINT_CONVERSION_UNCOMPRESSED;
+  memcpy(&uncompressed_pubkey[1], self->x, ECC_KEY_SIZE);
+  memcpy(&uncompressed_pubkey[1 + ECC_KEY_SIZE], self->y, ECC_KEY_SIZE);
+
+  if (!load_uncompressed_public_key(uncompressed_pubkey, 1 + 2 * ECC_KEY_SIZE,
+                                    &self->pub_key, &local_error))
+  {
+    g_propagate_error(error, local_error);
+    return FALSE;
+  }
+
+  g_autofree gchar *x_str = bin2hex(self->x, 32);
+  g_autofree gchar *y_str = bin2hex(self->y, 32);
+  g_autofree gchar *sign_str = bin2hex(self->sign, self->sign_size);
+  fp_dbg("Certificate:");
+  fp_dbg("\tmagic: 0x%04x", self->magic);
+  fp_dbg("\tcurve: 0x%04x", self->curve);
+  fp_dbg("\tpub_x: %s", x_str);
+  fp_dbg("\tpub_y: %s", y_str);
+  fp_dbg("\tcert_type: 0x%02x", self->cert_type);
+  fp_dbg("\tsign_size: 0x%04x", self->sign_size);
+  fp_dbg("\tsignature: %s", sign_str);
+
+  return TRUE;
+}
+
+static gboolean parse_certificates_within_self(FpiDeviceSynaTlsMoc *self,
+                                               GError **error)
+{
+  GError *local_error = NULL;
+  if (!sensor_certificate_from_raw(
+          &self->pairing_data.client_cert, self->pairing_data.client_cert_raw,
+          self->pairing_data.client_cert_len, &local_error))
+  {
+    g_propagate_error(
+        error, fpi_device_error_new_msg(FP_DEVICE_ERROR_PROTO,
+                                        "Cannot parse client certificate: %s",
+                                        local_error->message));
+    return FALSE;
+  }
+
+  if (!sensor_certificate_from_raw(
+          &self->pairing_data.server_cert, self->pairing_data.server_cert_raw,
+          self->pairing_data.server_cert_len, &local_error))
+  {
+    g_propagate_error(
+        error, fpi_device_error_new_msg(FP_DEVICE_ERROR_PROTO,
+                                        "Cannot parse server certificate: %s",
+                                        local_error->message));
+    return FALSE;
+  }
+
+  return TRUE;
 }
 
 static void synatlsmoc_ssm_next_state_cb(FpDevice *device, guchar *buffer_in,
@@ -1112,12 +1217,6 @@ static void send_event_read(FpiDeviceSynaTlsMoc *self)
 
 /* VCSFW_CMD_PAIR ========================================================== */
 
-static void load_serialized_certificate(FpiByteReader *reader,
-                                        FpiDeviceSynaTlsMoc *self,
-                                        GError **error)
-{
-}
-
 static void recv_pair(FpDevice *device, guchar *buffer_in, gsize length_in,
                       GError *error)
 {
@@ -1137,27 +1236,31 @@ static void recv_pair(FpDevice *device, guchar *buffer_in, gsize length_in,
   /* no need to read status again */
   read_ok &= fpi_byte_reader_skip(&reader, SENSOR_FW_REPLY_STATUS_HEADER_LEN);
 
-  if (read_ok && self->pairing_data.remote_cert_raw != 0)
-  {
-    fp_warn("Overwriting stored host certificate");
-    g_free(self->pairing_data.remote_cert_raw);
-  }
-  if (read_ok) self->pairing_data.remote_cert_len = CERTIFICATE_SIZE;
-  read_ok &= fpi_byte_reader_dup_data(&reader, CERTIFICATE_SIZE,
-                                      &self->pairing_data.remote_cert_raw);
-
   if (read_ok && self->pairing_data.client_cert_raw != 0)
   {
-    fp_warn("Overwriting stored client certificate");
+    fp_warn("Overwriting stored client/host certificate");
     g_free(self->pairing_data.client_cert_raw);
   }
+  if (read_ok) self->pairing_data.client_cert_len = CERTIFICATE_SIZE;
   read_ok &= fpi_byte_reader_dup_data(&reader, CERTIFICATE_SIZE,
                                       &self->pairing_data.client_cert_raw);
-  if (read_ok) self->pairing_data.client_cert_len = CERTIFICATE_SIZE;
 
-  // FIXME: parse certificates
+  if (read_ok && self->pairing_data.server_cert_raw != 0)
+  {
+    fp_warn("Overwriting stored server/sensor certificate");
+    g_free(self->pairing_data.server_cert_raw);
+  }
+  read_ok &= fpi_byte_reader_dup_data(&reader, CERTIFICATE_SIZE,
+                                      &self->pairing_data.server_cert_raw);
+  if (read_ok) self->pairing_data.server_cert_len = CERTIFICATE_SIZE;
+
+  if (!parse_certificates_within_self(self, &error))
+  {
+    fpi_ssm_mark_failed(self->task_ssm, error);
+    return;
+  }
   // FIXME: private key should exist at this point
-  g_assert(self->pairing_data.remote_key != NULL);
+  g_assert(self->pairing_data.client_key != NULL);
 
   fpi_ssm_next_state(self->task_ssm);
 }
@@ -2569,9 +2672,9 @@ static void synatlsmoc_tls_status_cb(FpiUsbTransfer *transfer, FpDevice *device,
     return;
   }
 
-  self->remote_established = FP_READ_UINT8(transfer->buffer) != 0;
-  fp_dbg("<- remote TLS session status: %s",
-         self->remote_established ? "established" : "not established");
+  self->server_established = FP_READ_UINT8(transfer->buffer) != 0;
+  fp_dbg("<- server TLS session status: %s",
+         self->server_established ? "established" : "not established");
 
   fpi_ssm_next_state(transfer->ssm);
 }
@@ -2580,7 +2683,7 @@ static void synatlsmoc_get_tls_status(FpiDeviceSynaTlsMoc *self, FpiSsm *ssm)
 {
   FpDevice *device = FP_DEVICE(self);
 
-  fp_dbg("-> remote TLS session status?");
+  fp_dbg("-> server TLS session status?");
 
   FpiUsbTransfer *transfer = fpi_usb_transfer_new(device);
   fpi_usb_transfer_fill_control(
@@ -2676,109 +2779,33 @@ static void send_bootloader_mode_enter_exit(FpiDeviceSynaTlsMoc *self,
 
 /* end of communication function =========================================== */
 
-static gboolean sensor_certificate_from_raw(Certificate *self, guint8 *data,
-                                            gsize len, GError **error)
-{
-  GError *local_error = NULL;
-  gboolean read_ok = TRUE;
-  FpiByteReader reader;
-
-  if (len != CERTIFICATE_SIZE)
-  {
-    g_propagate_error(error,
-                      fpi_device_error_new_msg(
-                          FP_DEVICE_ERROR_PROTO,
-                          "Certificate with incorrect length: %lu", len));
-    return FALSE;
-  }
-
-  fpi_byte_reader_init(&reader, data, len);
-
-  read_ok &= fpi_byte_reader_get_uint16_le(&reader, &self->magic);
-  read_ok &= fpi_byte_reader_get_uint16_le(&reader, &self->curve);
-  read_ok &= fpi_byte_reader_dup_data(&reader, ECC_KEY_SIZE, &self->x);
-  read_ok &= fpi_byte_reader_skip(&reader, 36);
-  read_ok &= fpi_byte_reader_dup_data(&reader, ECC_KEY_SIZE, &self->y);
-  read_ok &= fpi_byte_reader_skip(&reader, 36);
-  read_ok &= fpi_byte_reader_skip(&reader, 1);
-  read_ok &= fpi_byte_reader_get_uint8(&reader, &self->cert_type);
-  read_ok &= fpi_byte_reader_get_uint16_le(&reader, &self->sign_size);
-  read_ok &= fpi_byte_reader_dup_data(&reader, 256, &self->sign);
-
-  if (self->magic != CERTIFICATE_MAGIC || self->curve != CERTIFICATE_CURVE)
-  {
-    g_propagate_error(error,
-                      fpi_device_error_new_msg(
-                          FP_DEVICE_ERROR_PROTO,
-                          "Unsupported certificate: magic=0x%04x, curve=0x%02x",
-                          self->magic, self->curve));
-    return FALSE;
-  }
-
-  // This should have no way of failing though
-  RETURN_FALSE_AND_SET_ERROR_IF_NOT_READ(read_ok);
-
-  /* the keys are stored in little endian - reverse them as OpenSSL expects big
-   * endian */
-  reverse_array(self->x, ECC_KEY_SIZE);
-  reverse_array(self->y, ECC_KEY_SIZE);
-
-  /* uncompressed public key is stored as:
-   * POINT_CONVERSION_UNCOMPRESSED + x_coord + y_coord */
-  guint8 uncompressed_pubkey[1 + 2 * ECC_KEY_SIZE];
-  uncompressed_pubkey[0] = POINT_CONVERSION_UNCOMPRESSED;
-  memcpy(&uncompressed_pubkey[1], self->x, ECC_KEY_SIZE);
-  memcpy(&uncompressed_pubkey[1 + ECC_KEY_SIZE], self->y, ECC_KEY_SIZE);
-
-  if (!load_uncompressed_public_key(uncompressed_pubkey, 1 + 2 * ECC_KEY_SIZE,
-                                    &self->pub_key, &local_error))
-  {
-    g_propagate_error(error, local_error);
-    return FALSE;
-  }
-
-  g_autofree gchar *x_str = bin2hex(self->x, 32);
-  g_autofree gchar *y_str = bin2hex(self->y, 32);
-  g_autofree gchar *sign_str = bin2hex(self->sign, self->sign_size);
-  fp_dbg("Certificate:");
-  fp_dbg("\tmagic: 0x%04x", self->magic);
-  fp_dbg("\tcurve: 0x%04x", self->curve);
-  fp_dbg("\tpub_x: %s", x_str);
-  fp_dbg("\tpub_y: %s", y_str);
-  fp_dbg("\tcert_type: 0x%02x", self->cert_type);
-  fp_dbg("\tsign_size: 0x%04x", self->sign_size);
-  fp_dbg("\tsignature: %s", sign_str);
-
-  return TRUE;
-}
-
 static void synatlsmoc_load_sample_pairing_data(FpiDeviceSynaTlsMoc *self)
 {
   GError *local_error = NULL;
 
-  guint8 *client_cert_raw, *remote_cert_raw, *privkey_pem;
-  gsize client_cert_len, remote_cert_len, privkey_pem_len;
+  guint8 *client_cert_raw, *server_cert_raw, *privkey_pem;
+  gsize client_cert_len, server_cert_len, privkey_pem_len;
 
   client_cert_raw = sample_recv_host_cert;
   client_cert_len = CERTIFICATE_SIZE;
 
-  remote_cert_raw = sample_sensor_cert;
-  remote_cert_len = CERTIFICATE_SIZE;
+  server_cert_raw = sample_sensor_cert;
+  server_cert_len = CERTIFICATE_SIZE;
 
   privkey_pem = sample_privkey_pem;
   privkey_pem_len = sizeof(sample_privkey_pem);
 
 #ifdef DEBUG
   g_autofree gchar *client_cert_str = bin2hex(client_cert_raw, client_cert_len);
-  g_autofree gchar *remote_cert_str = bin2hex(remote_cert_raw, remote_cert_len);
+  g_autofree gchar *server_cert_str = bin2hex(server_cert_raw, server_cert_len);
   fp_dbg("Loading sample pairing data:");
   fp_dbg("\thost cert: %s", client_cert_str);
-  fp_dbg("\tsensor cert: %s", remote_cert_str);
+  fp_dbg("\tsensor cert: %s", server_cert_str);
   fp_dbg("\tprivate key:\n\n%.*s", (int) privkey_pem_len, privkey_pem);
 #endif
 
   g_autoptr(OSSL_DECODER_CTX) dctx = OSSL_DECODER_CTX_new_for_pkey(
-      &self->pairing_data.remote_key, "PEM", NULL, "EC",
+      &self->pairing_data.client_key, "PEM", NULL, "EC",
       OSSL_KEYMGMT_SELECT_KEYPAIR | OSSL_KEYMGMT_SELECT_DOMAIN_PARAMETERS, NULL,
       NULL);
 
@@ -2792,9 +2819,9 @@ static void synatlsmoc_load_sample_pairing_data(FpiDeviceSynaTlsMoc *self)
       g_memdup2(client_cert_raw, client_cert_len);
   self->pairing_data.client_cert_len = client_cert_len;
 
-  self->pairing_data.remote_cert_raw =
-      g_memdup2(remote_cert_raw, remote_cert_len);
-  self->pairing_data.remote_cert_len = remote_cert_len;
+  self->pairing_data.server_cert_raw =
+      g_memdup2(server_cert_raw, server_cert_len);
+  self->pairing_data.server_cert_len = server_cert_len;
 
   if (!sensor_certificate_from_raw(&self->pairing_data.client_cert,
                                    client_cert_raw, client_cert_len,
@@ -2808,8 +2835,8 @@ static void synatlsmoc_load_sample_pairing_data(FpiDeviceSynaTlsMoc *self)
     return;
   }
 
-  if (!sensor_certificate_from_raw(&self->pairing_data.remote_cert,
-                                   remote_cert_raw, remote_cert_len,
+  if (!sensor_certificate_from_raw(&self->pairing_data.server_cert,
+                                   server_cert_raw, server_cert_len,
                                    &local_error))
   {
     fpi_ssm_mark_failed(
@@ -2931,12 +2958,12 @@ static void store_pairing_data(FpiDeviceSynaTlsMoc *self)
       G_VARIANT_TYPE_BYTE, &self->pairing_data.client_cert, CERTIFICATE_SIZE,
       1);
   GVariant *sensor_cert_var = g_variant_new_fixed_array(
-      G_VARIANT_TYPE_BYTE, &self->pairing_data.remote_cert, CERTIFICATE_SIZE,
+      G_VARIANT_TYPE_BYTE, &self->pairing_data.server_cert, CERTIFICATE_SIZE,
       1);
 
   GError *error = NULL;
   g_autofree char *privkey_pem =
-      export_private_key_to_pem(self->pairing_data.remote_key, &error);
+      export_private_key_to_pem(self->pairing_data.client_key, &error);
   if (privkey_pem == NULL)
   {
     fpi_ssm_mark_failed(self->task_ssm, error);
@@ -2953,14 +2980,16 @@ static void store_pairing_data(FpiDeviceSynaTlsMoc *self)
 #ifdef DEBUG
   g_autofree char *client_cert_str =
       bin2hex(self->pairing_data.client_cert_raw, CERTIFICATE_SIZE);
-  g_autofree char *remote_cert_str =
-      bin2hex(self->pairing_data.remote_cert_raw, CERTIFICATE_SIZE);
+  g_autofree char *server_cert_str =
+      bin2hex(self->pairing_data.server_cert_raw, CERTIFICATE_SIZE);
 
   fp_dbg("Successfully stored pairing data:");
   fp_dbg("\tSensor certificate: %s", client_cert_str);
-  fp_dbg("\tRemote certificate: %s", remote_cert_str);
+  fp_dbg("\tRemote certificate: %s", server_cert_str);
   fp_dbg("\tPEM private key: \n\t%s", privkey_pem);
 #endif
+
+  fpi_ssm_next_state(self->task_ssm);
 }
 
 static void load_pairing_data(FpiDeviceSynaTlsMoc *self)
@@ -3007,7 +3036,7 @@ static void load_pairing_data(FpiDeviceSynaTlsMoc *self)
                             host_cert_data_size));
     return;
   }
-  memcpy(&self->pairing_data.remote_cert_raw, host_cert_data, CERTIFICATE_SIZE);
+  memcpy(&self->pairing_data.server_cert_raw, host_cert_data, CERTIFICATE_SIZE);
 
   gsize client_cert_data_size = 0;
   guint8 *client_cert_data = (guint8 *) g_variant_get_fixed_array(
@@ -3021,7 +3050,7 @@ static void load_pairing_data(FpiDeviceSynaTlsMoc *self)
                             client_cert_data_size));
     return;
   }
-  memcpy(&self->pairing_data.remote_cert_raw, client_cert_data,
+  memcpy(&self->pairing_data.server_cert_raw, client_cert_data,
          CERTIFICATE_SIZE);
 
   gsize privkey_pem_size = 0;
@@ -3029,7 +3058,7 @@ static void load_pairing_data(FpiDeviceSynaTlsMoc *self)
       (char *) g_variant_get_string(privkey_pem_var, &privkey_pem_size);
 
   g_autoptr(OSSL_DECODER_CTX) dctx = OSSL_DECODER_CTX_new_for_pkey(
-      &self->pairing_data.remote_key, "PEM", NULL, "EC",
+      &self->pairing_data.client_key, "PEM", NULL, "EC",
       OSSL_KEYMGMT_SELECT_KEYPAIR | OSSL_KEYMGMT_SELECT_DOMAIN_PARAMETERS, NULL,
       NULL);
 
@@ -3041,12 +3070,12 @@ static void load_pairing_data(FpiDeviceSynaTlsMoc *self)
 #ifdef DEBUG
   g_autofree char *client_cert_str =
       bin2hex(self->pairing_data.client_cert_raw, CERTIFICATE_SIZE);
-  g_autofree char *remote_cert_str =
-      bin2hex(self->pairing_data.remote_cert_raw, CERTIFICATE_SIZE);
+  g_autofree char *server_cert_str =
+      bin2hex(self->pairing_data.server_cert_raw, CERTIFICATE_SIZE);
 
   fp_dbg("Successfully loaded pairing data:");
   fp_dbg("\tSensor certificate: %s", client_cert_str);
-  fp_dbg("\tRemote certificate: %s", remote_cert_str);
+  fp_dbg("\tRemote certificate: %s", server_cert_str);
   fp_dbg("\tPEM private key: \n\t%s", privkey_pem);
 #endif
 
@@ -3063,8 +3092,8 @@ static void load_pairing_data(FpiDeviceSynaTlsMoc *self)
   }
 
   if (!sensor_certificate_from_raw(
-          &self->pairing_data.remote_cert, self->pairing_data.remote_cert_raw,
-          self->pairing_data.remote_cert_len, &local_error))
+          &self->pairing_data.server_cert, self->pairing_data.server_cert_raw,
+          self->pairing_data.server_cert_len, &local_error))
   {
     fpi_ssm_mark_failed(
         self->task_ssm,
@@ -3098,23 +3127,27 @@ static void pair(FpiDeviceSynaTlsMoc *self)
 
   fp_dbg("Pairing sensor");
 
-  // FIXME: Create pairing_data private key
+  self->pairing_data.client_key = EVP_EC_gen("prime256v1");
 
   /* we create it already serialized, as we do not need it in struct form */
   GError *error = NULL;
-  if (!create_host_certificate(self->pairing_data, host_certificate, &error))
+  g_autofree guint8 *host_certificate_raw = NULL;
+  if (!create_host_certificate(self->pairing_data.client_key,
+                               &host_certificate_raw, &error))
   {
     fpi_ssm_mark_failed(self->task_ssm, error);
     return;
   }
 
   /* saves received certificates to self */
-  send_pair(self, host_certificate);
+  send_pair(self, host_certificate_raw);
 }
 
 static void try_to_load_pairing_data(FpiDeviceSynaTlsMoc *self)
 {
 #ifdef USE_SAMPLE_PAIRING_DATA
+  fp_warn(
+      "Using sample pairing data, you should not see this during normal use");
   synatlsmoc_load_sample_pairing_data(self);
 #else
   g_autoptr(GVariant) pairing_data = NULL;
@@ -3167,19 +3200,19 @@ static void synatlsmoc_open_run_state(FpiSsm *ssm, FpDevice *dev)
   {
     case OPEN_TLS_STATUS: synatlsmoc_get_tls_status(self, ssm); break;
     case OPEN_HANDLE_TLS_STATUSES:
-      if ((self->session != NULL) && (!self->remote_established))
+      if ((self->session != NULL) && (!self->server_established))
       {
         fp_warn("Host is in TLS session but sensor is not");
         // FIXME: this is likely not a good way to reset TLS session
         self->session = NULL;
         fpi_ssm_jump_to_state(ssm, OPEN_GET_VERSION);
       }
-      else if (self->session == NULL && self->remote_established)
+      else if (self->session == NULL && self->server_established)
       {
         fp_warn("Sensor is in TLS session but host is not");
         fpi_ssm_next_state(ssm);
       }
-      else if (self->session != NULL && self->remote_established)
+      else if (self->session != NULL && self->server_established)
       {
         fp_dbg("Host and sensor are already in TLS session");
         fpi_ssm_mark_completed(ssm);
@@ -3190,7 +3223,7 @@ static void synatlsmoc_open_run_state(FpiSsm *ssm, FpDevice *dev)
       }
       break;
     case OPEN_FORCE_TLS_CLOSE:
-      g_assert(self->remote_established);
+      g_assert(self->server_established);
       send_cmd_to_force_close_sensor_tls_session(self);
       break;
     case OPEN_GET_VERSION: send_get_version(self); break;
@@ -3288,7 +3321,7 @@ static void synatlsmoc_open_run_state(FpiSsm *ssm, FpDevice *dev)
 
 static void synatlsmoc_open(FpDevice *device)
 {
-  fp_dbg("Open");
+  FP_DBG_HIGHLIGHTED("Open");
   FpiDeviceSynaTlsMoc *self = FPI_DEVICE_SYNATLSMOC(device);
   GError *error = NULL;
 
@@ -3317,7 +3350,7 @@ static void synatlsmoc_open(FpDevice *device)
 
 static void synatlsmoc_cancel(FpDevice *device)
 {
-  fp_dbg("Cancel");
+  FP_DBG_HIGHLIGHTED("Cancel");
   FpiDeviceSynaTlsMoc *self = FPI_DEVICE_SYNATLSMOC(device);
 
   g_cancellable_cancel(self->interrupt_cancellable);
@@ -3327,7 +3360,7 @@ static void synatlsmoc_cancel(FpDevice *device)
 
 static void synatlsmoc_suspend(FpDevice *device)
 {
-  fp_dbg("Suspend");
+  FP_DBG_HIGHLIGHTED("Suspend");
 
   synatlsmoc_cancel(device);
   g_cancellable_cancel(fpi_device_get_cancellable(device));
@@ -3399,7 +3432,7 @@ static void synatlsmoc_close_ssm_run_state(FpiSsm *ssm, FpDevice *dev)
 
 static void synatlsmoc_close(FpDevice *device)
 {
-  fp_dbg("Closing device");
+  FP_DBG_HIGHLIGHTED("Close");
   FpiDeviceSynaTlsMoc *self = FPI_DEVICE_SYNATLSMOC(device);
 
   g_cancellable_cancel(self->interrupt_cancellable);
@@ -3497,7 +3530,7 @@ static void synatlsmoc_list_run_state(FpiSsm *ssm, FpDevice *device)
 
 static void synatlsmoc_list(FpDevice *device)
 {
-  fp_dbg("List");
+  FP_DBG_HIGHLIGHTED("List");
   FpiDeviceSynaTlsMoc *self = FPI_DEVICE_SYNATLSMOC(device);
   ListData *data = g_new0(ListData, 1);
 
@@ -3589,7 +3622,7 @@ static void synatlsmoc_delete_run_state(FpiSsm *ssm, FpDevice *dev)
 
 static void synatlsmoc_delete(FpDevice *device)
 {
-  fp_dbg("Delete");
+  FP_DBG_HIGHLIGHTED("Delete");
   FpiDeviceSynaTlsMoc *self = FPI_DEVICE_SYNATLSMOC(device);
   FpPrint *print_to_delete = NULL;
 
@@ -3696,7 +3729,7 @@ static void synatlsmoc_enroll_run_state(FpiSsm *ssm, FpDevice *device)
 
 static void synatlsmoc_enroll(FpDevice *device)
 {
-  fp_dbg("Enroll");
+  FP_DBG_HIGHLIGHTED("Enroll");
   FpiDeviceSynaTlsMoc *self = FPI_DEVICE_SYNATLSMOC(device);
   EnrollData *data = g_new0(EnrollData, 1);
 
@@ -3777,7 +3810,7 @@ static void synatlsmoc_identify_verify_run_state(FpiSsm *ssm, FpDevice *device)
 
 static void synatlsmoc_identify_verify(FpDevice *device)
 {
-  fp_dbg("Identify or Verify");
+  FP_DBG_HIGHLIGHTED("Identify or Verify");
   FpiDeviceSynaTlsMoc *self = FPI_DEVICE_SYNATLSMOC(device);
 
   g_assert(self->task_ssm == NULL);
@@ -3805,7 +3838,7 @@ static void synatlsmoc_clear_storage_run_state(FpiSsm *ssm, FpDevice *device)
 
 static void synatlsmoc_clear_storage(FpDevice *device)
 {
-  fp_dbg("Clear storage");
+  FP_DBG_HIGHLIGHTED("Clear storage");
 
   FpiDeviceSynaTlsMoc *self = FPI_DEVICE_SYNATLSMOC(device);
 

@@ -53,13 +53,13 @@ typedef struct
 
 typedef struct
 {
-  EVP_PKEY *remote_key;
+  EVP_PKEY *client_key;
   guint8 *client_cert_raw;
   gsize client_cert_len;
   Certificate client_cert;
-  guint8 *remote_cert_raw;
-  gsize remote_cert_len;
-  Certificate remote_cert;
+  guint8 *server_cert_raw;
+  gsize server_cert_len;
+  Certificate server_cert;
 } SensorPairingData;
 
 typedef struct _TlsSession TlsSession;
@@ -83,5 +83,6 @@ gboolean tls_session_unwrap(TlsSession *self, guint8 *cdata, gsize cdata_size,
                             guint8 **pdata, gsize *pdata_size, GError **error);
 gboolean tls_session_close(TlsSession *self, GError **error);
 
-gboolean create_host_certificate(SensorPairingData pairing_data,
-                                 guint8 *host_certificate, GError **error);
+gboolean create_host_certificate(EVP_PKEY *server_key,
+                                 guint8 **host_certificate_bytes,
+                                 GError **error);
