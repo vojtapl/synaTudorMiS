@@ -210,7 +210,6 @@ static gboolean get_serialized_extensions(TlsSession *self, guint8 **serialized,
 
 void tls_session_free(TlsSession *self)
 {
-  // FIXME: session ID does not get freed somehow
   g_free(self->session_id);
   g_free(self->suites);
   g_free(self->supported_extensions);
@@ -1026,7 +1025,7 @@ static gboolean tls_session_receive_handshake(TlsSession *self, Handshake *msg,
 
       // The windows driver does implement (broken) resuming, but it is never
       // used
-      self->session_id = g_memdup2(session_id, session_id_len);
+      memcpy(self->session_id, session_id, session_id_len);
 
       if (cipher_suite != TLS_ECDH_ECDSA_WITH_AES_256_GCM_SHA384)
       {

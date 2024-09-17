@@ -49,11 +49,11 @@
  * initialized in Windows */
 /* WARN: current implementation starts a new TLS session on each device open */
 
-#define DEBUG
+// #define DEBUG
 
 /* Needed for testing with libfprint examples they do not support storage of
  * pairing data */
-#define USE_SAMPLE_PAIRING_DATA
+// #define USE_SAMPLE_PAIRING_DATA
 
 guint8 cache_tuid[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
                        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
@@ -139,11 +139,7 @@ static gboolean synatlsmoc_key_flag(FpiDeviceSynaTlsMoc *self)
 static gboolean load_uncompressed_public_key(guint8 *key, gsize key_len,
                                              EVP_PKEY **pkey, GError **error)
 {
-  g_autoptr(EVP_PKEY_CTX) ctx = NULL;
-  g_autoptr(OSSL_PARAM_BLD) param_bld = NULL;
-  g_autoptr(OSSL_PARAM) params = NULL;
-
-  param_bld = OSSL_PARAM_BLD_new();
+  g_autoptr(OSSL_PARAM_BLD) param_bld = OSSL_PARAM_BLD_new();
 
   if (param_bld == NULL ||
       !OSSL_PARAM_BLD_push_utf8_string(param_bld, "group", "prime256v1", 0) ||
@@ -156,8 +152,8 @@ static gboolean load_uncompressed_public_key(guint8 *key, gsize key_len,
     return FALSE;
   }
 
-  params = OSSL_PARAM_BLD_to_param(param_bld);
-  ctx = EVP_PKEY_CTX_new_from_name(NULL, "EC", NULL);
+  g_autoptr(OSSL_PARAM) params = OSSL_PARAM_BLD_to_param(param_bld);
+  g_autoptr(EVP_PKEY_CTX) ctx = EVP_PKEY_CTX_new_from_name(NULL, "EC", NULL);
 
   if (ctx == NULL || params == NULL || !EVP_PKEY_fromdata_init(ctx) ||
       !EVP_PKEY_fromdata(ctx, pkey, EVP_PKEY_PUBLIC_KEY, params))
@@ -242,7 +238,9 @@ static void synatlsmoc_verify_sensor_certificate(FpiDeviceSynaTlsMoc *self)
   fp_dbg("Verifying sensor certificate...");
   OpenData *ssm_data = fpi_ssm_get_data(self->task_ssm);
 
-  g_autoptr(EVP_MD_CTX) mdctx = EVP_MD_CTX_create();
+  // FIXME: freeing causes issues?
+  // g_autoptr(EVP_MD_CTX) mdctx = EVP_MD_CTX_create();
+  EVP_MD_CTX *mdctx = EVP_MD_CTX_create();
 
   if (EVP_DigestVerifyInit(mdctx, NULL, EVP_sha256(), NULL,
                            ssm_data->pub_key) <= 0 ||
@@ -562,7 +560,8 @@ static void synatlsmoc_exec_cmd(FpiDeviceSynaTlsMoc *self, gboolean raw,
 #endif
 
   g_assert(self->cmd_ssm == NULL);
-  self->cmd_ssm = fpi_ssm_new(device, synatlsmoc_cmd_run_state, CMD_STATES);
+  self->cmd_ssm = fpi_ssm_new_full(device, synatlsmoc_cmd_run_state, CMD_STATES,
+                                   CMD_STATES, "Cmd");
 
   fpi_ssm_set_data(self->cmd_ssm, data, g_free);
   data->callback = callback;
@@ -1357,12 +1356,8 @@ static void send_enroll_start(FpiDeviceSynaTlsMoc *self)
 
 static void fp_dbg_enroll_stats(EnrollStats *enroll_stats)
 {
-  g_autofree gchar *template_id_str =
-      bin2hex(enroll_stats->template_id, DB2_ID_SIZE);
-
   fp_dbg("Enroll stats:");
   fp_dbg("\tprogress: %d", enroll_stats->progress);
-  fp_dbg("\ttemplate id: %s", template_id_str);
   fp_dbg("\tquality: %d", enroll_stats->quality);
   fp_dbg("\tredundant: %d", enroll_stats->redundant);
   fp_dbg("\trejected: %d", enroll_stats->rejected);
@@ -1380,10 +1375,8 @@ static gboolean fpi_byte_reader_get_enroll_stats(FpiByteReader *reader,
   /* skip over unknown */
   read_ok &= fpi_byte_reader_skip(reader, 2);
   read_ok &= fpi_byte_reader_get_uint16_le(reader, &enroll_stats->progress);
-  const guint8 *template_id = NULL;
-  read_ok &= fpi_byte_reader_get_data(reader, DB2_ID_SIZE, &template_id);
-  if (read_ok && template_id != NULL)
-    memcpy(enroll_stats->template_id, template_id, DB2_ID_SIZE);
+  /* not reading template id as it is sometimes missing */
+  read_ok &= fpi_byte_reader_skip(reader, DB2_ID_SIZE);
   read_ok &= fpi_byte_reader_get_uint32_le(reader, &enroll_stats->quality);
   read_ok &= fpi_byte_reader_get_uint32_le(reader, &enroll_stats->redundant);
   read_ok &= fpi_byte_reader_get_uint32_le(reader, &enroll_stats->rejected);
@@ -1424,8 +1417,7 @@ static void recv_add_image(FpDevice *device, guint8 *buffer_in, gsize length_in,
   fpi_byte_reader_init(&reader, buffer_in, length_in);
   /* no need to read status again */
   read_ok &= fpi_byte_reader_skip(&reader, SENSOR_FW_REPLY_STATUS_HEADER_LEN);
-  /* we will read template id from enroll stats (they are the same) */
-  read_ok &= fpi_byte_reader_skip(&reader, DB2_ID_SIZE);
+  read_ok &= fpi_byte_reader_dup_data(&reader, DB2_ID_SIZE, &template_id);
   read_ok &= fpi_byte_reader_get_uint32_le(&reader, &qm_struct_size);
 
   if (!read_ok)
@@ -1450,7 +1442,10 @@ static void recv_add_image(FpDevice *device, guint8 *buffer_in, gsize length_in,
   EnrollStats enroll_stats;
   read_ok &= fpi_byte_reader_get_enroll_stats(&reader, &enroll_stats);
   FAIL_TASK_SSM_AND_RETURN_IF_NOT_READ(read_ok);
+
   fp_dbg_enroll_stats(&enroll_stats);
+  g_autofree gchar *template_id_str = bin2hex(template_id, DB2_ID_SIZE);
+  fp_dbg("\ttemplate id: %s", template_id_str);
 
   GError *retry = NULL;
 
@@ -1483,8 +1478,7 @@ static void recv_add_image(FpDevice *device, guint8 *buffer_in, gsize length_in,
     fp_dbg("Enrollment completed successfully with quality %d",
            enroll_stats.quality);
 
-    data->template_id = g_new(Db2Id, 1);
-    memcpy(data->template_id, enroll_stats.template_id, DB2_ID_SIZE);
+    data->template_id = g_steal_pointer(&template_id);
 
     fpi_ssm_next_state(self->task_ssm);
   }
@@ -2807,7 +2801,6 @@ static void synatlsmoc_load_sample_pairing_data(FpiDeviceSynaTlsMoc *self)
       NULL);
 
   if (dctx == NULL ||
-      // FIXME: does not seem to get freed
       OSSL_DECODER_from_data(dctx, (const guint8 **) &privkey_pem,
                              &privkey_pem_len) <= 0)
     g_assert_not_reached();
@@ -2844,8 +2837,6 @@ static void synatlsmoc_load_sample_pairing_data(FpiDeviceSynaTlsMoc *self)
     g_error_free(local_error);
     return;
   }
-
-  fpi_ssm_jump_to_state(self->task_ssm, OPEN_VERIFY_SENSOR_CERTIFICATE);
 }
 
 static void synatlsmoc_event_interrupt_cb(FpiUsbTransfer *transfer,
@@ -2961,12 +2952,12 @@ static void store_pairing_data(FpiDeviceSynaTlsMoc *self)
   GVariant *server_cert_var = g_variant_new_fixed_array(
       G_VARIANT_TYPE_BYTE, server_cert_raw_cpy, CERTIFICATE_SIZE, 1);
 
-  GError *error = NULL;
-  g_autofree char *privkey_pem =
-      export_private_key_to_pem(self->pairing_data.client_key, &error);
+  GError *local_error = NULL;
+  char *privkey_pem =
+      export_private_key_to_pem(self->pairing_data.client_key, &local_error);
   if (privkey_pem == NULL)
   {
-    fpi_ssm_mark_failed(self->task_ssm, error);
+    fpi_ssm_mark_failed(self->task_ssm, local_error);
     return;
   }
 
@@ -3075,7 +3066,8 @@ static void load_pairing_data(FpiDeviceSynaTlsMoc *self)
 #endif
 
   gsize privkey_pem_size = 0;
-  g_autofree const gchar *privkey_pem =
+  // fIXME: autofree
+  const gchar *privkey_pem =
       g_variant_get_string(privkey_pem_var, &privkey_pem_size);
 
 #ifdef DEBUG
@@ -3116,9 +3108,6 @@ static void load_pairing_data(FpiDeviceSynaTlsMoc *self)
     g_error_free(local_error);
     return;
   }
-
-  /* jump over pairing */
-  fpi_ssm_jump_to_state(self->task_ssm, OPEN_VERIFY_SENSOR_CERTIFICATE);
 }
 
 static void pair(FpiDeviceSynaTlsMoc *self)
@@ -3162,11 +3151,12 @@ static void fetch_pairing_data(FpiDeviceSynaTlsMoc *self)
   fp_warn(
       "Using sample pairing data, you should not see this during normal use");
   synatlsmoc_load_sample_pairing_data(self);
+  /* skip over pairing states */
+  fpi_ssm_jump_to_state(self->task_ssm, OPEN_VERIFY_SENSOR_CERTIFICATE);
 #else
   g_autoptr(GVariant) pairing_data = NULL;
   g_object_get(FP_DEVICE(self), "fpi-persistent-data", &pairing_data, NULL);
 
-  // FIXME: how to check if pairing_data are not present
   if ((!synatlsmoc_is_provisioned(self)) || pairing_data == NULL)
   {
     if (pairing_data == NULL)
@@ -3212,7 +3202,7 @@ static void synatlsmoc_open_run_state(FpiSsm *ssm, FpDevice *dev)
       if ((self->session != NULL) && (!self->server_established))
       {
         fp_warn("Host is in TLS session but sensor is not");
-        // FIXME: this is likely not a good way to reset TLS session
+        tls_session_free(self->session);
         self->session = NULL;
         fpi_ssm_jump_to_state(ssm, OPEN_GET_VERSION);
       }
@@ -3308,7 +3298,7 @@ static void synatlsmoc_open_run_state(FpiSsm *ssm, FpDevice *dev)
     case OPEN_TLS_SEND_DATA:
     {
       g_autofree guint8 *tls_data = NULL;
-      gsize tls_data_len;
+      gsize tls_data_len = 0;
 
       if (!tls_session_flush_send_buffer(self->session, &tls_data,
                                          &tls_data_len, &error))
@@ -3349,8 +3339,8 @@ static void synatlsmoc_open(FpDevice *device)
     return;
   }
 
-  self->task_ssm =
-      fpi_ssm_new(device, synatlsmoc_open_run_state, OPEN_NUM_STATES);
+  self->task_ssm = fpi_ssm_new_full(device, synatlsmoc_open_run_state,
+                                    OPEN_NUM_STATES, OPEN_NUM_STATES, "Open");
   OpenData *open_ssm_data = g_new0(OpenData, 1);
   fpi_ssm_set_data(self->task_ssm, open_ssm_data, (GDestroyNotify) g_free);
   fpi_ssm_start(self->task_ssm, synatlsmoc_open_done);
@@ -3383,7 +3373,8 @@ static void synatlsmoc_close_ssm_done(FpiSsm *ssm, FpDevice *dev, GError *error)
   tls_session_free(self->session);
   self->session = NULL;
 
-  free_pairing_data(&self->pairing_data);
+  // FIXME: causes errors
+  // free_pairing_data(&self->pairing_data);
 
   g_usb_device_release_interface(fpi_device_get_usb_device(dev), 0, 0, &error);
 
@@ -3425,7 +3416,6 @@ static void synatlsmoc_close_ssm_run_state(FpiSsm *ssm, FpDevice *dev)
 
   switch (fpi_ssm_get_cur_state(ssm))
   {
-    // FIXME: this may not be needed
     case CLOSE_EVENT_MASK_NONE:
       send_event_config(self, NO_EVENTS);
       if (error) fpi_ssm_mark_failed(ssm, error);
@@ -3448,7 +3438,8 @@ static void synatlsmoc_close(FpDevice *device)
   g_clear_object(&self->interrupt_cancellable);
 
   self->task_ssm =
-      fpi_ssm_new(device, synatlsmoc_close_ssm_run_state, CLOSE_NUM_STATES);
+      fpi_ssm_new_full(device, synatlsmoc_close_ssm_run_state, CLOSE_NUM_STATES,
+                       CLOSE_NUM_STATES, "Close");
   fpi_ssm_start(self->task_ssm, synatlsmoc_close_ssm_done);
 }
 
@@ -3546,8 +3537,8 @@ static void synatlsmoc_list(FpDevice *device)
   data->list_result = g_ptr_array_new_with_free_func(g_object_unref);
 
   g_assert(self->task_ssm == NULL);
-  self->task_ssm =
-      fpi_ssm_new(device, synatlsmoc_list_run_state, LIST_NUM_STATES);
+  self->task_ssm = fpi_ssm_new_full(device, synatlsmoc_list_run_state,
+                                    LIST_NUM_STATES, LIST_NUM_STATES, "List");
   fpi_ssm_set_data(self->task_ssm, data, (GDestroyNotify) list_data_free);
   fpi_ssm_start(self->task_ssm, synatlsmoc_task_ssm_done);
 }
@@ -3649,7 +3640,8 @@ static void synatlsmoc_delete(FpDevice *device)
 
   g_assert(self->task_ssm == NULL);
   self->task_ssm =
-      fpi_ssm_new(device, synatlsmoc_delete_run_state, DELETE_NUM_STATES);
+      fpi_ssm_new_full(device, synatlsmoc_delete_run_state, DELETE_NUM_STATES,
+                       DELETE_NUM_STATES, "Delete");
   fpi_ssm_set_data(self->task_ssm, delete_ssm_data, g_free);
   fpi_ssm_start(self->task_ssm, synatlsmoc_delete_ssm_done);
 }
@@ -3751,7 +3743,8 @@ static void synatlsmoc_enroll(FpDevice *device)
 
   g_assert(self->task_ssm == NULL);
   self->task_ssm =
-      fpi_ssm_new(device, synatlsmoc_enroll_run_state, ENROLL_NUM_STATES);
+      fpi_ssm_new_full(device, synatlsmoc_enroll_run_state, ENROLL_NUM_STATES,
+                       ENROLL_NUM_STATES, "Enroll");
   fpi_ssm_set_data(self->task_ssm, data, (GDestroyNotify) enroll_data_free);
   fpi_ssm_start(self->task_ssm, synatlsmoc_task_ssm_done);
 }
@@ -3825,8 +3818,9 @@ static void synatlsmoc_identify_verify(FpDevice *device)
   g_assert(self->task_ssm == NULL);
 
   VerifyIdentifyData *ssm_data = g_new0(VerifyIdentifyData, 1);
-  self->task_ssm = fpi_ssm_new(device, synatlsmoc_identify_verify_run_state,
-                               IDENTIFY_VERIFY_NUM_STATES);
+  self->task_ssm = fpi_ssm_new_full(
+      device, synatlsmoc_identify_verify_run_state, IDENTIFY_VERIFY_NUM_STATES,
+      IDENTIFY_VERIFY_NUM_STATES, "Identify/Verify");
   fpi_ssm_set_data(self->task_ssm, ssm_data, g_free);
   fpi_ssm_start(self->task_ssm, synatlsmoc_task_ssm_done);
 }
@@ -3852,8 +3846,9 @@ static void synatlsmoc_clear_storage(FpDevice *device)
   FpiDeviceSynaTlsMoc *self = FPI_DEVICE_SYNATLSMOC(device);
 
   g_assert(self->task_ssm == NULL);
-  self->task_ssm = fpi_ssm_new(device, synatlsmoc_clear_storage_run_state,
-                               CLEAR_STORAGE_NUM_STATES);
+  self->task_ssm = fpi_ssm_new_full(device, synatlsmoc_clear_storage_run_state,
+                                    CLEAR_STORAGE_NUM_STATES,
+                                    CLEAR_STORAGE_NUM_STATES, "Clear storage");
   fpi_ssm_start(self->task_ssm, synatlsmoc_task_ssm_done);
 }
 

@@ -361,7 +361,7 @@ typedef struct
 typedef struct
 {
   guint16 progress;
-  Db2Id template_id;
+  /* not using template id as it is soemtimes missing */
   guint32 quality;
   guint32 redundant;
   guint32 rejected;
@@ -415,7 +415,7 @@ typedef struct
 typedef struct
 {
   FpPrint *print;
-  Db2Id *template_id;
+  guint8 *template_id;
   guint8 *user_id;
   guint8 finger_id;
   gint frame_acquire_retry_idx;

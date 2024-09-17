@@ -613,11 +613,13 @@
     - resp: size: 2
 
 - 0xab: (from synaWudfBioUsb108.dll) VCSFW_CMD_EXTSIG
-   SIG_AL0_PI"
+   SIG_AL0_PI
    - req: size 37
       1-4: subcommand
          3 = VCSFW_SUBCMD_EXTSIG_WRITE
+         others invalid
       5-9:
+         6: 1
       9-16:
          12: state
       17-:
