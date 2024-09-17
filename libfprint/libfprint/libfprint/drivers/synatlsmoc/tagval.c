@@ -34,109 +34,112 @@
 #include "tagval.h"
 #include "utils.h"
 
-TagVal *tagval_new(void)
+TagVal *
+tagval_new (void)
 {
-  TagVal *new = g_new0(TagVal, 1);
+  TagVal *new = g_new0 (TagVal, 1);
 
-  new->vals = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL,
-                                    (GDestroyNotify) g_bytes_unref);
+  new->vals = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
+                                     (GDestroyNotify) g_bytes_unref);
 
   return new;
 }
 
-void tagval_free(TagVal *self)
+void
+tagval_free (TagVal *self)
 {
-  g_hash_table_destroy(self->vals);
-  g_free(self);
+  g_hash_table_destroy (self->vals);
+  g_free (self);
 }
 
-gboolean tagval_add(TagVal *self, guint16 tag, guint8 *val, guint32 val_size)
+gboolean
+tagval_add (TagVal *self, guint16 tag, guint8 *val, guint32 val_size)
 {
-  return g_hash_table_insert(self->vals, GINT_TO_POINTER(tag),
-                             g_bytes_new(val, val_size));
+  return g_hash_table_insert (self->vals, GINT_TO_POINTER (tag),
+                              g_bytes_new (val, val_size));
 }
 
-gboolean tagval_new_from_bytes(TagVal **container, guint8 *data, gsize length,
-                               GError **error)
+gboolean
+tagval_new_from_bytes (TagVal **container, guint8 *data, gsize length, GError **error)
 {
   FpiByteReader reader;
   gboolean read_ok = TRUE;
-  g_autoptr(TagVal) new = tagval_new();
+  g_autoptr (TagVal) new = tagval_new ();
 
-  fpi_byte_reader_init(&reader, data, length);
-  while (fpi_byte_reader_get_remaining(&reader) > 0)
-  {
-    guint16 tag = 0;
-    guint32 val_size = 0;
-    guint8 *val = NULL;
-
-    read_ok &= fpi_byte_reader_get_uint16_le(&reader, &tag);
-    read_ok &= fpi_byte_reader_get_uint32_le(&reader, &val_size);
-    read_ok &= fpi_byte_reader_dup_data(&reader, val_size, &val);
-
-    if (!read_ok)
+  fpi_byte_reader_init (&reader, data, length);
+  while (fpi_byte_reader_get_remaining (&reader) > 0)
     {
-      g_propagate_error(
-          error, fpi_device_error_new_msg(FP_DEVICE_ERROR_PROTO,
-                                          "Cannot decode TagVal container"));
-      return FALSE;
+      guint16 tag = 0;
+      guint32 val_size = 0;
+      guint8 *val = NULL;
+
+      read_ok &= fpi_byte_reader_get_uint16_le (&reader, &tag);
+      read_ok &= fpi_byte_reader_get_uint32_le (&reader, &val_size);
+      read_ok &= fpi_byte_reader_dup_data (&reader, val_size, &val);
+
+      if (!read_ok)
+        {
+          g_propagate_error (
+              error, fpi_device_error_new_msg (FP_DEVICE_ERROR_PROTO,
+                                               "Cannot decode TagVal container"));
+          return FALSE;
+        }
+
+      if (!g_hash_table_insert (new->vals, GINT_TO_POINTER (tag),
+                                g_bytes_new_take (val, val_size)))
+        {
+          g_propagate_error (error,
+                             fpi_device_error_new_msg (FP_DEVICE_ERROR_PROTO,
+                                                       "Tag %d already exists", tag));
+          return FALSE;
+        }
     }
 
-    if (!g_hash_table_insert(new->vals, GINT_TO_POINTER(tag),
-                             g_bytes_new_take(val, val_size)))
-    {
-      g_propagate_error(error,
-                        fpi_device_error_new_msg(FP_DEVICE_ERROR_PROTO,
-                                                 "Tag %d already exists", tag));
-      return FALSE;
-    }
-  }
-
-  *container = g_steal_pointer(&new);
+  *container = g_steal_pointer (&new);
   return TRUE;
 }
 
-void tagval_to_bytes(TagVal *self, guint8 **serialized,
-                     gsize *serialized_length)
+void
+tagval_to_bytes (TagVal *self, guint8 **serialized, gsize *serialized_length)
 {
   FpiByteWriter writer;
   gboolean written = TRUE;
   GHashTableIter iter;
   gpointer ptag, pvalue;
 
-  fpi_byte_writer_init(&writer);
-  g_hash_table_iter_init(&iter, self->vals);
+  fpi_byte_writer_init (&writer);
+  g_hash_table_iter_init (&iter, self->vals);
 
-  while (g_hash_table_iter_next(&iter, &ptag, &pvalue))
-  {
-    GBytes *bval = (GBytes *) pvalue;
-    guint32 val_size = g_bytes_get_size(bval);
-    const guint8 *val = g_bytes_get_data(bval, NULL);
+  while (g_hash_table_iter_next (&iter, &ptag, &pvalue))
+    {
+      GBytes *bval = (GBytes *) pvalue;
+      guint32 val_size = g_bytes_get_size (bval);
+      const guint8 *val = g_bytes_get_data (bval, NULL);
 
-    written &= fpi_byte_writer_put_uint16_le(&writer, GPOINTER_TO_UINT(ptag));
-    written &= fpi_byte_writer_put_uint32_le(&writer, val_size);
-    written &= fpi_byte_writer_put_data(&writer, val, val_size);
+      written &= fpi_byte_writer_put_uint16_le (&writer, GPOINTER_TO_UINT (ptag));
+      written &= fpi_byte_writer_put_uint32_le (&writer, val_size);
+      written &= fpi_byte_writer_put_data (&writer, val, val_size);
 
-    g_assert(written);
-  }
+      g_assert (written);
+    }
 
-  *serialized_length = fpi_byte_writer_get_pos(&writer);
-  *serialized = fpi_byte_writer_reset_and_get_data(&writer);
+  *serialized_length = fpi_byte_writer_get_pos (&writer);
+  *serialized = fpi_byte_writer_reset_and_get_data (&writer);
 }
 
-gboolean tagval_get(TagVal *self, guint16 tag, guint8 **val, gsize *val_size,
-                    GError **error)
+gboolean
+tagval_get (TagVal *self, guint16 tag, guint8 **val, gsize *val_size, GError **error)
 {
-  GBytes *val_bytes = g_hash_table_lookup(self->vals, GINT_TO_POINTER(tag));
+  GBytes *val_bytes = g_hash_table_lookup (self->vals, GINT_TO_POINTER (tag));
 
   if (val_bytes == NULL)
-  {
-    g_propagate_error(error, fpi_device_error_new_msg(FP_DEVICE_ERROR_PROTO,
-                                                      "Tag %d not found", tag));
-  }
+    {
+      g_propagate_error (error, fpi_device_error_new_msg (FP_DEVICE_ERROR_PROTO,
+                                                          "Tag %d not found", tag));
+    }
 
-  *val = (guint8 *) g_bytes_get_data(val_bytes, NULL);
-  *val_size = g_bytes_get_size(val_bytes);
+  *val = (guint8 *) g_bytes_get_data (val_bytes, NULL);
+  *val_size = g_bytes_get_size (val_bytes);
   return TRUE;
 }
 
@@ -147,136 +150,142 @@ typedef struct
   guint8 *hash;
 } HashVal;
 
-static HashVal *hashval_new(guint8 *val, gsize val_size, guint8 *hash)
+static HashVal *
+hashval_new (guint8 *val, gsize val_size, guint8 *hash)
 {
-  HashVal *new = g_new0(HashVal, 1);
+  HashVal *new = g_new0 (HashVal, 1);
   new->val = val;
   new->val_size = val_size;
   new->hash = hash;
   return new;
 }
 
-static void hashval_free(HashVal *hashval)
+static void
+hashval_free (HashVal *hashval)
 {
-  g_free(hashval->val);
-  g_free(hashval->hash);
-  g_free(hashval);
+  g_free (hashval->val);
+  g_free (hashval->hash);
+  g_free (hashval);
 }
 
-static HashTagVal *hashtagval_new(void)
+static HashTagVal *
+hashtagval_new (void)
 {
-  HashTagVal *new = g_new0(HashTagVal, 1);
+  HashTagVal *new = g_new0 (HashTagVal, 1);
 
-  new->hashvals = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL,
-                                        (GDestroyNotify) hashval_free);
+  new->hashvals = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
+                                         (GDestroyNotify) hashval_free);
 
   return new;
 }
 
-void hashtagval_free(HashTagVal *self)
+void
+hashtagval_free (HashTagVal *self)
 {
-  g_hash_table_destroy(self->hashvals);
-  g_free(self);
+  g_hash_table_destroy (self->hashvals);
+  g_free (self);
 }
 
-HashTagVal *hashtagval_new_from_bytes(guint8 *container, gsize length,
-                                      GError **error)
+HashTagVal *
+hashtagval_new_from_bytes (guint8 *container, gsize length, GError **error)
 {
   GError *local_error = NULL;
   FpiByteReader reader;
   gboolean read_ok = TRUE;
-  HashTagVal *new = hashtagval_new();
+  HashTagVal *new = hashtagval_new ();
 
-  fpi_byte_reader_init(&reader, container, length);
-  while (fpi_byte_reader_get_remaining(&reader) > 0)
-  {
-    guint16 tag, val_size;
-    guint8 *val, *hash;
-
-    read_ok &= fpi_byte_reader_get_uint16_le(&reader, &tag);
-    read_ok &= fpi_byte_reader_get_uint16_le(&reader, &val_size);
-
-    if (!read_ok)
+  fpi_byte_reader_init (&reader, container, length);
+  while (fpi_byte_reader_get_remaining (&reader) > 0)
     {
-      local_error = fpi_device_error_new_msg(FP_DEVICE_ERROR_PROTO,
-                                             "Cannot decode HashTagVal header");
-      goto error;
+      guint16 tag, val_size;
+      guint8 *val, *hash;
+
+      read_ok &= fpi_byte_reader_get_uint16_le (&reader, &tag);
+      read_ok &= fpi_byte_reader_get_uint16_le (&reader, &val_size);
+
+      if (!read_ok)
+        {
+          local_error = fpi_device_error_new_msg (FP_DEVICE_ERROR_PROTO,
+                                                  "Cannot decode HashTagVal header");
+          goto error;
+        }
+
+      if (tag == 0xFFFF)
+        break;
+
+      read_ok &= fpi_byte_reader_dup_data (&reader, 32, &hash);
+      read_ok &= fpi_byte_reader_dup_data (&reader, val_size, &val);
+
+      if (!read_ok)
+        {
+          local_error = fpi_device_error_new_msg (
+              FP_DEVICE_ERROR_PROTO, "Cannot decode HashTagVal content");
+          goto error;
+        }
+
+      if (!g_hash_table_insert (new->hashvals, GINT_TO_POINTER (tag),
+                                hashval_new (val, val_size, hash)))
+        {
+          local_error = fpi_device_error_new_msg (FP_DEVICE_ERROR_PROTO,
+                                                  "Tag %d already exists", tag);
+          goto error;
+        }
     }
-
-    if (tag == 0xFFFF) break;
-
-    read_ok &= fpi_byte_reader_dup_data(&reader, 32, &hash);
-    read_ok &= fpi_byte_reader_dup_data(&reader, val_size, &val);
-
-    if (!read_ok)
-    {
-      local_error = fpi_device_error_new_msg(
-          FP_DEVICE_ERROR_PROTO, "Cannot decode HashTagVal content");
-      goto error;
-    }
-
-    if (!g_hash_table_insert(new->hashvals, GINT_TO_POINTER(tag),
-                             hashval_new(val, val_size, hash)))
-    {
-      local_error = fpi_device_error_new_msg(FP_DEVICE_ERROR_PROTO,
-                                             "Tag %d already exists", tag);
-      goto error;
-    }
-  }
 
   return new;
 
 error:
-  hashtagval_free(new);
-  g_propagate_error(error, local_error);
+  hashtagval_free (new);
+  g_propagate_error (error, local_error);
   return NULL;
 }
 
-gboolean hashtagval_check_hashes(HashTagVal *self, GError **error)
+gboolean
+hashtagval_check_hashes (HashTagVal *self, GError **error)
 {
   GHashTableIter iter;
   gpointer ptag, pvalue;
   HashVal *hashval;
-  guint8 computed_hash[EVP_MD_get_size(EVP_sha256())];
-  g_autoptr(EVP_MD_CTX) mdctx = EVP_MD_CTX_new();
+  guint8 computed_hash[EVP_MD_get_size (EVP_sha256 ())];
+  g_autoptr (EVP_MD_CTX) mdctx = EVP_MD_CTX_new ();
 
-  g_hash_table_iter_init(&iter, self->hashvals);
-  while (g_hash_table_iter_next(&iter, &ptag, &pvalue))
-  {
-    hashval = (HashVal *) pvalue;
-
-    if (!EVP_DigestInit_ex(mdctx, EVP_sha256(), NULL) ||
-        !EVP_DigestUpdate(mdctx, hashval->val, hashval->val_size) ||
-        !EVP_DigestFinal_ex(mdctx, computed_hash, NULL))
+  g_hash_table_iter_init (&iter, self->hashvals);
+  while (g_hash_table_iter_next (&iter, &ptag, &pvalue))
     {
-      g_propagate_error(error, fpi_device_error_new_msg(
-                                   FP_DEVICE_ERROR_GENERAL,
-                                   "Error while hashing HashTagVal entry: %s",
-                                   ERR_error_string(ERR_get_error(), NULL)));
-      return FALSE;
-    }
+      hashval = (HashVal *) pvalue;
 
-    if (memcmp(hashval->hash, computed_hash, 32) != 0)
-    {
-      g_propagate_error(error, fpi_device_error_new_msg(FP_DEVICE_ERROR_PROTO,
-                                                        "Tag don't match"));
-      return FALSE;
+      if (!EVP_DigestInit_ex (mdctx, EVP_sha256 (), NULL) ||
+          !EVP_DigestUpdate (mdctx, hashval->val, hashval->val_size) ||
+          !EVP_DigestFinal_ex (mdctx, computed_hash, NULL))
+        {
+          g_propagate_error (error, fpi_device_error_new_msg (
+                                        FP_DEVICE_ERROR_GENERAL,
+                                        "Error while hashing HashTagVal entry: %s",
+                                        ERR_error_string (ERR_get_error (), NULL)));
+          return FALSE;
+        }
+
+      if (memcmp (hashval->hash, computed_hash, 32) != 0)
+        {
+          g_propagate_error (error, fpi_device_error_new_msg (FP_DEVICE_ERROR_PROTO,
+                                                              "Tag don't match"));
+          return FALSE;
+        }
     }
-  }
   return TRUE;
 }
 
-gboolean hashtagval_get(HashTagVal *self, guint16 tag, guint8 **val,
-                        gsize *val_size, GError **error)
+gboolean
+hashtagval_get (HashTagVal *self, guint16 tag, guint8 **val, gsize *val_size, GError **error)
 {
-  HashVal *hashval = g_hash_table_lookup(self->hashvals, GINT_TO_POINTER(tag));
+  HashVal *hashval = g_hash_table_lookup (self->hashvals, GINT_TO_POINTER (tag));
 
   if (hashval == NULL)
-  {
-    g_propagate_error(error, fpi_device_error_new_msg(FP_DEVICE_ERROR_PROTO,
-                                                      "Tag %d not found", tag));
-    return FALSE;
-  }
+    {
+      g_propagate_error (error, fpi_device_error_new_msg (FP_DEVICE_ERROR_PROTO,
+                                                          "Tag %d not found", tag));
+      return FALSE;
+    }
 
   *val = hashval->val;
   *val_size = hashval->val_size;

@@ -64,25 +64,20 @@ typedef struct
 
 typedef struct _TlsSession TlsSession;
 
-TlsSession *tls_session_new(void);
-void tls_session_free(TlsSession *self);
+TlsSession *tls_session_new (void);
+void tls_session_free (TlsSession *self);
 
-void free_pairing_data(SensorPairingData *pairing_data);
+void free_pairing_data (SensorPairingData *pairing_data);
 
-gboolean tls_session_establish(TlsSession *self, GError **error);
-gboolean tls_session_init(TlsSession *self, SensorPairingData *pairing_data,
-                          GError **error);
-gboolean tls_session_flush_send_buffer(TlsSession *self, guint8 **data,
-                                       gsize *size, GError **error);
-gboolean tls_session_has_data(TlsSession *self);
-gboolean tls_session_receive_ciphertext(TlsSession *self, guint8 *data,
-                                        gsize size, GError **error);
-gboolean tls_session_wrap(TlsSession *self, guint8 *pdata, gsize pdata_size,
-                          guint8 **cdata, gsize *cdata_size, GError **error);
-gboolean tls_session_unwrap(TlsSession *self, guint8 *cdata, gsize cdata_size,
-                            guint8 **pdata, gsize *pdata_size, GError **error);
-gboolean tls_session_close(TlsSession *self, GError **error);
+gboolean tls_session_establish (TlsSession *self, GError **error);
+gboolean tls_session_init (TlsSession *self, SensorPairingData *pairing_data, GError **error);
+gboolean tls_session_flush_send_buffer (TlsSession *self, guint8 **data, gsize *size, GError **error);
+gboolean tls_session_has_data (TlsSession *self);
+gboolean tls_session_receive_ciphertext (TlsSession *self, guint8 *data, gsize size, GError **error);
+gboolean tls_session_wrap (TlsSession *self, guint8 *pdata, gsize pdata_size, guint8 **cdata, gsize *cdata_size, GError **error);
+gboolean tls_session_unwrap (TlsSession *self, guint8 *cdata, gsize cdata_size, guint8 **pdata, gsize *pdata_size, GError **error);
+gboolean tls_session_close (TlsSession *self, GError **error);
 
-gboolean create_host_certificate(EVP_PKEY *server_key,
-                                 guint8 **host_certificate_bytes,
-                                 GError **error);
+gboolean create_host_certificate (EVP_PKEY *server_key,
+                                  guint8 **host_certificate_bytes,
+                                  GError **error);

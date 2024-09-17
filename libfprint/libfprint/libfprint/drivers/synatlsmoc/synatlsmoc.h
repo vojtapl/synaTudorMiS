@@ -27,8 +27,7 @@
 
 #include "fpi-device.h"
 
-G_DECLARE_FINAL_TYPE(FpiDeviceSynaTlsMoc, fpi_device_synatlsmoc, FPI,
-                     DEVICE_SYNATLSMOC, FpDevice);
+G_DECLARE_FINAL_TYPE (FpiDeviceSynaTlsMoc, fpi_device_synatlsmoc, FPI, DEVICE_SYNATLSMOC, FpDevice);
 
 #define SYNATLSMOC_DRIVER_FULLNAME "Synaptics Tudor Match-In-Sensor"
 #define SYNATLSMOC_ENROLL_STAGES 10
@@ -225,13 +224,13 @@ enum SENSOR_EVENT_TYPES
   NO_EVENTS = 0,
   EV_FINGER_DOWN = 1U << 1,
   EV_FINGER_UP = 1U << 2,
-  EV_3 = 1U << 3,  // unused
-  EV_4 = 1U << 4,  // unused
-  EV_5 = 1U << 5,  // unused
-  EV_6 = 1U << 6,  // unused
-  EV_7 = 1U << 7,  // unused
-  EV_8 = 1U << 8,  // unused
-  EV_9 = 1U << 9,  // unused
+  EV_3 = 1U << 3, // unused
+  EV_4 = 1U << 4, // unused
+  EV_5 = 1U << 5, // unused
+  EV_6 = 1U << 6, // unused
+  EV_7 = 1U << 7, // unused
+  EV_8 = 1U << 8, // unused
+  EV_9 = 1U << 9, // unused
   EV_FRAME_READY = 1U << 24,
 };
 

@@ -30,27 +30,22 @@ typedef struct
   GHashTable *vals;
 } TagVal;
 
-TagVal *tagval_new(void);
-void tagval_free(TagVal *self);
-gboolean tagval_new_from_bytes(TagVal **container, guint8 *data, gsize length,
-                               GError **error);
-void tagval_to_bytes(TagVal *self, guint8 **serialized,
-                     gsize *serialized_length);
-gboolean tagval_get(TagVal *self, guint16 tag, guint8 **val, gsize *val_size,
-                    GError **error);
-gboolean tagval_add(TagVal *self, guint16 tag, guint8 *val, guint32 val_size);
+TagVal *tagval_new (void);
+void tagval_free (TagVal *self);
+gboolean tagval_new_from_bytes (TagVal **container, guint8 *data, gsize length, GError **error);
+void tagval_to_bytes (TagVal *self, guint8 **serialized, gsize *serialized_length);
+gboolean tagval_get (TagVal *self, guint16 tag, guint8 **val, gsize *val_size, GError **error);
+gboolean tagval_add (TagVal *self, guint16 tag, guint8 *val, guint32 val_size);
 
 typedef struct
 {
   GHashTable *hashvals;
 } HashTagVal;
 
-HashTagVal *hashtagval_new_from_bytes(guint8 *container, gsize length,
-                                      GError **error);
-void hashtagval_free(HashTagVal *self);
-gboolean hashtagval_get(HashTagVal *self, guint16 tag, guint8 **val,
-                        gsize *val_size, GError **error);
-gboolean hashtagval_check_hashes(HashTagVal *self, GError **error);
+HashTagVal *hashtagval_new_from_bytes (guint8 *container, gsize length, GError **error);
+void hashtagval_free (HashTagVal *self);
+gboolean hashtagval_get (HashTagVal *self, guint16 tag, guint8 **val, gsize *val_size, GError **error);
+gboolean hashtagval_check_hashes (HashTagVal *self, GError **error);
 
-G_DEFINE_AUTOPTR_CLEANUP_FUNC(TagVal, tagval_free);
-G_DEFINE_AUTOPTR_CLEANUP_FUNC(HashTagVal, hashtagval_free);
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (TagVal, tagval_free);
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (HashTagVal, hashtagval_free);
