@@ -56,7 +56,6 @@ G_DECLARE_FINAL_TYPE(FpiDeviceSynaTlsMoc, fpi_device_synatlsmoc, FPI,
 #define PROVISION_STATE_MASK 0xF
 #define SENSOR_FW_REPLY_STATUS_HEADER_LEN 2
 
-/* NOTE: user_id is used in place of winbio_sid used in windows driver */
 #define WINBIO_SID_SIZE 76
 #define DB2_ID_SIZE 16
 
@@ -335,6 +334,10 @@ typedef enum
 } BootloaderModeEnterExit;
 
 typedef guint8 Db2Id[DB2_ID_SIZE];
+typedef guint8 FingerId;
+/* NOTE: fp_user_id is used in place of winbio_sid used in windows driver */
+/* Fp* as a different user_id is used in DB2 */
+typedef char FpUserId[WINBIO_SID_SIZE];
 
 typedef struct
 {
@@ -415,9 +418,9 @@ typedef struct
 typedef struct
 {
   FpPrint *print;
-  guint8 *template_id;
-  guint8 *user_id;
-  guint8 finger_id;
+  Db2Id template_id;
+  FpUserId fp_user_id;
+  FingerId finger_id;
   gint frame_acquire_retry_idx;
 } EnrollData;
 

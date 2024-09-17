@@ -59,15 +59,15 @@
 #define MAX_HASH_SIZE 64
 #define MAX_KEY_BLOCK_SIZE 128
 
-#define ASPRINTF_ERROR_CHECK(msg, ...)       \
-  do {                                       \
-    if (asprintf(&msg, ##__VA_ARGS__) == -1) \
-    {                                        \
-      msg = asprintf_error_msg;              \
-    }                                        \
+#define ASPRINTF_ERROR_CHECK(msg, ...)                                 \
+  do {                                                                 \
+    if (asprintf(&msg, ##__VA_ARGS__) == -1)                           \
+    {                                                                  \
+      msg = g_memdup2(asprintf_error_msg, strlen(asprintf_error_msg)); \
+    }                                                                  \
   } while (0)
 
-static char *asprintf_error_msg = "asprintf error";
+static const char *asprintf_error_msg = "asprintf error";
 
 typedef enum
 {
@@ -167,7 +167,7 @@ struct _TlsSession
 
   FpiByteWriter application_data;
 
-  char *hash_algo;
+  const char *hash_algo;
 
   // FIXME: what to fix?
   guint8 cert_request;
@@ -228,24 +228,26 @@ void tls_session_free(TlsSession *self)
   g_free(self);
 }
 
-static gboolean tls_prf(guint8 *secret, gsize secret_size, gchar *label,
-                        gsize label_size, guint8 *seed, gsize seed_size,
-                        guint8 *out, gsize outsize, char *hash_algo,
+static gboolean tls_prf(guint8 *secret, gsize secret_size, const gchar *label,
+                        guint label_len, guint8 *seed, guint seed_size,
+                        guint8 *out, gsize outsize, const char *hash_algo,
                         GError **error)
 {
   g_autoptr(EVP_KDF) kdf = NULL;
   g_autoptr(EVP_KDF_CTX) kctx;
+  g_autofree char *label_cpy = g_memdup2(label, label_len + 1);
+  g_autofree char *hash_algo_cpy = g_strdup(hash_algo);
   OSSL_PARAM params[5], *p = params;
 
   kdf = EVP_KDF_fetch(NULL, "TLS1-PRF", NULL);
   kctx = EVP_KDF_CTX_new(kdf);
 
-  *p++ = OSSL_PARAM_construct_utf8_string(OSSL_KDF_PARAM_DIGEST, hash_algo,
+  *p++ = OSSL_PARAM_construct_utf8_string(OSSL_KDF_PARAM_DIGEST, hash_algo_cpy,
                                           strlen(hash_algo));
   *p++ = OSSL_PARAM_construct_octet_string(OSSL_KDF_PARAM_SECRET, secret,
                                            secret_size);
-  *p++ =
-      OSSL_PARAM_construct_octet_string(OSSL_KDF_PARAM_SEED, label, label_size);
+  *p++ = OSSL_PARAM_construct_octet_string(OSSL_KDF_PARAM_SEED, label_cpy,
+                                           label_len);
   *p++ =
       OSSL_PARAM_construct_octet_string(OSSL_KDF_PARAM_SEED, seed, seed_size);
   *p = OSSL_PARAM_construct_end();
@@ -983,8 +985,8 @@ static gboolean tls_session_receive_handshake(TlsSession *self, Handshake *msg,
         return FALSE;
       }
 
-      guint16 proto_ver = 0, cipher_suite;  // extension_len;
-      guint8 session_id_len, compr_method, extensions_num = 0;
+      guint16 proto_ver = 0, cipher_suite;
+      guint8 session_id_len, compr_method;
       g_autofree guint8 *session_id = NULL;
       g_autofree guint8 *random = NULL;
 
@@ -997,12 +999,7 @@ static gboolean tls_session_receive_handshake(TlsSession *self, Handshake *msg,
       read_ok &= fpi_byte_reader_get_uint16_be(&reader, &cipher_suite);
       read_ok &= fpi_byte_reader_get_uint8(&reader, &compr_method);
 
-      // FIXME: remove or implement fully
-      // while (fpi_byte_reader_get_remaining(&reader) > 0) {
-      //   read_ok &= fpi_byte_reader_get_uint16_be(&reader2,
-      //   &extension_len); read_ok &= fpi_byte_reader_skip(&reader2,
-      //   extension_len); extensions_num++;
-      // }
+      /* NOTE: we get no extensions (inc. their length) in response */
 
       RETURN_FALSE_AND_SET_ERROR_IF_NOT_READ(read_ok);
 
@@ -1015,9 +1012,9 @@ static gboolean tls_session_receive_handshake(TlsSession *self, Handshake *msg,
       fp_dbg(
           "<- HandshakeMessage(type=0x%02x, "
           "content=ServerHello(ver=0x%04x, rand=%s, ses_id='%s', "
-          "cipher_suite=0x%04x, compr_method=0x%02x, extensions[%d])",
+          "cipher_suite=0x%04x, compr_method=0x%02x, extensions[])",
           msg->msg_type, proto_ver, rand_str, ses_id_str, cipher_suite,
-          compr_method, extensions_num);
+          compr_method);
 #endif
 
       // Store server random
@@ -1244,7 +1241,7 @@ static gboolean tls_session_receive_handshake(TlsSession *self, Handshake *msg,
       memcpy(rnd, self->client_random, RANDOM_SIZE);
       memcpy(rnd + RANDOM_SIZE, self->server_random, RANDOM_SIZE);
 
-      gchar *label = "master secret";
+      const gchar *label = "master secret";
       if (!tls_prf(premaster_secret, premaster_secret_len, label, strlen(label),
                    rnd, sizeof(rnd), self->master_secret, MASTER_SECRET_SIZE,
                    self->hash_algo, &local_error))
@@ -1356,7 +1353,7 @@ static gboolean tls_session_receive_handshake(TlsSession *self, Handshake *msg,
 #endif
 
       // Handle verify data
-      gchar *label = "server finished";
+      const gchar *label = "server finished";
       guint8 verify_data[VERIFY_DATA_SIZE];
 
       gsize digest_size = EVP_MD_size(EVP_sha256());
@@ -1479,15 +1476,19 @@ static gboolean tls_session_receive(TlsSession *self, TlsRecord *record,
           return TRUE;
         }
 
-        // TLS session seems to be closed even on warnings
-        // if (alert_level == SSL3_AL_FATAL)
+        // TLS session seems to be closed regardless of alert level
         if (!tls_session_close(self, &local_error))
         {
           g_propagate_error(error, local_error);
           return FALSE;
         }
-        g_assert_not_reached();
-        // TODO: raise data.TlsAlertException(alert.descr, True)
+        *error = fpi_device_error_new_msg(
+            FP_DEVICE_ERROR_PROTO,
+            "Unexpected recieval of TLS alert message: level=\"%s\", "
+            "description = \"%s\"",
+            alert_level == SSL3_AL_WARNING ? "warning" : "fatal",
+            SSL_alert_desc_string_long(alert_description));
+        return FALSE;
         break;
       }
       case SSL3_RT_HANDSHAKE:
@@ -1752,7 +1753,7 @@ static gboolean generate_hs_priv_key(EVP_PKEY **hs_privkey, GError **error)
                      0x28, 0x46, 0x13, 0x8d, 0xbb, 0x2c, 0x24, 0x19};
   guint8 seed[] = {0x25, 0x12, 0xa7, 0x64, 0x07, 0x06, 0x5f, 0x38, 0x38,
                    0x46, 0x13, 0x9d, 0x4b, 0xec, 0x20, 0x33, 0xaa, 0xaa};
-  gchar *label = "HS_KEY_PAIR_GEN";
+  const gchar *label = "HS_KEY_PAIR_GEN";
 
   guint8 privkey_k[ECC_KEY_SIZE];
   if (!tls_prf(secret, sizeof(secret), label, strlen(label), seed, sizeof(seed),
@@ -1776,25 +1777,9 @@ static gboolean generate_hs_priv_key(EVP_PKEY **hs_privkey, GError **error)
   g_autoptr(OSSL_PARAM_BLD) param_bld = OSSL_PARAM_BLD_new();
   g_autoptr(BIGNUM) k_bn = BN_bin2bn(privkey_k, ECC_KEY_SIZE, NULL);
 
-  // FIXME:  get private key only through the k value
-  const guint8 pubkey_data[] = {
-      POINT_CONVERSION_UNCOMPRESSED,
-      // x
-      0x89, 0xe5, 0x41, 0x30, 0x0c, 0xcf, 0x1a, 0x03, 0xe6, 0x25, 0xc4, 0x3d,
-      0xf7, 0x25, 0xc5, 0x95, 0x78, 0x7a, 0x71, 0xcb, 0x03, 0x5b, 0x4b, 0x7c,
-      0x06, 0xd3, 0x51, 0x71, 0x42, 0x2e, 0x50, 0x57,
-      // y
-      0xeb, 0x05, 0x00, 0x8f, 0x22, 0xaa, 0x2b, 0xc6, 0xfe, 0x0b, 0xf9, 0x08,
-      0x03, 0xa0, 0xe7, 0x3a, 0x2e, 0xb2, 0x8c, 0xfd, 0x0c, 0x72, 0xa5, 0xf6,
-      0x73, 0x35, 0xc0, 0x61, 0x22, 0x6e, 0xff, 0xec};
-
   if (param_bld == NULL ||
       !OSSL_PARAM_BLD_push_utf8_string(param_bld, "group", "prime256v1", 0) ||
-      // !OSSL_PARAM_BLD_push_octet_string(param_bld, "priv", privkey_k,
-      //                                   ECC_KEY_SIZE)
-      !OSSL_PARAM_BLD_push_BN(param_bld, "priv", k_bn) ||
-      !OSSL_PARAM_BLD_push_octet_string(param_bld, "pub", pubkey_data,
-                                        sizeof(pubkey_data)))
+      !OSSL_PARAM_BLD_push_BN(param_bld, "priv", k_bn))
   {
     g_propagate_error(error,
                       set_and_report_error(

@@ -49,7 +49,7 @@
  * initialized in Windows */
 /* WARN: current implementation starts a new TLS session on each device open */
 
-// #define DEBUG
+#define DEBUG
 
 /* Needed for testing with libfprint examples they do not support storage of
  * pairing data */
@@ -610,11 +610,10 @@ static void synatlsmoc_exec_cmd(FpiDeviceSynaTlsMoc *self, gboolean raw,
   fpi_ssm_start(self->cmd_ssm, synatlsmoc_cmd_ssm_done);
 }
 
-static void synatlsmoc_set_print_data(FpPrint *print, Db2Id *template_id,
-                                      guint8 *user_id, guint8 finger_id)
+static void synatlsmoc_set_print_data(FpPrint *print, Db2Id template_id,
+                                      FpUserId fp_user_id, FingerId finger_id)
 {
-  g_autofree gchar *user_id_safe =
-      g_strndup((gchar *) user_id, WINBIO_SID_SIZE);
+  g_autofree gchar *user_id_safe = g_strndup(fp_user_id, sizeof(FpUserId));
 
   fpi_print_fill_from_user_id(print, user_id_safe);
   fpi_print_set_type(print, FPI_PRINT_RAW);
@@ -623,9 +622,9 @@ static void synatlsmoc_set_print_data(FpPrint *print, Db2Id *template_id,
   g_object_set(print, "description", user_id_safe, NULL);
 
   GVariant *uid = g_variant_new_fixed_array(G_VARIANT_TYPE_BYTE, user_id_safe,
-                                            WINBIO_SID_SIZE, 1);
+                                            sizeof(FpUserId), 1);
   GVariant *tid = g_variant_new_fixed_array(G_VARIANT_TYPE_BYTE, template_id,
-                                            DB2_ID_SIZE, 1);
+                                            sizeof(Db2Id), 1);
 
   GVariant *fpi_data = g_variant_new("(y@ay@ay)", finger_id, tid, uid);
   g_object_set(print, "fpi-data", fpi_data, NULL);
@@ -1255,10 +1254,19 @@ static void recv_pair(FpDevice *device, guchar *buffer_in, gsize length_in,
     fpi_ssm_mark_failed(self->task_ssm, error);
     return;
   }
-  // FIXME: private key should exist at this point
-  g_assert(self->pairing_data.client_key != NULL);
 
-  fpi_ssm_next_state(self->task_ssm);
+  if (self->pairing_data.client_key == NULL)
+  {
+    fpi_ssm_mark_failed(
+        self->task_ssm,
+        set_and_report_error(FP_DEVICE_ERROR_GENERAL,
+                             "Unable to complete pairing without client "
+                             "private key present in pairing data"));
+  }
+  else
+  {
+    fpi_ssm_next_state(self->task_ssm);
+  }
 }
 
 /* NOTE: size of send_host_cert_bytes is expected to be CERTIFICATE_SIZE
@@ -1411,13 +1419,14 @@ static void recv_add_image(FpDevice *device, guint8 *buffer_in, gsize length_in,
   EnrollData *data = fpi_ssm_get_data(self->task_ssm);
   FpiByteReader reader;
   gboolean read_ok = TRUE;
-  g_autofree guint8 *template_id = NULL;
+  const guint8 *template_id_offset = NULL;
   guint32 qm_struct_size;
 
   fpi_byte_reader_init(&reader, buffer_in, length_in);
   /* no need to read status again */
   read_ok &= fpi_byte_reader_skip(&reader, SENSOR_FW_REPLY_STATUS_HEADER_LEN);
-  read_ok &= fpi_byte_reader_dup_data(&reader, DB2_ID_SIZE, &template_id);
+  read_ok &=
+      fpi_byte_reader_get_data(&reader, DB2_ID_SIZE, &template_id_offset);
   read_ok &= fpi_byte_reader_get_uint32_le(&reader, &qm_struct_size);
 
   if (!read_ok)
@@ -1439,12 +1448,12 @@ static void recv_add_image(FpDevice *device, guint8 *buffer_in, gsize length_in,
     return;
   }
 
-  EnrollStats enroll_stats;
+  EnrollStats enroll_stats = {0};
   read_ok &= fpi_byte_reader_get_enroll_stats(&reader, &enroll_stats);
   FAIL_TASK_SSM_AND_RETURN_IF_NOT_READ(read_ok);
 
   fp_dbg_enroll_stats(&enroll_stats);
-  g_autofree gchar *template_id_str = bin2hex(template_id, DB2_ID_SIZE);
+  g_autofree gchar *template_id_str = bin2hex(template_id_offset, DB2_ID_SIZE);
   fp_dbg("\ttemplate id: %s", template_id_str);
 
   GError *retry = NULL;
@@ -1478,7 +1487,7 @@ static void recv_add_image(FpDevice *device, guint8 *buffer_in, gsize length_in,
     fp_dbg("Enrollment completed successfully with quality %d",
            enroll_stats.quality);
 
-    data->template_id = g_steal_pointer(&template_id);
+    memcpy(data->template_id, template_id_offset, DB2_ID_SIZE);
 
     fpi_ssm_next_state(self->task_ssm);
   }
@@ -1564,8 +1573,8 @@ static void send_enroll_finish(FpiDeviceSynaTlsMoc *self)
 
 /* VCSFW_CMD_IDENTIFY_MATCH ================================================ */
 
-static void recv_identify_match_cb(FpDevice *device, guint8 *buffer_in,
-                                   gsize length_in, GError *error)
+static void recv_identify_match(FpDevice *device, guint8 *buffer_in,
+                                gsize length_in, GError *error)
 {
   fp_dbg("Receive identify match callback");
   FpiDeviceSynaTlsMoc *self = FPI_DEVICE_SYNATLSMOC(device);
@@ -1622,9 +1631,8 @@ static void recv_identify_match_cb(FpDevice *device, guint8 *buffer_in,
   guint32 y_len, z_len;
   g_autofree guint8 *z_data = NULL;
   guint32 match_score;
-  guint8 *user_id, *finger_id;
-  Db2Id *template_id;
-  gsize template_id_len, user_id_len, finger_id_len;
+  guint8 *user_id, *finger_id, *template_id;
+  gsize template_id_size, user_id_size, finger_id_size;
 
   read_ok &= fpi_byte_reader_skip(&reader, DB2_ID_SIZE);
   read_ok &= fpi_byte_reader_get_uint32_le(&reader, &qm_struct_size);
@@ -1666,13 +1674,12 @@ static void recv_identify_match_cb(FpDevice *device, guint8 *buffer_in,
   g_autoptr(TagVal) tagval = NULL;
   gboolean tagval_ok = TRUE;
   tagval_ok &= tagval_new_from_bytes(&tagval, z_data, z_len, &local_error);
-  tagval_ok &=
-      tagval_get(tagval, ENROLL_TAG_TEMPLATE_ID, (guint8 **) &template_id,
-                 &template_id_len, &local_error);
-  tagval_ok &= tagval_get(tagval, ENROLL_TAG_USER_ID, &user_id, &user_id_len,
+  tagval_ok &= tagval_get(tagval, ENROLL_TAG_TEMPLATE_ID, &template_id,
+                          &template_id_size, &local_error);
+  tagval_ok &= tagval_get(tagval, ENROLL_TAG_USER_ID, &user_id, &user_id_size,
                           &local_error);
   tagval_ok &= tagval_get(tagval, ENROLL_TAG_FINGER_ID, &finger_id,
-                          &finger_id_len, &local_error);
+                          &finger_id_size, &local_error);
 
   if (!tagval_ok)
   {
@@ -1680,14 +1687,14 @@ static void recv_identify_match_cb(FpDevice *device, guint8 *buffer_in,
     return;
   }
 
-  g_assert(template_id_len == DB2_ID_SIZE);
-  g_assert(user_id_len == WINBIO_SID_SIZE);
-  g_assert(finger_id_len == sizeof(guint8));
+  g_assert(template_id_size == sizeof(Db2Id));
+  g_assert(user_id_size == sizeof(FpUserId));
+  g_assert(finger_id_size == sizeof(FingerId));
 
   /* Create a new print from template_id, user_id and finger_id and then see
    * if it matches the one indicated */
   FpPrint *print = fp_print_new(device);
-  synatlsmoc_set_print_data(print, template_id, user_id, *finger_id);
+  synatlsmoc_set_print_data(print, template_id, (char *) user_id, *finger_id);
 
   fp_info("Identify successful for: %s", fp_print_get_description(print));
 
@@ -1753,12 +1760,13 @@ static void send_identify_match(FpiDeviceSynaTlsMoc *self,
   written &= fpi_byte_writer_put_uint32_le(&writer, data_2_size);
   if (template_ids_to_match != NULL)
   {
-    fpi_byte_writer_put_data(&writer, *template_ids_to_match,
-                             template_id_cnt * template_id_array_size);
+    written &=
+        fpi_byte_writer_put_data(&writer, *template_ids_to_match,
+                                 template_id_cnt * template_id_array_size);
   }
   else if (data_2 != NULL)
   {
-    fpi_byte_writer_put_data(&writer, data_2, data_2_size);
+    written &= fpi_byte_writer_put_data(&writer, data_2, data_2_size);
   }
 
   FAIL_TASK_SSM_AND_RETURN_IF_NOT_WRITTEN(written);
@@ -1767,7 +1775,7 @@ static void send_identify_match(FpiDeviceSynaTlsMoc *self,
   g_autofree guint8 *cmd = fpi_byte_writer_reset_and_get_data(&writer);
 
   synatlsmoc_exec_cmd(self, FALSE, FALSE, cmd, send_size, expected_recv_size,
-                      recv_identify_match_cb);
+                      recv_identify_match);
 }
 
 /* VCSFW_CMD_GET_IMAGE_METRICS ============================================= */
@@ -2371,13 +2379,11 @@ static void recv_db2_get_payload_data(FpDevice *device, guint8 *buffer_in,
     return;
   }
 
-  guint8 *user_id, *finger_id;
-  Db2Id *template_id;
+  guint8 *user_id, *finger_id, *template_id;
   gsize template_id_len, user_id_len, finger_id_len;
 
-  tagval_ok &=
-      tagval_get(tagval, ENROLL_TAG_TEMPLATE_ID, (guint8 **) &template_id,
-                 &template_id_len, &local_error);
+  tagval_ok &= tagval_get(tagval, ENROLL_TAG_TEMPLATE_ID, &template_id,
+                          &template_id_len, &local_error);
   tagval_ok &= tagval_get(tagval, ENROLL_TAG_USER_ID, &user_id, &user_id_len,
                           &local_error);
   tagval_ok &= tagval_get(tagval, ENROLL_TAG_FINGER_ID, &finger_id,
@@ -2388,9 +2394,9 @@ static void recv_db2_get_payload_data(FpDevice *device, guint8 *buffer_in,
     return;
   }
 
-  g_assert(template_id_len == DB2_ID_SIZE);
-  g_assert(user_id_len == WINBIO_SID_SIZE);
-  g_assert(finger_id_len == sizeof(guint8));
+  g_assert(template_id_len == sizeof(Db2Id));
+  g_assert(user_id_len == sizeof(FpUserId));
+  g_assert(finger_id_len == sizeof(FingerId));
 
   g_autofree gchar *tuid_str =
       bin2hex((guint8 *) data->current_template_id, DB2_ID_SIZE);
@@ -2405,7 +2411,7 @@ static void recv_db2_get_payload_data(FpDevice *device, guint8 *buffer_in,
   fp_dbg("\tfinger_id: %d", *finger_id);
 
   FpPrint *print = fp_print_new(device);
-  synatlsmoc_set_print_data(print, template_id, user_id, *finger_id);
+  synatlsmoc_set_print_data(print, template_id, (char *) user_id, *finger_id);
   g_ptr_array_add(data->list_result, g_object_ref_sink(print));
 
   if (data->list_template_id->len > 0)
@@ -2512,9 +2518,9 @@ static void send_db2_delete_object(FpiDeviceSynaTlsMoc *self,
   fpi_byte_writer_init_with_size(&writer, send_size, TRUE);
 
   gboolean written = TRUE;
-  fpi_byte_writer_put_uint8(&writer, VCSFW_CMD_DB2_DELETE_OBJECT);
-  fpi_byte_writer_put_uint32_le(&writer, obj_type);
-  fpi_byte_writer_put_data(&writer, obj_id, DB2_ID_SIZE);
+  written &= fpi_byte_writer_put_uint8(&writer, VCSFW_CMD_DB2_DELETE_OBJECT);
+  written &= fpi_byte_writer_put_uint32_le(&writer, obj_type);
+  written &= fpi_byte_writer_put_data(&writer, obj_id, DB2_ID_SIZE);
 
   FAIL_TASK_SSM_AND_RETURN_IF_NOT_WRITTEN(written);
   FAIL_TASK_SSM_AND_RETURN_ON_WRONG_SEND_SIZE(writer, send_size);
@@ -2910,7 +2916,7 @@ static char *export_private_key_to_pem(EVP_PKEY *pkey, GError **error)
   }
 
   // Get the length of the data in the BIO
-  long pem_length = BIO_ctrl_pending(bio);
+  glong pem_length = BIO_ctrl_pending(bio);
   if (pem_length <= 0)
   {
     *error = set_and_report_error(FP_DEVICE_ERROR_GENERAL, "No data in BIO");
@@ -2919,7 +2925,7 @@ static char *export_private_key_to_pem(EVP_PKEY *pkey, GError **error)
   }
 
   // Allocate memory for the PEM string
-  char *pem_data = (char *) malloc(pem_length + 1);
+  gchar *pem_data = (gchar *) g_malloc(pem_length + 1);
   if (pem_data == NULL)
   {
     *error = set_and_report_error(FP_DEVICE_ERROR_GENERAL,
@@ -3388,6 +3394,8 @@ static void close_tls_session(FpiDeviceSynaTlsMoc *self)
   GError *error = NULL;
   g_autofree guint8 *tls_data = NULL;
 
+  guint expected_recv_size = 256;
+
   fp_dbg("Closing TLS session...");
   if (!tls_session_close(self->session, &error))
   {
@@ -3405,7 +3413,7 @@ static void close_tls_session(FpiDeviceSynaTlsMoc *self)
   }
 
   // FIXME: callback was made for open only (why was this here if it works?)
-  synatlsmoc_exec_cmd(self, TRUE, FALSE, tls_data, tls_size, 256,
+  synatlsmoc_exec_cmd(self, TRUE, FALSE, tls_data, tls_size, expected_recv_size,
                       recv_tls_data);
 }
 
@@ -3557,7 +3565,7 @@ static gboolean get_template_id_from_fp_print(FpPrint *print, Db2Id template_id,
   gboolean ret = TRUE;
 
   g_autoptr(GVariant) fpi_data = NULL;
-  g_autoptr(GVariant) user_id_var = NULL;
+  g_autoptr(GVariant) fp_user_id_var = NULL;
   g_autoptr(GVariant) tid_var = NULL;
   const guint8 *tid = NULL;
 
@@ -3573,8 +3581,8 @@ static gboolean get_template_id_from_fp_print(FpPrint *print, Db2Id template_id,
     goto error;
   }
 
-  guint8 finger_id = 0;
-  g_variant_get(fpi_data, "(y@ay@ay)", finger_id, &tid_var, &user_id_var);
+  FingerId finger_id = 0;
+  g_variant_get(fpi_data, "(y@ay@ay)", finger_id, &tid_var, &fp_user_id_var);
 
   gsize tid_len = 0;
   tid = g_variant_get_fixed_array(tid_var, &tid_len, 1);
@@ -3587,7 +3595,7 @@ static gboolean get_template_id_from_fp_print(FpPrint *print, Db2Id template_id,
     goto error;
   }
 
-  memcpy(template_id, tid, DB2_ID_SIZE);
+  memcpy(template_id, tid, sizeof(Db2Id));
 
 error:
   return ret;
@@ -3646,24 +3654,17 @@ static void synatlsmoc_delete(FpDevice *device)
   fpi_ssm_start(self->task_ssm, synatlsmoc_delete_ssm_done);
 }
 
-static void enroll_data_free(EnrollData *data)
-{
-  g_free(data->template_id);
-  g_free(data->user_id);
-  g_free(data);
-}
-
-static void sensor_add_enrollment(FpiDeviceSynaTlsMoc *self, Db2Id *template_id,
-                                  guint8 *user_id, guint8 finger_id)
+static void sensor_add_enrollment(FpiDeviceSynaTlsMoc *self, Db2Id template_id,
+                                  FpUserId fp_user_id, FingerId finger_id)
 {
   g_autoptr(TagVal) tagval = tagval_new();
   g_autofree guint8 *container = NULL;
   gsize container_size;
 
-  tagval_add(tagval, ENROLL_TAG_TEMPLATE_ID, (guint8 *) template_id,
-             DB2_ID_SIZE);
-  tagval_add(tagval, ENROLL_TAG_USER_ID, user_id, WINBIO_SID_SIZE);
-  tagval_add(tagval, ENROLL_TAG_FINGER_ID, &finger_id, 1);
+  tagval_add(tagval, ENROLL_TAG_TEMPLATE_ID, template_id, sizeof(Db2Id));
+  tagval_add(tagval, ENROLL_TAG_USER_ID, (guint8 *) fp_user_id,
+             sizeof(FpUserId));
+  tagval_add(tagval, ENROLL_TAG_FINGER_ID, &finger_id, sizeof(FingerId));
 
   tagval_to_bytes(tagval, &container, &container_size);
 
@@ -3680,7 +3681,7 @@ static void synatlsmoc_enroll_run_state(FpiSsm *ssm, FpDevice *device)
     case ENROLL_ENROLL_START:
     {
       fp_dbg("Starting enroll process...");
-      fp_dbg("\tuser_id: %s", data->user_id);
+      fp_dbg("\tfp_user_id: %s", data->fp_user_id);
       fp_dbg("\tfinger_id: %d", data->finger_id);
 
       send_enroll_start(self);
@@ -3711,14 +3712,14 @@ static void synatlsmoc_enroll_run_state(FpiSsm *ssm, FpDevice *device)
     case ENROLL_SEND_FRAME_FINISH: sensor_frame_finish(self); break;
     case ENROLL_SEND_ADD_IMAGE: send_add_image(self); break;
     case ENROLL_ADD_ENROLLMENT:
-      sensor_add_enrollment(self, data->template_id, data->user_id,
+      sensor_add_enrollment(self, data->template_id, data->fp_user_id,
                             data->finger_id);
       break;
     case ENROLL_ENROLL_FINISH: send_enroll_finish(self); break;
     case ENROLL_REPORT:
     {
-      synatlsmoc_set_print_data(data->print, data->template_id, data->user_id,
-                                data->finger_id);
+      synatlsmoc_set_print_data(data->print, data->template_id,
+                                data->fp_user_id, data->finger_id);
 
       fpi_device_enroll_complete(device, g_object_ref(data->print), NULL);
 
@@ -3736,8 +3737,8 @@ static void synatlsmoc_enroll(FpDevice *device)
 
   fpi_device_get_enroll_data(device, &data->print);
 
-  gchar *user_id = fpi_print_generate_user_id(data->print);
-  data->user_id = (guint8 *) g_strndup(user_id, WINBIO_SID_SIZE);
+  gchar *fp_user_id = fpi_print_generate_user_id(data->print);
+  memcpy(data->fp_user_id, fp_user_id, sizeof(FpUserId));
 
   data->finger_id = fp_print_get_finger(data->print);
 
@@ -3745,7 +3746,7 @@ static void synatlsmoc_enroll(FpDevice *device)
   self->task_ssm =
       fpi_ssm_new_full(device, synatlsmoc_enroll_run_state, ENROLL_NUM_STATES,
                        ENROLL_NUM_STATES, "Enroll");
-  fpi_ssm_set_data(self->task_ssm, data, (GDestroyNotify) enroll_data_free);
+  fpi_ssm_set_data(self->task_ssm, data, g_free);
   fpi_ssm_start(self->task_ssm, synatlsmoc_task_ssm_done);
 }
 static void synatlsmoc_identify_verify_run_state(FpiSsm *ssm, FpDevice *device)
