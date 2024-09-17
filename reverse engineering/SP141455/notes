@@ -613,18 +613,15 @@
     - resp: size: 2
 
 - 0xab: (from synaWudfBioUsb108.dll) VCSFW_CMD_EXTSIG
-   SIG_AL0_PI
    - req: size 37
       1-4: subcommand
          3 = VCSFW_SUBCMD_EXTSIG_WRITE
          others invalid
-      5-9:
-         6: 1
-      9-16:
-         12: state
-      17-:
+      5-8:
+         6: (1)
+      9-32: pin name ("SIG_AL0_PIN" w/o '\0')
+      33-36: state (0/1)
    - resp: size 2
-
 
 - 0xac: *SSO* (VCSFW_CMD_SSO)
    - req: size: 13
@@ -814,6 +811,7 @@
         0x47a
         0x4b6
         0x50b - smt enroll add image
+        0x52e - sending gpio write to sensor without that funciton
         0x687 - smt like access error
         0x6db
         0x6e1 - when reading a host partition - read out of range

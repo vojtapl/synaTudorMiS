@@ -472,7 +472,7 @@ class Sensor:
         # aux_match mentioned in original code but seems not implemented
         # if ((phSensor->chachedCnt == 0) || ((pMatchParam->matchingScore & 3) != 3)) { aux_match }
         match_tuid, match_user_id, match_sub_id = self.mis_identify_match(
-            tuid_list, b''
+            tuid_list, b""
         )
         if match_tuid is None or match_user_id is None or match_sub_id is None:
             return False
@@ -630,9 +630,7 @@ class Sensor:
 
     def send_frame_finish(self):
         logging.log(tudor.LOG_COMM, "Sending frame finish")
-        resp = self.comm.send_command(
-            struct.pack("<B", tudor.Command.FRAME_FINISH), 2
-        )
+        resp = self.comm.send_command(struct.pack("<B", tudor.Command.FRAME_FINISH), 2)
         return resp in STATUS_SUCCESS
 
     def mis_enroll_start(self, nonce_buffer_size=0):
@@ -1549,9 +1547,7 @@ class Sensor:
     def create_version_tag(self):
         # based on sensorUpdatePairHostPartitionProgram
         if HOST_TAG_VERSION not in self.host_partition:
-            self.host_partition[HOST_TAG_VERSION] = (
-                HOST_PARITION_VERSION_TAG_DATA
-            )
+            self.host_partition[HOST_TAG_VERSION] = HOST_PARITION_VERSION_TAG_DATA
 
     def reset_sbl_mode(self, is_type_2: bool = False):
         # based on reset_SBL_mode, params in: reset_sensor_2 and reset_sensor
@@ -1760,3 +1756,29 @@ class Sensor:
 
     def bmkt_get_final_result(self):
         seq_num_recv, payload = self.bmkt_send_msg(BMKT_CMD_GET_FINAL_RESULT)
+
+    def gpio_write(self, state: bool):
+        # based on tudorGPIOWrite
+        SEND_LEN = 37
+        RESP_LEN = 2
+
+        # others not known
+        VCSFW_SUBCMD_EXTSIG_WRITE = 3
+
+        pin_name = "SIG_AL0_PIN"
+        state_offset_from_string_start = 24  # that would be 24+9=31 from start
+        assert len(pin_name) < state_offset_from_string_start
+
+        print(f"Setting state of pin {pin_name} to {state}")
+
+        padding_size = state_offset_from_string_start - len(pin_name)
+        msg = struct.pack(
+            f"<B I xBxx {len(pin_name)}s {padding_size}x Bxxx",
+            0xAB,
+            VCSFW_SUBCMD_EXTSIG_WRITE,
+            1,
+            bytes(pin_name, "ascii"),
+            state,
+        )
+        assert len(msg) == SEND_LEN
+        resp = self.comm.send_command(msg, RESP_LEN)

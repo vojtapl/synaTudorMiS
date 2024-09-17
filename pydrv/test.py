@@ -14,20 +14,18 @@ import cryptography.hazmat.primitives.asymmetric.ec as ecc
 import cryptography.hazmat.primitives.hashes as hashes
 
 to_verify = data[:X]
-signature = data[X+2:X+2+0x46]
+signature = data[X + 2 : X + 2 + 0x46]
 # signature = bytes(reversed(signature))
 
 print("to_verify", to_verify.hex())
 print("signature", signature.hex())
 
 import hashlib
+
 print("hash", hashlib.sha256(to_verify).hexdigest())
 
 
-
 pubkey.verify(signature, to_verify, ecc.ECDSA(hashes.SHA256()))
-
-
 
 
 # data2= "3f5f1700a5346702aa18c8550ca08572753ce6bd2c6d59f454fff8e5bad2532c69c646cc0000000000000000000000000000000000000000000000000000000000000000000000003b89fbe3ed72b4e699b8660f319fc7e253be421786d9b519e70b3ac37b7515500000000000000000000000000000000000000000000000000000000000000000000000000000"

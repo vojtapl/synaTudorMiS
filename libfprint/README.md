@@ -14,7 +14,7 @@ NOTE: currently requires (this merge request)[https://gitlab.freedesktop.org/lib
 - writing test
 - having the right clang-format settings
 
-# Memory leaks
+# Memory leaks (not formatted for markdown)
 ==1793122== Invalid read of size 8
 ==1793122==    at 0x82EE8D7: pkey_set_type (in /nix/store/1w90l4fm5lzhlybipfilyjij2das6w98-openssl-3.0.14/lib/libcrypto.so.3)
 ==1793122==    by 0x82EEC4B: EVP_PKEY_set_type_by_keymgmt (in /nix/store/1w90l4fm5lzhlybipfilyjij2das6w98-openssl-3.0.14/lib/libcrypto.so.3)

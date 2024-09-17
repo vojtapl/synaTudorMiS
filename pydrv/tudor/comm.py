@@ -229,7 +229,7 @@ class USBCommunication(CommunicationInterface):
 
         wcmd = self.tls_session.wrap(cmd) if self.tls_session is not None else cmd
         print(f"--> first: {wcmd[0]}")
-        print(f'raw wreq: 0x{wcmd.hex()}')
+        print(f"raw wreq: 0x{wcmd.hex()}")
         self.cmd_ep.write(wcmd, timeout)
 
         # Receive wrapped resonse
@@ -237,7 +237,7 @@ class USBCommunication(CommunicationInterface):
             resp_size += 0x45
         buf = array.array("B", [0 for _ in range(resp_size)])
         wresp = bytes(buf[: self.resp_ep.read(buf, timeout)])
-        print(f'raw wresp: 0x{wresp.hex()}')
+        print(f"raw wresp: 0x{wresp.hex()}")
 
         # Unwrap and parse response
         resp = self.tls_session.unwrap(wresp) if self.tls_session is not None else wresp
@@ -291,11 +291,15 @@ class LogCommunicationProxy(CommunicationInterface):
         logging.log(LOG_COMM, "---------------------- RESET ---------------------")
         self.proxied.reset()
 
-    def send_command(self, cmd, resp_size, timeout=2000, raw=False, check_response=True):
+    def send_command(
+        self, cmd, resp_size, timeout=2000, raw=False, check_response=True
+    ):
         Command.print(cmd[0])
         if raw:
             logging.log(LOG_COMM, "-> RAW REQ     | 0x%s" % cmd.hex())
-            resp = self.proxied.send_command(cmd, resp_size, timeout, raw, check_response)
+            resp = self.proxied.send_command(
+                cmd, resp_size, timeout, raw, check_response
+            )
             logging.log(LOG_COMM, "<- RAW RESP    | 0x%s" % resp.hex())
             return resp
         else:
@@ -304,7 +308,9 @@ class LogCommunicationProxy(CommunicationInterface):
                 "-> cmd 0x%02x      | %s"
                 % (struct.unpack("<B", cmd[:1])[0], cmd.hex()),
             )
-            resp = self.proxied.send_command(cmd, resp_size, timeout, raw, check_response)
+            resp = self.proxied.send_command(
+                cmd, resp_size, timeout, raw, check_response
+            )
             logging.log(
                 LOG_COMM,
                 "<- status 0x%04x | %s"
