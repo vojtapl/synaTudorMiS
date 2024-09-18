@@ -524,6 +524,7 @@ synatlsmoc_cmd_run_state (FpiSsm *ssm, FpDevice *device)
     case CMD_RECV:
       transfer = fpi_usb_transfer_new (device);
       transfer->ssm = ssm;
+      transfer->short_is_error = FALSE;
       fpi_usb_transfer_fill_bulk (transfer, SYNATLSMOC_EP_RESP_IN,
                                   data->length_in);
       fpi_usb_transfer_submit (
@@ -611,8 +612,7 @@ synatlsmoc_exec_cmd (FpiDeviceSynaTlsMoc *self, gboolean raw, gboolean check_res
     }
 
   FpiUsbTransfer *transfer = fpi_usb_transfer_new (device);
-  // FIXME: why was this TRUE if we sometimes expect error messages?
-  transfer->short_is_error = FALSE;
+  transfer->short_is_error = TRUE;
   transfer->ssm = self->cmd_ssm;
 
   fpi_usb_transfer_fill_bulk_full (transfer, SYNATLSMOC_EP_CMD_OUT, wrapped,
