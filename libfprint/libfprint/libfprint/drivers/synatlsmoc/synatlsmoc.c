@@ -4005,10 +4005,7 @@ fpi_device_synatlsmoc_class_init (FpiDeviceSynaTlsMocClass *klass)
   dev_class->id_table = id_table;
   dev_class->nr_enroll_stages = SYNATLSMOC_ENROLL_STAGES;
   dev_class->scan_type = FP_SCAN_TYPE_PRESS;
-
   dev_class->temp_hot_seconds = -1;
-  // FIXME: was this left out intentionally
-  dev_class->temp_cold_seconds = -1;
 
   dev_class->open = synatlsmoc_open;
   dev_class->close = synatlsmoc_close;
