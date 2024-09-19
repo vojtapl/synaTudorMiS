@@ -8,6 +8,7 @@ NOTE: currently requires (this merge request)[https://gitlab.freedesktop.org/lib
 - adding alert stage to TLS
 - Fix naming scheme
   - Naming of variables
+  - figure out the naming of TLS things
 - fix asserts
 - What to do on full storage
 - verifying endian independence
