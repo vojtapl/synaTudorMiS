@@ -3,8 +3,11 @@
  *
  * Copyright (c) 2024 Francesco Circhetta, Vojtěch Pluskal
  *
- * some parts are based on work of Popax21 see:
- * https://github.com/Popax21/synaTudor/tree/rev
+ * Some parts are based on:
+ *    - work of Popax21, see: https://github.com/Popax21/synaTudor/tree/rev
+ *    - egismoc libfprint driver by Joshua Grisham, see egismoc.c,
+ *       of which portions are from elanmoc libfprint driver (C) 2021 Elan
+ *       Microelectronic
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
