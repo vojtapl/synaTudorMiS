@@ -932,9 +932,9 @@ recv_frame_acquire (FpDevice *device, guint8 *buffer_in, gsize length_in, GError
         }
       else if (fpi_device_get_current_action (device) == FPI_DEVICE_ACTION_VERIFY)
         {
-          VerifyIdentifyData *verify_identify_ssm_data =
+          IdentifyVerifyData *identify_verify_ssm_data =
               fpi_ssm_get_data (self->task_ssm);
-          retry_idx = &verify_identify_ssm_data->frame_acquire_retry_idx;
+          retry_idx = &identify_verify_ssm_data->frame_acquire_retry_idx;
         }
       else
         {
@@ -3885,12 +3885,15 @@ synatlsmoc_identify_verify_run_state (FpiSsm *ssm, FpDevice *device)
 
   switch (fpi_ssm_get_cur_state (ssm))
     {
+    // FIXME: add waiting for finger up (possibly on repetition withing a time
+    // window), as leaving the wrong finger on it goes through the retry stages
+    // too quickly
     case IDENTIFY_VERIFY_SET_EVENT_FRAME_READY:
       fp_dbg ("Capturing image...");
       send_event_config (self, EV_FRAME_READY);
       break;
     case IDENTIFY_VERIFY_SEND_FRAME_ACQUIRE:;
-      VerifyIdentifyData *ssm_data = fpi_ssm_get_data (ssm);
+      IdentifyVerifyData *ssm_data = fpi_ssm_get_data (ssm);
       ssm_data->frame_acquire_retry_idx = FRAME_ACQUIRE_NUM_RETRIES;
       send_frame_acquire (self, CAPTURE_FLAG_AUTH);
       break;
@@ -3951,7 +3954,7 @@ synatlsmoc_identify_verify (FpDevice *device)
 
   g_assert (self->task_ssm == NULL);
 
-  VerifyIdentifyData *ssm_data = g_new0 (VerifyIdentifyData, 1);
+  IdentifyVerifyData *ssm_data = g_new0 (IdentifyVerifyData, 1);
   self->task_ssm = fpi_ssm_new_full (
       device, synatlsmoc_identify_verify_run_state, IDENTIFY_VERIFY_NUM_STATES,
       IDENTIFY_VERIFY_NUM_STATES, "Identify/Verify");

@@ -441,4 +441,4 @@ typedef struct
 typedef struct
 {
   gint frame_acquire_retry_idx;
-} VerifyIdentifyData;
+} IdentifyVerifyData;
