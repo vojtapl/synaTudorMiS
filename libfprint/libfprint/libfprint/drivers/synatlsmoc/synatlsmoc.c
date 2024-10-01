@@ -3885,9 +3885,12 @@ synatlsmoc_identify_verify_run_state (FpiSsm *ssm, FpDevice *device)
 
   switch (fpi_ssm_get_cur_state (ssm))
     {
-    // FIXME: add waiting for finger up (possibly on repetition withing a time
-    // window), as leaving the wrong finger on it goes through the retry stages
-    // too quickly
+    case IDENTIFY_VERIFY_SET_EVENT_FINGER_UP:
+      send_event_config (self, EV_FINGER_UP);
+      break;
+    case IDENTIFY_VERIFY_WAIT_FINGER_UP:
+      synatlsmoc_wait_for_events (self);
+      break;
     case IDENTIFY_VERIFY_SET_EVENT_FRAME_READY:
       fp_dbg ("Capturing image...");
       send_event_config (self, EV_FRAME_READY);
