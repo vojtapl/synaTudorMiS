@@ -51,13 +51,13 @@ This driver is not in active development anymore as it *just works* and I curren
 - Look for functions using the registry - `Reg...`, though in the Synaptics driver I have not found anything interesting.
 - Now the most time consuming part - trying to figure out how the driver works. I have only a single piece of advice - get to know the tool you are using, for Ghidra you should look into renaming functions/variables, editing function signatures, (automatically) creating structs, using included structs, naming constants, how to move quickly around functions and so on.
 - At some point you will want to see the data in different parts of the program or the data being sent.
-  - If the sensor does not use encrypted connection, or you are interested only in the establishing of a TLS session (for decryption you would need to dump the keys from the program), you could use Wireshark. This program will show you the data which passes through a USB connection. For more details see here: (FIXME)[].
-  - The other option is to add breakpoints and print the data, when a breakpoint is hit. See (here)[./reverse engineering/SP141455/WinDbg breakpoints/README.md] how to add breakpoints. Then to see what is in some register/memory/... see here: (FIXME)[]. To find where the value is stored, see the `Listing` window in Ghidra and then either the blue window at the start function containing offsets/register names for variables or the instruction parameters bellow.
+  - If the sensor does not use encrypted connection, or you are interested only in the establishing of a TLS session (for decryption you would need to dump the keys from the program), you could use Wireshark. This program will show you the data which passes through a USB connection.
+  - The other option is to add breakpoints and print the data, when a breakpoint is hit. See (here)[./reverse engineering/SP141455/WinDbg breakpoints/README.md] how to add breakpoints. Then to see what is in some register/memory/... use WinDbg with e.g. the `d <address>` command. To find where the value is stored, see the `Listing` window in Ghidra and then either the blue window at the start function containing offsets/register names for variables or the instruction parameters bellow.
     - for example we have `BLOB* R8:8 toSendBlob`, so (at least at some point) in the R8 register should be addres of a blob struct
     - we get the address with command `r r8` and with `dq [add address]` we can see the size and pointer to the data
     - to make it easier you can add commands together and get the output immediately, e.g. `db poi(@r8 + 8) Lwo(@r8)` prints only the blob data with the correct size (for more examples see (here)[./reverse engineering/SP141455/WinDbg breakpoints/breakpoints with data dump.txt])
     - remember to make it easier on yourself and add some description to the output with `.echo` or `.printf`
-    - for more complete list of commands see (here)[FIXME]
+    - for more complete list of commands see (here)[http://www.windbg.info/doc/1-common-cmds.html] (It is not that hard one you get the hang of it.)
 - Hopefully now you should have enough notes to start working on a prototype driver.
 
 ### Some notes on how to make a libfprint driver
