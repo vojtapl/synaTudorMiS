@@ -61,7 +61,6 @@
 guint8 cache_tuid[] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
                         0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 
-// FIXME: why FpDevice in callback and not FpiDeviceSynaTlsMoc
 typedef void (*CmdCallback) (FpDevice *device, guchar *buffer_in, gsize length_in, GError *error);
 
 typedef struct CmdData
@@ -247,7 +246,7 @@ synatlsmoc_verify_sensor_certificate (FpiDeviceSynaTlsMoc *self)
   fp_dbg ("Verifying sensor certificate...");
   OpenData *ssm_data = fpi_ssm_get_data (self->task_ssm);
 
-  // FIXME: freeing causes issues?
+  // FIXME: freeing causes reading issues -> currently leaks memory
   // g_autoptr(EVP_MD_CTX) mdctx = EVP_MD_CTX_create();
   EVP_MD_CTX *mdctx = EVP_MD_CTX_create ();
 
@@ -646,7 +645,6 @@ synatlsmoc_set_print_data (FpPrint *print, Db2Id template_id, FpUserId fp_user_i
   g_object_set (print, "fpi-data", fpi_data, NULL);
 }
 
-// FIXME: Is there a better place where to put communication functions?
 /* here are communication functions sorted by value of cmd_id */
 /* VCSFW_CMD_GET_VERSION =================================================== */
 
