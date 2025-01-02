@@ -174,7 +174,10 @@ struct _TlsSession
 
   const char *hash_algo;
 
-  // FIXME: what to fix?
+  // FIXME: what to fix? - design this module without these
+  /* Comment from Francesco Circhetta, who conceived this:
+   * The TLS layer, for how I conceived it, should not know anything about the sensor and get only the relevant certificate and keys during initialization. It shouldn't even bother with pairing at all.
+   */
   guint8 cert_request;
   SensorPairingData *pairing_data;
   // gboolean established;
