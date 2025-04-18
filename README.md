@@ -1,17 +1,22 @@
 # Synaptics Tudor Match in Sensor (MiS) reverse engineering
+
 The fingerprint reader in my laptop (06CB:00FF) does not seem to support raw frame capture and export and to only support match on chip authentication and enrollment. This is likely the reason why the current libfprint library does not work with this sensor. The goal is to create a prototype driver. Currently only the python driver partially works, the libfprint integration does not. If you have any questions/additions, feel free to reach out/open a issue/merge request.
 
+### Building
+
+For building use a [cleaned version of libfprint](https://github.com/vojtapl/libfprint). You will also need to modify fprintd with [this patch](./libfprint/fprintd-load-store-persistent-data-from-device.patch).
 
 ### Some notes on not continuing development
-This driver is not in active development anymore as it *just works* and I currently do not have enough time to finish it. There are two or three major roadblocks which need to be overcome before I would consider publishing it: OpenSSL currently leaks memory (and I spent too long trying to figure out why it breaks things when the memory is freed), small FIXMEs in the codebase and writing tests.
 
+This driver is not in active development anymore as it _just works_ and I currently do not have enough time to finish it. There are two or three major roadblocks which need to be overcome before I would consider publishing it: OpenSSL currently leaks memory (and I spent too long trying to figure out why it breaks things when the memory is freed), small FIXMEs in the codebase and writing tests.
 
 ### Disclaimer
+
 - THIS PROJECT IS EXPERIMENTAL. ALL WORK IS PROVIDED AS IS, WITH NO LIABILITY IN CASE SOMETHING GOES WRONG, e.g. you can format your sensor host partition and lose the Windows pairing data.
 - Please note that some things are not yet changed from to the current sensor, e.g. the iota patches.
 
-
 ### Most likely supported devices
+
 - per synaWudfBioUsbUwp.inf
 - 06CB:00C9
 - 06CB:00D1
@@ -21,27 +26,31 @@ This driver is not in active development anymore as it *just works* and I curren
 - 06CB:0169 (is in the newer driver - the one currently not being looked into)
 - possibly others from non-HP vendors and newer from HP
 
-
 ### What works:
+
 - Everything should work (though there may be bugs).
 
 ### What does not work:
+
 - Using the same pairing data/fingerprints in Windows and Linux.
-    - This would require an equivalent function to Crypt(Un)ProtectData to encrypt the pairing data before writing to host partition on sensor. Or dumping the pairing data and storing them on Linux as well.
+  - This would require an equivalent function to Crypt(Un)ProtectData to encrypt the pairing data before writing to host partition on sensor. Or dumping the pairing data and storing them on Linux as well.
 
 ### To-dos:
+
 - common property
-    - where does the common property come from
-        -> where does the function highLevelSetCommonProptery get its params from
-    - what is it for?
+  - where does the common property come from
+    -> where does the function highLevelSetCommonProptery get its params from
+  - what is it for?
 - (not important) check for update and update of firmware update
 - (not important) find the newest driver version and check for differences
 - improve security
 
 ### Some notes on how does the sensor work
+
 - Each enrollment is tied to a set of pairing data - template ID, finger ID, windows SID.
 
 ### How to reverse-engineer a Windows fingerprint driver
+
 - The first step is to find the name of the device with USB vendor and product IDs and search on the internet. Finding someone's work, even if the devices seem to be only a little bit similar, could be a huge time saver.
 - If no one has reverse-engineered the device yet (not even a similar one) then you will have to do it (it is fun though 😀).
 - As I only have experience with Synaptics's fingerprint devices, I will base this part on them.
@@ -61,11 +70,11 @@ This driver is not in active development anymore as it *just works* and I curren
 - Hopefully now you should have enough notes to start working on a prototype driver.
 
 ### Some notes on how to make a libfprint driver
+
 - As I have not done anything similar before, the asynchronous driver design was quite daunting. If you have it the same, ignore it and write it synchronously (see the `*_sync` function variants).
 
-
-
 ### Abbreviations used:
+
 - tuid = template UID
 - SID = windows security identifier
 - FW = firmware
@@ -73,7 +82,7 @@ This driver is not in active development anymore as it *just works* and I curren
 - MiS = match in sensor
 - qm = Synaptics Quantum Matcher
 
-
 ### Acknowledgment
+
 - The driver is based on [Synaptics Tudor Sensors Reverse Engineering Project](https://github.com/Popax21/synaTudor/tree/rev) by Popax21 and his [Driver Relinking Project](https://github.com/Popax21/synaTudor/tree/relink)
 - This blog post: [Reversing a Fingerprint Reader Protocol](https://blog.th0m.as/misc/fingerprint-reversing/) by Thomas Lambertz was very helpful in the beginning.
