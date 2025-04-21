@@ -1,6 +1,6 @@
 # Synaptics Tudor Match in Sensor (MiS) reverse engineering
 
-The fingerprint reader in my laptop (06CB:00FF) does not seem to support raw frame capture and export and to only support match on chip authentication and enrollment. This is likely the reason why the current libfprint library does not work with this sensor. The goal is to create a prototype driver. Currently only the python driver partially works, the libfprint integration does not. If you have any questions/additions, feel free to reach out/open a issue/merge request.
+The fingerprint reader in my laptop (06CB:00FF) does not seem to support raw frame capture and export and to only support match on chip authentication and enrollment. This is likely the reason why the current libfprint library does not work with this sensor. The goal is to create a prototype driver. If you have any questions/additions, feel free to reach out/open an issue/merge request.
 
 ### Building
 
