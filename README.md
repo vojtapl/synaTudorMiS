@@ -20,7 +20,7 @@ This driver is not in active development anymore as it _just works_ and I curren
 - per synaWudfBioUsbUwp.inf
 - 06CB:00C9
 - 06CB:00D1
-- 06CB:00E7
+- 06CB:00E7 (tested)
 - 06CB:00FF (tested)
 - 06CB:0124
 - 06CB:0169 (is in the newer driver - the one currently not being looked into)

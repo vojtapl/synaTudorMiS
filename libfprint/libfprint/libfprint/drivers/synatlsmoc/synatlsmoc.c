@@ -96,6 +96,9 @@ struct _FpiDeviceSynaTlsMoc
   guint32 event_recv;
   guint num_pending_events;
   gboolean event_read_in_legacy_mode;
+
+  /* quirks */
+  gboolean disable_image_metrics;
 };
 
 G_DEFINE_TYPE (FpiDeviceSynaTlsMoc, fpi_device_synatlsmoc, FP_TYPE_DEVICE);
@@ -105,7 +108,7 @@ static const FpIdEntry id_table[] = {
     /* the sensors commented out are untested, but should be suported */
     // { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x00C9, },
     // { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x00D1, },
-    // { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x00E7, },
+    { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x00E7, },
     { .vid = SYNAPTICS_VENDOR_ID, .pid = 0x00FF, },
     // { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x0124, },
     // { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x0169, },
@@ -1828,11 +1831,33 @@ recv_get_image_metrics (FpDevice *device, guint8 *buffer_in, gsize length_in, GE
     }
 
   FpiByteReader reader;
-  gboolean read_ok = TRUE;
-  guint32 image_metrics_length, image_metrics_type;
-
   fpi_byte_reader_init (&reader, buffer_in, length_in);
-  read_ok &= fpi_byte_reader_skip (&reader, SENSOR_FW_REPLY_STATUS_HEADER_LEN);
+
+  gboolean read_ok = TRUE;
+  guint16 status;
+  read_ok &= fpi_byte_reader_get_uint16_le (&reader, &status);
+
+  if (read_ok && !status_is_success (status))
+    {
+      if ((status == VCS_RESULT_SENSOR_BAD_CMD) && (!self->disable_image_metrics))
+        {
+          fp_warn ("Received status 0x%04x on get_image_metrics, disabling them",
+              status);
+          self->disable_image_metrics = TRUE;
+          fpi_ssm_next_state (self->task_ssm);
+          return;
+        }
+      else
+        {
+          fpi_ssm_mark_failed (
+              self->task_ssm,
+              set_and_report_error (FP_DEVICE_ERROR_PROTO, "received status: 0x%04x",
+                                    status));
+          return;
+        }
+    }
+
+  guint32 image_metrics_length, image_metrics_type;
   read_ok &= fpi_byte_reader_get_uint32_le (&reader, &image_metrics_type);
   read_ok &= fpi_byte_reader_get_uint32_le (&reader, &image_metrics_length);
 
@@ -1937,7 +1962,7 @@ send_get_image_metrics (FpiDeviceSynaTlsMoc *self,
 
   g_autofree guint8 *cmd = fpi_byte_writer_reset_and_get_data (&writer);
 
-  synatlsmoc_exec_cmd (self, FALSE, TRUE, cmd, send_size, expected_recv_size,
+  synatlsmoc_exec_cmd (self, FALSE, FALSE, cmd, send_size, expected_recv_size,
                        recv_get_image_metrics);
 }
 
@@ -3913,7 +3938,10 @@ synatlsmoc_identify_verify_run_state (FpiSsm *ssm, FpDevice *device)
       sensor_frame_finish (self);
       break;
     case IDENTIFY_VERIFY_IMAGE_METRICS:
-      send_get_image_metrics (self, MIS_IMAGE_METRICS_IMG_QUALITY);
+      if (self->disable_image_metrics)
+        fpi_ssm_next_state (ssm);
+      else
+        send_get_image_metrics (self, MIS_IMAGE_METRICS_IMG_QUALITY);
       break;
     case IDENTIFY_VERIFY_IDENTIFY_MATCH:
       if (fpi_device_get_current_action (device) == FPI_DEVICE_ACTION_IDENTIFY)
