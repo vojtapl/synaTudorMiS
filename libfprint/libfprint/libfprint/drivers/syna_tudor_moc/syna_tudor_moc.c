@@ -24,11 +24,11 @@
 
 /* WARN: current implementation starts a new TLS session on each device open */
 
+#include "syna_tudor_moc.h"
 #include "communication.c"
 #include "device.h"
 #include "fpi-log.h"
 #include "fpi-ssm.h"
-#include "syna_tudor_moc.h"
 #include "tls.c"
 #include <gnutls/abstract.h>
 #include <gnutls/gnutls.h>
@@ -45,14 +45,12 @@ G_DEFINE_TYPE(FpiDeviceSynaTudorMoc, fpi_device_syna_tudor_moc, FP_TYPE_DEVICE)
 
 // clang-format off
 static const FpIdEntry id_table[] = {
-    // { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x00C9, },
-    // { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x00D1, },
-    // { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x00E7, },
-    /* only 00FF is tested */
-   // FIXME:
-    // { .vid = SYNAPTICS_VENDOR_ID, .pid = 0x00FF, },
-    // { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x0124, },
-    // { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x0169, },
+    { .vid = SYNAPTICS_VENDOR_ID, .pid = 0x00C9, },
+    // { .vid = SYNAPTICS_VENDOR_ID, .pid = 0x00D1, },
+    { .vid = SYNAPTICS_VENDOR_ID, .pid = 0x00E7, },
+    { .vid = SYNAPTICS_VENDOR_ID, .pid = 0x00FF, },
+    // { .vid = SYNAPTICS_VENDOR_ID, .pid = 0x0124, },
+    // { .vid = SYNAPTICS_VENDOR_ID, .pid = 0x0169, },
     {.vid = 0, .pid = 0, .driver_data = 0}, /* terminating entry */
 };
 // clang-format on
