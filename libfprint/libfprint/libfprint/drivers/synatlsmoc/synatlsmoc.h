@@ -212,7 +212,9 @@ enum ENROLL_SUBCMDS
 
 enum CAPTURE_FLAGS
 {
-  CAPTURE_FLAG_AUTH = 7,
+  /* NOTE: Prometheus (0x00d8) requires flags=15 for matching, flags=7 returns
+   * MATCH_FAILED (0x0509). Using 15 for both auth and enroll for safety. */
+  CAPTURE_FLAG_AUTH = 15,
   CAPTURE_FLAG_ENROLL = 15,
 };
 
