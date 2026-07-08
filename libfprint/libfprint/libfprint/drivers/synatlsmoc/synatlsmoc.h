@@ -212,7 +212,11 @@ enum ENROLL_SUBCMDS
 
 enum CAPTURE_FLAGS
 {
-  CAPTURE_FLAG_AUTH = 7,
+  /* WARN: Here we deviate from the reverse-engineered driver,
+      as PID 0x00D8 requires the AUTH flag to be 15, while it seems
+      to work on other devices too. */
+  /* CAPTURE_FLAG_AUTH = 7, */
+  CAPTURE_FLAG_AUTH = 15,
   CAPTURE_FLAG_ENROLL = 15,
 };
 
