@@ -1782,3 +1782,14 @@ class Sensor:
         )
         assert len(msg) == SEND_LEN
         resp = self.comm.send_command(msg, RESP_LEN)
+
+    def led_configure_raw(self, config: bytes):
+        """Send the firmware LED_EX2 configuration recovered from driver 123.
+
+        The configuration is exactly 124 bytes: a 32-bit header followed by
+        six 20-byte LED state records. Keep this API private to lab tooling;
+        malformed or guessed arbitrary payloads must not be exposed to users.
+        """
+        if len(config) != 124:
+            raise ValueError("LED_EX2 configuration must be exactly 124 bytes")
+        self.comm.send_command(bytes([tudor.Command.LED_EX2]) + config, 2)
