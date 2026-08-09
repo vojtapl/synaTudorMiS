@@ -3980,8 +3980,13 @@ synatlsmoc_enroll (FpDevice *device)
 
   fpi_device_get_enroll_data (device, &data->print);
 
-  gchar *fp_user_id = fpi_print_generate_user_id (data->print);
-  memcpy (data->fp_user_id, fp_user_id, sizeof (FpUserId));
+  /* fpi_print_generate_user_id() returns a string of 23 + strlen(username)
+   * characters, which is far shorter than FpUserId.  Copying the full field
+   * size read past the end of that allocation and sent the surrounding heap
+   * bytes to the sensor; data is zero-initialized, so a bounded string copy
+   * leaves the remainder as the NUL padding the sensor expects. */
+  g_autofree gchar *fp_user_id = fpi_print_generate_user_id (data->print);
+  g_strlcpy (data->fp_user_id, fp_user_id, sizeof (FpUserId));
 
   data->finger_id = fp_print_get_finger (data->print);
 
