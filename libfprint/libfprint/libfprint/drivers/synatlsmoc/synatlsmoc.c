@@ -52,7 +52,9 @@
  * initialized in Windows */
 /* WARN: current implementation starts a new TLS session on each device open */
 
-#define DEBUG
+/* Never enable raw protocol logging in production or biometric tests.  It can
+ * expose pairing keys, certificates and biometric protocol payloads. */
+/* #define DEBUG */
 
 /* Needed for testing with libfprint examples they do not support storage of
  * pairing data */
