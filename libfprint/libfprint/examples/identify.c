@@ -292,6 +292,14 @@ main (void)
       return EXIT_FAILURE;
     }
 
+  g_autoptr(GError) persistent_error = NULL;
+  if (!load_test_persistent_data (dev, &persistent_error))
+    {
+      g_warning ("Cannot load protected pairing data: %s",
+                 persistent_error->message);
+      return EXIT_FAILURE;
+    }
+
   if (!fp_device_has_feature (dev, FP_DEVICE_FEATURE_IDENTIFY))
     {
       g_warning ("Device %s does not support identification.",

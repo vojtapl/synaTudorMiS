@@ -126,3 +126,31 @@ finger_chooser (void)
 
   return i;
 }
+
+gboolean
+load_test_persistent_data (FpDevice *dev, GError **error)
+{
+  const gchar *path = g_getenv ("SYNA_TLSMOC_PERSISTENT_DATA");
+  g_autofree gchar *contents = NULL;
+  gsize length = 0;
+
+  if (!path)
+    return TRUE;
+
+  if (!g_file_get_contents (path, &contents, &length, error))
+    return FALSE;
+
+  g_autoptr(GBytes) bytes = g_bytes_new_take (g_steal_pointer (&contents), length);
+  g_autoptr(GVariant) value = g_variant_ref_sink (
+    g_variant_new_from_bytes (G_VARIANT_TYPE ("(ayays)"), bytes, FALSE));
+
+  if (!g_variant_is_normal_form (value))
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA,
+                           "Persistent pairing data are not a normal GVariant");
+      return FALSE;
+    }
+
+  g_object_set (dev, "fpi-persistent-data", value, NULL);
+  return TRUE;
+}

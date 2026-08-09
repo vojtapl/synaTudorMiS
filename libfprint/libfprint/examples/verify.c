@@ -340,6 +340,14 @@ main (void)
       return EXIT_FAILURE;
     }
 
+  g_autoptr(GError) persistent_error = NULL;
+  if (!load_test_persistent_data (dev, &persistent_error))
+    {
+      g_warning ("Cannot load protected pairing data: %s",
+                 persistent_error->message);
+      return EXIT_FAILURE;
+    }
+
   verify_data = g_new0 (VerifyData, 1);
   verify_data->ret_value = EXIT_FAILURE;
   verify_data->loop = g_main_loop_new (NULL, FALSE);
