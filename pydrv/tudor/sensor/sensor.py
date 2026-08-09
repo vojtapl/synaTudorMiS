@@ -454,14 +454,20 @@ class Sensor:
     ) -> bool:
         # TODO: fix WINBIO_SAMPLE_SID
         self.capture_image(capture_flags=7)
-        _, image_quality = self.mis_get_auth_image_metrics(
-            MIS_IMAGE_METRICS_IMG_QUALITY
-        )
-        if image_quality is None:
-            logging.warning("received NULL image quality")
-            return False
+        try:
+            _, image_quality = self.mis_get_auth_image_metrics(
+                MIS_IMAGE_METRICS_IMG_QUALITY
+            )
+        except tudor.CommandFailedException as error:
+            if error.status != 0x0401:
+                raise
+            # Kensington firmware 10.1.3031663 does not implement the optional
+            # 0x9d image-metrics command. The Windows driver proceeds directly
+            # to match-on-chip in this variant.
+            logging.info("Image metrics unsupported; continuing with match-on-chip.")
+            image_quality = None
 
-        if image_quality < AUTH_IMG_QUALITY_THRESHOLD:
+        if image_quality is not None and image_quality < AUTH_IMG_QUALITY_THRESHOLD:
             logging.warning(
                 "verified finger image has quality '%d' is lower than threshold '%d', discarding"
                 % (image_quality, AUTH_IMG_QUALITY_THRESHOLD)
@@ -478,7 +484,7 @@ class Sensor:
             return False
 
         # check for match restrictions if given
-        if tuid_list is not None and match_tuid not in tuid_list:
+        if tuid_list and match_tuid not in tuid_list:
             return False
         if user_id is not None and user_id != match_user_id:
             return False
