@@ -485,10 +485,7 @@ class Sensor:
         if sub_id is not None and sub_id != match_sub_id:
             return False
 
-        logging.info("Matched:")
-        logging.info(f"\ttemplate UID: {match_tuid.hex()}")
-        logging.info(f"\tuser ID: {match_user_id.hex()}")
-        logging.info(f"\tsub ID: {match_sub_id.hex()}")
+        logging.info("Matched enrollment (identifiers suppressed).")
         return True
 
     def enroll(self, user_id=WINBIO_SAMPLE_SID, sub_id=b"\xf7"):
@@ -769,7 +766,7 @@ class Sensor:
             for tuid in tuid_list:
                 msg += tuid
 
-        print(f"sending msg with len: {len(msg)} and data: {msg.hex()}")
+        logging.debug("Sending identify request (%d bytes; payload suppressed).", len(msg))
         assert len(msg) == SEND_LEN
 
         resp = self.comm.send_command(msg, RECV_LEN, check_response=False)
@@ -799,18 +796,15 @@ class Sensor:
         z_offset = y_offset + y_len
         recv_data_z = resp[z_offset : z_offset + z_len]
 
-        logging.debug("Match info:")
-        logging.debug(f"\ttuid: {tuid}")
-        logging.debug(f"\tmatch_stats: {match_stats}")
-        logging.debug(f"\tmatch_score: {match_score}")
-        logging.debug(f"\ty_data_len: {y_len}, {recv_data_y}")
-        logging.debug(f"\tz_data_len: {z_len}, {recv_data_z}")
+        logging.info(
+            "Match response accepted (score %d; identifiers and payload suppressed).",
+            match_score,
+        )
 
         if y_len != 0 or z_len == 0:
             # I did not see this situation so no idea how to parse
             raise NotImplementedError
 
-        print(recv_data_y)
         to_deserialize = tudor.win.WinTagValContainer.frombytes(recv_data_z)
         match_tuid = to_deserialize[ENROLL_TAG_TUID]
         match_user_id = to_deserialize[ENROLL_TAG_USERID]
