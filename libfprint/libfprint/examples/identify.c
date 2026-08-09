@@ -276,9 +276,6 @@ main (void)
   GPtrArray *devices;
   FpDevice *dev;
 
-  setenv ("G_MESSAGES_DEBUG", "all", 0);
-  setenv ("LIBUSB_DEBUG", "3", 0);
-
   ctx = fp_context_new ();
 
   devices = fp_context_get_devices (ctx);
