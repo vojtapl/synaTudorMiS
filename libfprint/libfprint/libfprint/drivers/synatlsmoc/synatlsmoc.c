@@ -116,6 +116,8 @@ static const FpIdEntry id_table[] = {
     // { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x0124, },
     // { .vid = SYNAPTICS_VENDOR_ID,  .pid = 0x0169, },
     { .vid = SYNAPTICS_VENDOR_ID, .pid = 0x016C, },
+    /* Kensington VeriMark IT, verified with firmware 10.1.3031663. */
+    { .vid = KENSINGTON_VENDOR_ID, .pid = 0x8054, },
     { .vid = 0, .pid = 0, .driver_data = 0 }, /* terminating entry */
 };
 // clang-format on
