@@ -24,3 +24,4 @@ FpDevice * discover_device (GPtrArray *devices);
 FpFinger finger_chooser (void);
 const char * finger_to_string (FpFinger finger);
 gboolean load_test_persistent_data (FpDevice *dev, GError **error);
+gboolean save_test_persistent_data (FpDevice *dev, GError **error);

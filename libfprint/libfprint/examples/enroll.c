@@ -177,6 +177,10 @@ on_device_opened (FpDevice *dev, GAsyncResult *res, void *user_data)
 
   printf ("Opened device.\n");
 
+  g_autoptr(GError) save_error = NULL;
+  if (!save_test_persistent_data (dev, &save_error))
+    g_warning ("Cannot save pairing data: %s", save_error->message);
+
   if (fp_device_has_feature (dev, FP_DEVICE_FEATURE_UPDATE_PRINT))
     {
       printf ("The device supports fingerprint updates.\n");
@@ -261,6 +265,14 @@ main (void)
                                                         sigint_cb,
                                                         enroll_data,
                                                         NULL);
+
+  g_autoptr(GError) persistent_error = NULL;
+  if (!load_test_persistent_data (dev, &persistent_error))
+    {
+      g_warning ("Cannot load protected pairing data: %s",
+                 persistent_error->message);
+      return EXIT_FAILURE;
+    }
 
   fp_device_open (dev, enroll_data->cancellable,
                   (GAsyncReadyCallback) on_device_opened,
