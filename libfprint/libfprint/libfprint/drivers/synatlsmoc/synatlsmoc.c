@@ -138,6 +138,15 @@ synatlsmoc_is_provisioned (FpiDeviceSynaTlsMoc *self)
 }
 
 static gboolean
+synatlsmoc_is_verimark (FpiDeviceSynaTlsMoc *self)
+{
+  GUsbDevice *usb_device = fpi_device_get_usb_device (FP_DEVICE (self));
+
+  return g_usb_device_get_vid (usb_device) == KENSINGTON_VENDOR_ID &&
+         g_usb_device_get_pid (usb_device) == 0x8054;
+}
+
+static gboolean
 synatlsmoc_has_advanced_security (FpiDeviceSynaTlsMoc *self)
 {
   return (self->security & ADVANCED_SECURITY_MASK) != 0;
@@ -1096,6 +1105,74 @@ send_event_config (FpiDeviceSynaTlsMoc *self, guint32 mask)
                        recv_event_config);
 }
 
+/* VCSFW_CMD_LED_EX2 ====================================================== */
+
+#define SYNATLSMOC_LED_CONFIG_SIZE 124
+
+/* Stock event profile 1 from Kensington/Synaptics driver 6.0.20.1123,
+ * confirmed on a physical 047d:8054 reader.
+ *
+ * The first two little-endian 32-bit words of the table are durations.
+ * Profile 4 carries 500/500, so it only flashes the LED for half a second
+ * and goes dark again - which is why it looked correct when sent by hand
+ * from a lab tool but was invisible during a driver-run operation. This
+ * profile carries 160000/65535 and keeps the LED lit for the whole wait. */
+static const guint8 verimark_led_on[SYNATLSMOC_LED_CONFIG_SIZE] = {
+  0x00, 0x71, 0x02, 0x00, 0xff, 0xff, 0x00, 0x00, 0x05, 0x05, 0x00, 0x20,
+  0x00, 0x00, 0x00, 0x00, 0x05, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0xff, 0xff, 0x00, 0x00, 0x05, 0x05, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00,
+  0x05, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0x00, 0x00,
+  0x05, 0x05, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x05, 0x05, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00
+};
+
+static void
+synatlsmoc_led_config_cb (FpDevice *device, guchar *buffer_in, gsize length_in, GError *error)
+{
+  FpiDeviceSynaTlsMoc *self = FPI_DEVICE_SYNATLSMOC (device);
+
+  /* The LED is purely cosmetic: a rejected LED command must never fail a
+   * biometric operation, and close must be able to finish even after the
+   * device disappeared. */
+  if (error)
+    {
+      fp_warn ("Ignoring LED configuration error: %s", error->message);
+      g_error_free (error);
+    }
+  fpi_ssm_next_state (self->task_ssm);
+}
+
+static void
+send_led_config (FpiDeviceSynaTlsMoc *self, gboolean enabled)
+{
+  guint8 cmd[1 + SYNATLSMOC_LED_CONFIG_SIZE] = { VCSFW_CMD_LED_EX2 };
+
+  /* The recovered profile is device-specific. Keep other supported Synaptics
+   * products unchanged and simply advance their operation state. */
+  if (!synatlsmoc_is_verimark (self))
+    {
+      fpi_ssm_next_state (self->task_ssm);
+      return;
+    }
+
+  if (enabled)
+    memcpy (cmd + 1, verimark_led_on, sizeof (verimark_led_on));
+
+  /* Always send the command instead of tracking the last requested state: a
+   * cancelled or timed-out operation never reaches its LED-off state, so a
+   * remembered state would desynchronize from the hardware and leave the
+   * LED dark for every later operation. */
+  fp_dbg ("Setting VeriMark LED %s", enabled ? "on" : "off");
+  synatlsmoc_exec_cmd (self, FALSE, TRUE, cmd, sizeof (cmd),
+                       SENSOR_FW_REPLY_STATUS_HEADER_LEN,
+                       synatlsmoc_led_config_cb);
+}
+
 /* VCSFW_CMD_EVENT_READ ==================================================== */
 
 static void send_event_read (FpiDeviceSynaTlsMoc *self);
@@ -1531,7 +1608,7 @@ recv_add_image (FpDevice *device, guint8 *buffer_in, gsize length_in, GError *er
     }
   else
     {
-      fpi_ssm_jump_to_state (self->task_ssm, ENROLL_SET_EVENT_FINGER_UP);
+      fpi_ssm_jump_to_state (self->task_ssm, ENROLL_LED_ON);
     }
 }
 
@@ -3557,6 +3634,9 @@ synatlsmoc_close_ssm_run_state (FpiSsm *ssm, FpDevice *dev)
 
   switch (fpi_ssm_get_cur_state (ssm))
     {
+    case CLOSE_LED_OFF:
+      send_led_config (self, FALSE);
+      break;
     case CLOSE_EVENT_MASK_NONE:
       send_event_config (self, NO_EVENTS);
       if (error)
@@ -3826,6 +3906,9 @@ synatlsmoc_enroll_run_state (FpiSsm *ssm, FpDevice *device)
 
   switch (fpi_ssm_get_cur_state (ssm))
     {
+    case ENROLL_LED_ON:
+      send_led_config (self, TRUE);
+      break;
     case ENROLL_ENROLL_START:
       {
         fp_dbg ("Starting enroll process...");
@@ -3854,6 +3937,9 @@ synatlsmoc_enroll_run_state (FpiSsm *ssm, FpDevice *device)
     case ENROLL_WAIT_FINGER_DOWN:
       fpi_device_report_finger_status (device, FP_FINGER_STATUS_NEEDED);
       synatlsmoc_wait_for_events (self);
+      break;
+    case ENROLL_LED_OFF:
+      send_led_config (self, FALSE);
       break;
     case ENROLL_SET_EVENT_NONE:
       fpi_device_report_finger_status (device, FP_FINGER_STATUS_PRESENT);
@@ -3913,6 +3999,9 @@ synatlsmoc_identify_verify_run_state (FpiSsm *ssm, FpDevice *device)
 
   switch (fpi_ssm_get_cur_state (ssm))
     {
+    case IDENTIFY_VERIFY_LED_ON:
+      send_led_config (self, TRUE);
+      break;
     case IDENTIFY_VERIFY_SET_EVENT_FINGER_UP:
       send_event_config (self, EV_FINGER_UP);
       break;
@@ -3934,6 +4023,9 @@ synatlsmoc_identify_verify_run_state (FpiSsm *ssm, FpDevice *device)
     case IDENTIFY_VERIFY_WAIT_FINGER_DOWN:
       fpi_device_report_finger_status (device, FP_FINGER_STATUS_NEEDED);
       synatlsmoc_wait_for_events (self);
+      break;
+    case IDENTIFY_VERIFY_LED_OFF:
+      send_led_config (self, FALSE);
       break;
     case IDENTIFY_VERIFY_SET_EVENT_NONE:
       fpi_device_report_finger_status (device, FP_FINGER_STATUS_PRESENT);
