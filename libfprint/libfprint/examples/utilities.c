@@ -20,8 +20,11 @@
 
 #define FP_COMPONENT "example-utilities"
 
+#include <fcntl.h>
+#include <glib/gstdio.h>
 #include <libfprint/fprint.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #include "utilities.h"
 
@@ -125,4 +128,94 @@ finger_chooser (void)
     return FP_FINGER_UNKNOWN;
 
   return i;
+}
+
+gboolean
+load_test_persistent_data (FpDevice *dev, GError **error)
+{
+  const gchar *path = g_getenv ("SYNA_TLSMOC_PERSISTENT_DATA");
+  g_autofree gchar *contents = NULL;
+  gsize length = 0;
+
+  if (!path)
+    return TRUE;
+
+  if (!g_file_get_contents (path, &contents, &length, error))
+    return FALSE;
+
+  g_autoptr(GBytes) bytes = g_bytes_new_take (g_steal_pointer (&contents), length);
+  g_autoptr(GVariant) value = g_variant_ref_sink (
+    g_variant_new_from_bytes (G_VARIANT_TYPE ("(ayays)"), bytes, FALSE));
+
+  if (!g_variant_is_normal_form (value))
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA,
+                           "Persistent pairing data are not a normal GVariant");
+      return FALSE;
+    }
+
+  g_object_set (dev, "fpi-persistent-data", value, NULL);
+  return TRUE;
+}
+
+gboolean
+save_test_persistent_data (FpDevice *dev, GError **error)
+{
+  const gchar *path = g_getenv ("SYNA_TLSMOC_PERSISTENT_DATA_SAVE");
+  g_autoptr(GVariant) value = NULL;
+  const guint8 *data;
+  gsize length;
+  int fd;
+
+  if (!path)
+    return TRUE;
+
+  g_object_get (dev, "fpi-persistent-data", &value, NULL);
+  if (!value)
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                           "Device has no persistent pairing data to save");
+      return FALSE;
+    }
+
+  data = g_variant_get_data (value);
+  length = g_variant_get_size (value);
+
+  /* The blob contains the private pairing key: create owner-only and never
+   * follow symlinks. */
+  fd = g_open (path, O_WRONLY | O_CREAT | O_TRUNC | O_NOFOLLOW | O_CLOEXEC,
+               0600);
+  if (fd < 0)
+    {
+      g_set_error (error, G_IO_ERROR, g_io_error_from_errno (errno),
+                   "Cannot create pairing data file: %s", g_strerror (errno));
+      return FALSE;
+    }
+
+  for (gsize offset = 0; offset < length;)
+    {
+      gssize written = write (fd, data + offset, length - offset);
+
+      if (written < 0 && errno == EINTR)
+        continue;
+      if (written <= 0)
+        {
+          g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                               "Short write of pairing data file");
+          close (fd);
+          return FALSE;
+        }
+      offset += written;
+    }
+  if (close (fd) != 0)
+    {
+      g_set_error (error, G_IO_ERROR, g_io_error_from_errno (errno),
+                   "Cannot finish writing pairing data file: %s",
+                   g_strerror (errno));
+      return FALSE;
+    }
+
+  g_print ("Saved persistent pairing data (%" G_GSIZE_FORMAT " bytes).\n",
+           length);
+  return TRUE;
 }

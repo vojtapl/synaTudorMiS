@@ -454,14 +454,20 @@ class Sensor:
     ) -> bool:
         # TODO: fix WINBIO_SAMPLE_SID
         self.capture_image(capture_flags=7)
-        _, image_quality = self.mis_get_auth_image_metrics(
-            MIS_IMAGE_METRICS_IMG_QUALITY
-        )
-        if image_quality is None:
-            logging.warning("received NULL image quality")
-            return False
+        try:
+            _, image_quality = self.mis_get_auth_image_metrics(
+                MIS_IMAGE_METRICS_IMG_QUALITY
+            )
+        except tudor.CommandFailedException as error:
+            if error.status != 0x0401:
+                raise
+            # Kensington firmware 10.1.3031663 does not implement the optional
+            # 0x9d image-metrics command. The Windows driver proceeds directly
+            # to match-on-chip in this variant.
+            logging.info("Image metrics unsupported; continuing with match-on-chip.")
+            image_quality = None
 
-        if image_quality < AUTH_IMG_QUALITY_THRESHOLD:
+        if image_quality is not None and image_quality < AUTH_IMG_QUALITY_THRESHOLD:
             logging.warning(
                 "verified finger image has quality '%d' is lower than threshold '%d', discarding"
                 % (image_quality, AUTH_IMG_QUALITY_THRESHOLD)
@@ -478,17 +484,14 @@ class Sensor:
             return False
 
         # check for match restrictions if given
-        if tuid_list is not None and match_tuid not in tuid_list:
+        if tuid_list and match_tuid not in tuid_list:
             return False
         if user_id is not None and user_id != match_user_id:
             return False
         if sub_id is not None and sub_id != match_sub_id:
             return False
 
-        logging.info("Matched:")
-        logging.info(f"\ttemplate UID: {match_tuid.hex()}")
-        logging.info(f"\tuser ID: {match_user_id.hex()}")
-        logging.info(f"\tsub ID: {match_sub_id.hex()}")
+        logging.info("Matched enrollment (identifiers suppressed).")
         return True
 
     def enroll(self, user_id=WINBIO_SAMPLE_SID, sub_id=b"\xf7"):
@@ -769,7 +772,7 @@ class Sensor:
             for tuid in tuid_list:
                 msg += tuid
 
-        print(f"sending msg with len: {len(msg)} and data: {msg.hex()}")
+        logging.debug("Sending identify request (%d bytes; payload suppressed).", len(msg))
         assert len(msg) == SEND_LEN
 
         resp = self.comm.send_command(msg, RECV_LEN, check_response=False)
@@ -799,18 +802,15 @@ class Sensor:
         z_offset = y_offset + y_len
         recv_data_z = resp[z_offset : z_offset + z_len]
 
-        logging.debug("Match info:")
-        logging.debug(f"\ttuid: {tuid}")
-        logging.debug(f"\tmatch_stats: {match_stats}")
-        logging.debug(f"\tmatch_score: {match_score}")
-        logging.debug(f"\ty_data_len: {y_len}, {recv_data_y}")
-        logging.debug(f"\tz_data_len: {z_len}, {recv_data_z}")
+        logging.info(
+            "Match response accepted (score %d; identifiers and payload suppressed).",
+            match_score,
+        )
 
         if y_len != 0 or z_len == 0:
             # I did not see this situation so no idea how to parse
             raise NotImplementedError
 
-        print(recv_data_y)
         to_deserialize = tudor.win.WinTagValContainer.frombytes(recv_data_z)
         match_tuid = to_deserialize[ENROLL_TAG_TUID]
         match_user_id = to_deserialize[ENROLL_TAG_USERID]
@@ -1782,3 +1782,14 @@ class Sensor:
         )
         assert len(msg) == SEND_LEN
         resp = self.comm.send_command(msg, RESP_LEN)
+
+    def led_configure_raw(self, config: bytes):
+        """Send the firmware LED_EX2 configuration recovered from driver 123.
+
+        The configuration is exactly 124 bytes: a 32-bit header followed by
+        six 20-byte LED state records. Keep this API private to lab tooling;
+        malformed or guessed arbitrary payloads must not be exposed to users.
+        """
+        if len(config) != 124:
+            raise ValueError("LED_EX2 configuration must be exactly 124 bytes")
+        self.comm.send_command(bytes([tudor.Command.LED_EX2]) + config, 2)

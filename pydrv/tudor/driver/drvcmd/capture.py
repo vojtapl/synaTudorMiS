@@ -66,4 +66,6 @@ class CmdIdentify(Command):
             [tudor.sensor.SensorEventType.EV_FINGER_UP]
         )
 
-        ctx.sensor.auth()
+        # Diagnostic identification accepts any enrollment stored on the
+        # sensor. Windows and Linux user identifiers are not interchangeable.
+        ctx.sensor.auth(user_id=None)

@@ -276,9 +276,6 @@ main (void)
   GPtrArray *devices;
   FpDevice *dev;
 
-  setenv ("G_MESSAGES_DEBUG", "all", 0);
-  setenv ("LIBUSB_DEBUG", "3", 0);
-
   ctx = fp_context_new ();
 
   devices = fp_context_get_devices (ctx);
@@ -292,6 +289,14 @@ main (void)
   if (!dev)
     {
       g_warning ("No devices detected.");
+      return EXIT_FAILURE;
+    }
+
+  g_autoptr(GError) persistent_error = NULL;
+  if (!load_test_persistent_data (dev, &persistent_error))
+    {
+      g_warning ("Cannot load protected pairing data: %s",
+                 persistent_error->message);
       return EXIT_FAILURE;
     }
 
