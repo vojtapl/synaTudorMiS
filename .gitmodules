@@ -1,0 +1,4 @@
+[submodule "libfprint/libfprint"]
+	path = libfprint/libfprint
+	url = git@github.com:vojtapl/libfprint.git
+	branch = main
