@@ -57,19 +57,17 @@ diff --git a/src/file_storage.c b/src/file_storage.c
 index e12fe58..87f1f3b 100644
 --- a/src/file_storage.c
 +++ b/src/file_storage.c
-@@ -39,7 +39,10 @@
+@@ -39,7 +39,9 @@
 
  #include "file_storage.h"
 
--#define FILE_STORAGE_PATH "/var/lib/fprint"
-+// #define FILE_STORAGE_PATH "/var/lib/fprint"
-+#define FILE_STORAGE_PATH "/home/vojtapl/test"
+ #define FILE_STORAGE_PATH "/var/lib/fprint"
 +/* Starts with a number as that is not valid in a username */
 +#define PERSISTENT_DATA_DIR "0-persistent"
  #define DIR_PERMS 0700
 
  static char *storage_path = NULL;
-@@ -353,9 +356,80 @@ file_storage_discover_users (void)
+@@ -353,9 +355,80 @@ file_storage_discover_users (void)
    return list;
  }
 
@@ -150,7 +148,7 @@ index e12fe58..87f1f3b 100644
    /* Nothing to do */
    return 0;
  }
-@@ -363,6 +437,7 @@ file_storage_init (void)
+@@ -363,6 +435,7 @@ file_storage_init (void)
  int
  file_storage_deinit (void)
  {
