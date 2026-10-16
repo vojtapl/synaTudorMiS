@@ -14,6 +14,7 @@ from .iota import *
 from .pair import *
 from .sensor import *
 from .event import *
+from .led import *
 from .windows_pairing_data import WINBIO_SAMPLE_SID
 from .bmkt import *
 
@@ -122,8 +123,9 @@ class SensorProvisionState(enum.IntEnum):
 class Sensor:
     IDLE_TIMEOUT = 200
 
-    def __init__(self, comm: tudor.CommunicationInterface):
+    def __init__(self, comm: tudor.CommunicationInterface, has_leds: bool = False):
         self.comm = comm
+        self.led = SensorLed(comm, has_leds)
         self.bootloader = tudor.sensor.SensorBootloader(self)
         self.tls_session = None
         self.event_handler = None
@@ -291,6 +293,8 @@ class Sensor:
 
         # TODO Stop frame capturer
 
+        self.led.set_event(LedEvent.IDLE)
+
         # Stop event handler
         if self.event_handler.event_mask != []:
             self.event_handler.set_event_mask([])
@@ -454,18 +458,25 @@ class Sensor:
     ) -> bool:
         # TODO: fix WINBIO_SAMPLE_SID
         self.capture_image(capture_flags=7)
-        _, image_quality = self.mis_get_auth_image_metrics(
-            MIS_IMAGE_METRICS_IMG_QUALITY
-        )
-        if image_quality is None:
-            logging.warning("received NULL image quality")
-            return False
+        try:
+            _, image_quality = self.mis_get_auth_image_metrics(
+                MIS_IMAGE_METRICS_IMG_QUALITY
+            )
+        except tudor.CommandFailedException as error:
+            if error.status != 0x0401:
+                raise
+            # Kensington firmware 10.1.3031663 does not implement the optional
+            # 0x9d image-metrics command. The Windows driver proceeds directly
+            # to match-on-chip in this variant.
+            logging.info("Image metrics unsupported; continuing with match-on-chip.")
+            image_quality = None
 
-        if image_quality < AUTH_IMG_QUALITY_THRESHOLD:
+        if image_quality is not None and image_quality < AUTH_IMG_QUALITY_THRESHOLD:
             logging.warning(
                 "verified finger image has quality '%d' is lower than threshold '%d', discarding"
                 % (image_quality, AUTH_IMG_QUALITY_THRESHOLD)
             )
+            self.led.set_event(LedEvent.MATCH_FAILURE)
             return False
 
         # NOTE:
@@ -475,10 +486,14 @@ class Sensor:
             tuid_list, b""
         )
         if match_tuid is None or match_user_id is None or match_sub_id is None:
+            self.led.set_event(LedEvent.MATCH_FAILURE)
             return False
 
+        # the LED shows the sensor's result, before the identity checks below
+        self.led.set_event(LedEvent.MATCH_SUCCESS)
+
         # check for match restrictions if given
-        if tuid_list is not None and match_tuid not in tuid_list:
+        if tuid_list and match_tuid not in tuid_list:
             return False
         if user_id is not None and user_id != match_user_id:
             return False
@@ -506,7 +521,11 @@ class Sensor:
             while progress != 100:
                 self.event_handler.wait_for_event([SensorEventType.EV_FINGER_UP])
                 self.capture_image()
-                progress, status, tuid = self.mis_enroll_add_image()
+                progress, status, tuid, rejected = self.mis_enroll_add_image()
+                if progress == 100 or rejected == 0:
+                    self.led.set_event(LedEvent.ENROLL_ACCEPTED)
+                else:
+                    self.led.set_event(LedEvent.ENROLL_REJECTED)
 
             if status != 0:
                 return False
@@ -549,12 +568,24 @@ class Sensor:
         self.event_handler.set_event_mask([SensorEventType.EV_FRAME_READY])
         self.send_frame_acq(capture_flags)
 
-        self.event_handler.set_event_mask(
-            [SensorEventType.EV_FRAME_READY, SensorEventType.EV_FINGER_DOWN]
-        )
-        self.event_handler.wait_for_events_no_set(
-            [SensorEventType.EV_FINGER_DOWN, SensorEventType.EV_FRAME_READY]
-        )
+        try:
+            self.led.set_event(LedEvent.WAITING_FOR_FINGER)
+            self.event_handler.set_event_mask(
+                [SensorEventType.EV_FRAME_READY, SensorEventType.EV_FINGER_DOWN]
+            )
+            self.event_handler.wait_for_events_no_set(
+                [SensorEventType.EV_FINGER_DOWN, SensorEventType.EV_FRAME_READY]
+            )
+        except BaseException:
+            # the wait failed or was interrupted, keep its error
+            try:
+                self.led.set_event(LedEvent.IDLE)
+            except Exception as error:
+                logging.warning("Failed to reset the LED: %s" % error)
+            raise
+
+        # finger detected
+        self.led.set_event(LedEvent.IDLE)
         self.event_handler.set_event_mask([])
 
         self.send_frame_finish()
@@ -713,7 +744,7 @@ class Sensor:
         if rejected != 0:
             if redundant != 0:
                 logging.warning("Image rejected due to being redundant: %d" % redundant)
-            elif has_fixed_pattern == 0:
+            elif has_fixed_pattern != 0:
                 logging.warning(
                     "Image rejected due to fixed pattern error: %d" % has_fixed_pattern
                 )
@@ -729,7 +760,7 @@ class Sensor:
             else:
                 logging.error("Enrollment failed with status: %d" % status)
 
-        return progress, status, tuid
+        return progress, status, tuid, rejected
 
     def mis_enroll_commit(self, enroll_commit_data: bytes):
         # based on _tudorCmdMisEnrollCommit
@@ -903,7 +934,7 @@ class Sensor:
     #
     #     timeout = int((timeout_ms*1000)//80)
     #     print(timeout)
-    #     msg = struct.pack("<BH", tudor.Command.SET_IDLE_TIMEOUT, timeout)
+    #     msg = struct.pack("<BH", tudor.Command.TIDLE_SET, timeout)
     #     assert len(msg) == SEND_LEN
     #     resp = self.comm.send_command(msg, RECV_LEN)
 
@@ -921,7 +952,7 @@ class Sensor:
         else:
             raise ValueError
 
-        msg = struct.pack("<BI", tudor.Command.GET_HW_INFO, info_type)
+        msg = struct.pack("<BI", tudor.Command.HW_INFO_GET, info_type)
         assert len(msg) == SEND_LEN
         resp = self.comm.send_command(msg, recv_len)
 
@@ -1587,7 +1618,7 @@ class Sensor:
             )
             param = 2
 
-        msg = struct.pack("<BH", tudor.Command.REST, param)
+        msg = struct.pack("<BH", tudor.Command.RESET, param)
         assert len(msg) == SEND_LEN
         self.comm.send_command(msg, RESP_LEN)
 

@@ -758,9 +758,11 @@ vfmDeviceInitialize:
 	-> if not initialized, call tudorSensorInitInfo
 		-> send "get version" cmd (tudorSensorCmdGetVersion)
 		-> product id must be 'A', 'B', or 'C'
-		-> get vid/pid/some flag (always zero) through IOCTL 0x65 (tudorUsbProtoIoControl)
+		-> get vid/pid/transport type through IOCTL 0x65 (tudorUsbProtoIoControl)
+		   (the USB layer always sets the transport type, byte 5, to 1; corrected 2026-10-16, see FINDINGS.md)
 		-> if not in bootloader mode:
-			-> if some flag is not zero, set idle timeout to 200 ms (tudorSensorCmdSetIdleTimeout) (nop)
+			-> if transport type != 1, set idle timeout to 200 ms (setIDLETimeout, VCSFW_CMD_TIDLE_SET)
+			   -> never on USB
 			-> read config version iota into device info (tudorSensorReadConfigVersionIota)
 				-> read using tudorCmdIotaRead
 			-> read IPL iota (0x1a) into dev_info (tudorSensorReadPackedIota)
@@ -768,7 +770,7 @@ vfmDeviceInitialize:
 			-> read WBF parameter packed iota (0x2f) into dev_info (tudorSensorReadPackedIota)
 		-> copy data to dev_info
 	-> else
-		-> if sensor product ID isn't not 'B' or 'C' (aka not in bootloader mode), and some dev_info flag is false, set idle timeout to 200 ms (tudorSensorCmdSetIdleTimeout)
+		-> if sensor product ID isn't not 'B' or 'C' (aka not in bootloader mode), and transport type (hSensor+0x19) != 1, set idle timeout to 200 ms (setIDLETimeout); never on USB
 	-> if sensor product ID isn't is not 'B' or 'C' (aka not in bootloader mode)
 		-> get start info (tudorCmdGetStartInfo)
 		-> initialize TLS session (tudorTlsEstablishSession)

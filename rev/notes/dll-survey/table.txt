@@ -1,0 +1,60 @@
+synaWudfBioUsb146.dll        6f23f6de x64   5.02.5029.0026  2.84MB A 8795 U 185 tud  0 vfm 10 cmd 0 res 0 ssi  8 iota 0 prov 0 pair 4 own9 usdk5 (Windsor/Viper)
+synaWudfBioUsbSGX.dll        06608422 x64   5.03.3545.0026  1.66MB A 5812 U 187 tud  0 vfm  4 cmd 0 res 0 ssi  8 iota 0 prov 0 pair 9 own4 usdk5 (Windsor/Viper)
+synaWudfBioUsb116SGX.dll     a38a206f x64   5.5.13.1116     1.82MB A 7036 U 105 tud  0 vfm  6 cmd 0 res 0 ssi  9 iota 1 prov 0 pair 9 own4 usdk5 (Windsor/Viper)
+synaWudfBioUsb102SGX.dll     6b39051d x64   5.5.16.1102     1.90MB A 7322 U 182 tud  0 vfm  6 cmd 0 res 0 ssi 13 iota 0 prov 0 pair 9 own4 usdk5 (Windsor/Viper)
+synaWudfBioUsb106SGX.dll     f316c310 x64   5.5.18.1106     1.92MB A 7290 U 184 tud  0 vfm  6 cmd 0 res 0 ssi 13 iota 0 prov 0 pair 9 own4 usdk5 (Windsor/Viper)
+synaWudfBioUsb106.dll        ef5ebbaa x64   5.5.18.1106     2.50MB A 8808 U 182 tud  0 vfm 11 cmd 0 res 0 ssi 11 iota 0 prov 0 pair10 own4 usdk5 (Windsor/Viper)
+synaWudfBioUsb61.dll         54c03e11 x64   5.5.2316.1061   2.60MB A 8664 U 195 tud  0 vfm  9 cmd 0 res 0 ssi 10 iota 0 prov 0 pair10 own4 usdk5 (Windsor/Viper)
+synaWudfBioUsb061.dll        7aadded5 x64   5.5.2339.1061   2.71MB A 9022 U 201 tud  0 vfm 11 cmd 0 res 0 ssi 10 iota 1 prov 0 pair10 own4 usdk5 (Windsor/Viper)
+synaWudfBioUsb061SGX.dll     4731ed2d x64   5.5.2339.1061   1.85MB A 6922 U 112 tud  0 vfm  6 cmd 0 res 0 ssi 12 iota 1 prov 0 pair 9 own4 usdk5 (Windsor/Viper)
+synaWudfBioUsb124.dll        0f8d0403 x64   5.5.3.1124      2.67MB A 8952 U 204 tud  0 vfm 10 cmd 0 res 0 ssi 10 iota 1 prov 0 pair10 own4 usdk5 (Windsor/Viper)
+synaWudfBioUsb102.dll        f131c96e x64   5.5.30.1102     2.38MB A 8943 U 196 tud  0 vfm 11 cmd 0 res 0 ssi  7 iota 1 prov 0 pair10 own4 usdk5 (Windsor/Viper)
+synaWudfBioUsb102SGX.dll     2dcb9478 x64   5.5.34.1102     1.84MB A 7050 U 104 tud  0 vfm  6 cmd 0 res 0 ssi 12 iota 1 prov 0 pair 9 own4 usdk5 (Windsor/Viper)
+synaWudfBioUsb66.dll         3ac74a07 x64   5.5.3534.1066   2.68MB A 9230 U 220 tud  0 vfm 10 cmd 0 res 0 ssi 12 iota 0 prov 0 pair10 own4 usdk5 (Windsor/Viper)
+synaWudfBioUsb52.dll         5b0ab4c4 x64   5.5.4020.1052   2.61MB A 8670 U 195 tud  0 vfm  9 cmd 0 res 0 ssi 10 iota 0 prov 0 pair10 own4 usdk5 (Windsor/Viper)
+synaWudfBioUsb.dll           4915a353 x64   5.5.5.1086      2.62MB A 8651 U 195 tud  0 vfm  8 cmd 0 res 0 ssi 10 iota 0 prov 0 pair10 own4 usdk5 (Windsor/Viper)
+synaWudfBioUsb124.dll        d4d8ca1c x64   5.5.7.1124      2.65MB A 8944 U 202 tud  0 vfm 10 cmd 0 res 0 ssi  7 iota 1 prov 0 pair10 own4 usdk5 (Windsor/Viper)
+synaWudfBioUsb051.dll        ab3aa46e x64   5.5.803.1051    3.41MB A12512 U 209 tud  0 vfm 12 cmd 0 res 0 ssi 49 iota 1 prov 0 pair12 own4 usdk5 (Windsor/Viper)
+synaWudfBioUsb110_1.dll      5463e4c0 x64   6.0.117.1110    1.96MB A 8673 U 189 tud162 vfm209 cmd38 res71 ssi109 iota20 prov13 pair47 own6 Tudor
+synaWudfBioUsb110.dll        c7847c94 x64   6.0.124.1110    1.79MB A 8457 U 192 tud170 vfm211 cmd41 res71 ssi112 iota22 prov 4 pair48 own6 Tudor
+synaWudfBioUsb110.dll        ac74b5c7 x64   6.0.129.1110    1.98MB A 8938 U 194 tud186 vfm219 cmd41 res71 ssi120 iota28 prov 4 pair48 own6 Tudor
+synaWudfBioUsbSGX098.dll     7fd2b3b5 x64   6.0.13.1098     2.68MB A 8263 U 312 tud  0 vfm123 cmd 0 res71 ssi110 iota 0 prov 8 pair23 own5 SGX/PABE
+synaWudfBioUsb098.dll        5c714d2f x64   6.0.13.1098     1.24MB A 6033 U 178 tud  0 vfm134 cmd23 res71 ssi 87 iota13 prov 4 pair41 own9 other
+synaWudfBioUsb147.dll        d4da276c x64   6.0.15.1147     1.73MB A 8237 U 187 tud171 vfm212 cmd39 res71 ssi105 iota16 prov 4 pair50 own6 Tudor
+synaWudfBioUsb134.dll        03b8b6ec x64   6.0.17.1134     1.48MB A 7814 U 194 tud168 vfm212 cmd38 res71 ssi106 iota16 prov 4 pair50 own6 Tudor
+synaWudfBioUsb142.dll        6551fc79 x64   6.0.2.1142      1.70MB A 7859 U 184 tud142 vfm200 cmd34 res71 ssi 92 iota16 prov 4 pair41 own6 Tudor
+synaWudfBioUsb129.dll        3f3fc57b x64   6.0.23.1129     1.65MB A 7361 U 189 tud111 vfm158 cmd36 res71 ssi 96 iota30 prov 4 pair43 own6 Tudor
+synaWudfBioUsb139.dll        e5203718 x64   6.0.24.1139     1.64MB A 7399 U 190 tud110 vfm157 cmd36 res71 ssi 96 iota30 prov 4 pair43 own6 Tudor
+synaWudfBioUsb125.dll        9749c7dd x64   6.0.26.1125     1.72MB A 7911 U 184 tud145 vfm202 cmd39 res71 ssi 94 iota16 prov 4 pair41 own6 Tudor
+synaWudfBioUsbSGX108.dll     ea310a53 x64   6.0.32.1108     0.71MB A 3524 U 188 tud  0 vfm136 cmd 0 res71 ssi 29 iota 2 prov 2 pair10 own4 SGX/PABE
+synaWudfBioUsb108.dll        0067b8e8 x64   6.0.32.1108     1.61MB A 6973 U 182 tud107 vfm147 cmd36 res71 ssi 90 iota29 prov 4 pair40 own6 Tudor
+synaWudfBioUsb112.dll        f8157df1 x64   6.0.33.1112     1.62MB A 7863 U 184 tud145 vfm213 cmd39 res71 ssi 95 iota16 prov 4 pair41 own6 Tudor
+synaWudfBioUsb136.dll        439585f5 x64   6.0.39.1136     2.04MB A 9399 U 211 tud193 vfm263 cmd44 res72 ssi117 iota35 prov13 pair59 own6 Tudor
+synaWudfBioUsb111.dll        5f1172df x64   6.0.46.1111     1.66MB A 7665 U 185 tud144 vfm195 cmd36 res71 ssi 89 iota23 prov 2 pair51 own6 Tudor
+synaWudfBioUsbSGX107.dll     2f9403a9 x64   6.0.48.1107     2.58MB A 7908 U 270 tud  0 vfm125 cmd 0 res71 ssi107 iota 2 prov 8 pair25 own5 SGX/PABE
+synaWudfBioUsb111.dll        97109c98 x64   6.0.49.1111     1.66MB A 7668 U 184 tud144 vfm195 cmd36 res71 ssi 89 iota23 prov 2 pair51 own6 Tudor
+synaWudfBioUsb115.dll        644d9915 x64   6.0.5.1115      1.52MB A 6670 U 172 tud  0 vfm156 cmd34 res71 ssi 83 iota24 prov 2 pair40 own6 other
+synaWudfBioUsbSGX111.dll     7dae9edd x64   6.0.50.1111     2.69MB A 8433 U 268 tud  0 vfm181 cmd 0 res71 ssi106 iota 2 prov 6 pair25 own5 SGX/PABE
+synaWudfBioUsb139.dll        7d964d4a x64   6.0.503.1139    1.62MB A 7213 U 191 tud110 vfm157 cmd36 res71 ssi 96 iota30 prov 4 pair40 own6 Tudor
+synaWudfBioUsb104.dll        47be3384 x64   6.0.52.1104     1.64MB A 7205 U 184 tud100 vfm149 cmd35 res71 ssi 90 iota30 prov 4 pair43 own6 Tudor
+synaWudfBioUsbSGX104.dll     a459d54c x64   6.0.52.1104     0.67MB A 3089 U 180 tud  0 vfm137 cmd 0 res71 ssi 26 iota 3 prov 2 pair12 own4 SGX/PABE
+synaWudfBioUsb107.dll        cdd1c043 x64   6.0.56.1107     1.63MB A 7158 U 185 tud 99 vfm152 cmd35 res71 ssi 90 iota29 prov 4 pair43 own6 Tudor
+synaWudfBioUsb111.dll        0e21ae43 x64   6.0.59.1111     1.81MB A 8167 U 183 tud150 vfm199 cmd36 res71 ssi 92 iota22 prov 2 pair51 own6 Tudor
+synaWudfBioUsb127.dll        1d64c04e x64   6.0.6.1127      1.49MB A 7692 U 193 tud163 vfm222 cmd37 res71 ssi105 iota16 prov 4 pair50 own6 Tudor
+synaWudfBioUsb127.dll        84ea7be1 x64   6.0.6.1127      1.49MB A 7698 U 193 tud163 vfm222 cmd37 res71 ssi105 iota16 prov 4 pair50 own6 Tudor
+synaWudfBioUsbSGX111_2.dll   96227aca x64   6.0.60.1111     0.75MB A 3398 U 179 tud  0 vfm181 cmd 0 res71 ssi 24 iota 2 prov 0 pair11 own4 SGX/PABE
+synaWudfBioUsb111.dll        3974b4ac x64   6.0.62.1111     1.84MB A 8188 U 182 tud150 vfm199 cmd36 res71 ssi 92 iota22 prov 2 pair51 own6 Tudor
+synaWudfBioUsb111.dll        d9aa7e54 x64   6.0.63.1111     1.86MB A 8216 U 183 tud152 vfm199 cmd37 res71 ssi 92 iota22 prov 2 pair51 own6 Tudor
+synaWudfBioUsb105.dll        814ee27f x64   6.0.64.1105     2.02MB A 9292 U 211 tud188 vfm251 cmd44 res72 ssi114 iota35 prov13 pair59 own6 Tudor
+synaWudfBioUsb101.dll        9c509164 x64   6.0.8.1101      1.14MB A 4688 U 168 tud 63 vfm125 cmd33 res71 ssi 30 iota 2 prov 1 pair20 own6 Tudor
+synaWudfBioUsb148.dll        e903873b ARM64 6.0.8.1148      1.87MB A 8010 U 197 tud182 vfm242 cmd41 res72 ssi115 iota30 prov 3 pair49 own6 Tudor
+synaWudfBioUsb151.dll        5301804f x64   6.0.8.1151      1.78MB A 8556 U 208 tud175 vfm237 cmd39 res72 ssi114 iota26 prov 4 pair49 own6 Tudor
+synaWudfBioUsb141.dll        30133171 x64   6.0.9.1141      1.75MB A 8395 U 206 tud175 vfm226 cmd39 res72 ssi112 iota26 prov 4 pair49 own6 Tudor
+synaFpAdapter110.dll         05fc2290 x64   6.0.129.1110    0.20MB A  728 U 117 tud  0 vfm  0 cmd 0 res 0 ssi  1 iota 0 prov 0 pair 0 own1 adapter
+synaFpAdapter111.dll         b11a700a x64   6.0.46.1111     0.19MB A  721 U 117 tud  0 vfm  0 cmd 0 res 0 ssi  1 iota 0 prov 0 pair 0 own1 adapter
+synaFpAdapter107.dll         0a9e0392 x64   6.0.48.1107     0.19MB A  717 U 117 tud  0 vfm  0 cmd 0 res 0 ssi  1 iota 0 prov 0 pair 0 own1 adapter
+synaFpAdapter111.dll         9e799ed6 x64   6.0.49.1111     0.19MB A  725 U 116 tud  0 vfm  0 cmd 0 res 0 ssi  1 iota 0 prov 0 pair 0 own1 adapter
+synaFpAdapter139.dll         62e4420d x64   6.0.503.1139    0.19MB A  729 U 116 tud  0 vfm  0 cmd 0 res 0 ssi  1 iota 0 prov 0 pair 0 own1 adapter
+synaFpAdapter111.dll         0f7fdffc x64   6.0.59.1111     0.19MB A  733 U 116 tud  0 vfm  0 cmd 0 res 0 ssi  1 iota 0 prov 0 pair 0 own1 adapter
+synaFpAdapter127.dll         92d4449f x64   6.0.6.1127      0.19MB A  727 U 117 tud  0 vfm  0 cmd 0 res 0 ssi  1 iota 0 prov 0 pair 0 own1 adapter
+synaFpAdapter111.dll         edaf4ebc x64   6.0.62.1111     0.19MB A  721 U 114 tud  0 vfm  0 cmd 0 res 0 ssi  1 iota 0 prov 0 pair 0 own1 adapter

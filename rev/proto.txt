@@ -46,6 +46,8 @@ requests:
             12-15: sanity code
             16-67: reset nvinfo (array of 13 ulongs)
     0x39: LED ex2
+        req: size: 0x7d
+        resp only status
     0x3e: storage info get
         resp:
             2-3: ????
@@ -167,7 +169,7 @@ requests:
     0xa0: db2 get object info
     0xa1: db2 get object data
     0xa3: db2 delete object
-    0xa3: db2 cleanup
+    0xa4: db2 cleanup
     0xa5: db2 format
 
 responses:
@@ -205,7 +207,6 @@ TLS 1.2 layer: sess "tls data" command
    0x8D00
    0xA800
 
-
 certificate:
 0-1: magic (3f5f)
 2-3: curve name (23=SECP256R1)
@@ -226,7 +227,6 @@ IOTA 9 (config version):
 0xe-0x14: ????
 
 IOTA 0x1a (IPL iota): PACKED
-
 
 IOTA 0x2e (WBF parameter): PACKED
 0-2: ????

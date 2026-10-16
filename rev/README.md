@@ -8,6 +8,7 @@ All driver binarys beeing reverse engineered are sourced from [here](https://dow
 File | Description
 --- | ---
 rev.txt | Raw reverse engineering documentation of the Windows driver. You'll find lots of low level details here, but no clear protocol documentation. (Ctrl+F is your friend)
+FINDINGS.md | Running log of AI-assisted findings, with where each was found and whether it's been verified
 proto.txt |High level protocol description. This will give you a good first overview, but you'll probably need to look up details in `rev.txt`
 SensorAdapterIOCTL.txt | IOCTLs which the Windows SensorAdapter uses
 EngineAdapterIOCTL.txt | IOCTLs which the Windows EngineAdapter uses

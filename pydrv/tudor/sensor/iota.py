@@ -26,7 +26,7 @@ class IOTA:
         while size <= 0 or off < size:
             # Send command & unpack response
             resp = comm.send_command(
-                struct.pack("<BHHxxxxII", tudor.Command.READ_IOTA, iota_id, 2, off, 0),
+                struct.pack("<BHHxxxxII", tudor.Command.IOTA_FIND, iota_id, 2, off, 0),
                 0x10006,
             )
             (iota_size,), iota_data = struct.unpack("<xxI", resp[:6]), resp[6:]
@@ -120,8 +120,17 @@ class WbfParamIOTA(PackedIOTA):
     def __init__(self, iota_id: int, data: bytes):
         super().__init__(iota_id, data)
 
-        # FIXME: different than original
-        ver, self.param = struct.unpack("<xxxBIxxxxxxxx", self.payload)
+        # Firmware used by Kensington 047d:8054 returns a compact 8-byte
+        # variant, while the originally supported devices use 16 bytes.
+        if len(self.payload) == 8:
+            ver, self.param = struct.unpack("<BxxxI", self.payload)
+        elif len(self.payload) == 16:
+            ver, self.param = struct.unpack("<xxxBIxxxxxxxx", self.payload)
+        else:
+            raise ValueError(
+                "Unsupported WBF parameter IOTA payload length: %d"
+                % len(self.payload)
+            )
         assert ver == 1
 
     @staticmethod

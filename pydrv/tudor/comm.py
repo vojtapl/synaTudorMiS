@@ -16,9 +16,10 @@ SMT_LIKE_PROCESSING = 0x6EA
 
 class Command:
     GET_VERSION = 0x1
-    REST = 0x5
+    RESET = 0x5
     PEEK = 0x7
     POKE = 0x8
+    GPIO = 0xD  # only in the non-Tudor v115 (elara) driver
     PROVISION = 0xE
     RESET_OWNERSHIP = 0x10
     GET_START_INFO = 0x19
@@ -31,17 +32,22 @@ class Command:
     DB_OBJECT_CREATE = 0x47
     TAKE_OWNERSHIP_EX2 = 0x4F
     GET_CERTIFICATE_EX = 0x50
-    SET_IDLE_TIMEOUT = 0x57
+    TIDLE_SET = 0x57
+    SAP_REQUEST = 0x73  # non-original name: request to an in-sensor app
     BOOTLOADER_PATCH = 0x7D
     FRAME_READ = 0x7F
     FRAME_ACQ = 0x80
     FRAME_FINISH = 0x81
     FRAME_STATE_GET = 0x82
+    FLASH_ERASE = 0x84
     EVENT_CONFIG = 0x86
     EVENT_READ = 0x87
     FRAME_STREAM = 0x8B
-    READ_IOTA = 0x8E
-    PAIR = 0x93
+    IOTA_FIND = 0x8E
+    PAIR = 0x93  # non-original name
+    ENROLL_WBF = 0x96
+    IDENTIFY_WBF = 0x99
+    IMAGE_METRICS = 0x9D
     DB2_GET_DB_INFO = 0x9E
     DB2_GET_OBJ_LIST = 0x9F
     DB2_GET_OBJ_INFO = 0xA0
@@ -50,18 +56,22 @@ class Command:
     DB2_CLEANUP = 0xA4
     DB2_WRITE_OBJ = 0xA2
     DB2_FORMAT = 0xA5
-    # UNKNOWN = 0xa6
-    RESET_SBL_MODE = 0xAA
+    MSBM_CONNECT = 0xA6  # Windows Hello SDCP connect, never sent by pydrv
+    RESET_SBL_MODE = 0xAA  # non-original name
+    EXTSIG = 0xAB
     SSO = 0xAC
-    GET_OPINFO = 0xAE
-    GET_HW_INFO = 0xAF
+    OPINFO_GET = 0xAE
+    HW_INFO_GET = 0xAF
+    GET_VERSION2 = 0xB4
+    EXT_COMMAND = 0xE5
 
     UNKNOWN_NAME = "unknown CMD"
     names = {
-        0x01: "VSCFW_CMD_GET_VERSION",
+        0x01: "VCSFW_CMD_GET_VERSION",
         0x05: "VCSFW_CMD_RESET",
         0x07: "VCSFW_CMD_PEEK",
         0x08: "VCSFW_CMD_POKE",
+        0x0D: "VCSFW_CMD_GPIO",
         0x0E: "VCSFW_CMD_PROVISION",
         0x10: "VCSFW_CMD_RESET_OWNERSHIP",
         0x15: UNKNOWN_NAME,
@@ -77,31 +87,37 @@ class Command:
         0x50: "VCSFW_CMD_GET_CERTIFICATE_EX",
         0x57: "VCSFW_CMD_TIDLE_SET",
         0x69: "enter/exit BL mode",
+        0x73: "VCSFW_CMD_SAP_REQUEST (non-original)",
         0x7D: "VCSFW_CMD_BOOTLDR_PATCH",
         0x7F: "VCSFW_CMD_FRAME_READ",
         0x80: "VCSFW_CMD_FRAME_ACQ",
         0x81: "VCSFW_CMD_FRAME_FINISH",
         0x82: "VCSFW_CMD_FRAME_STATE_GET",
+        0x84: "VCSFW_CMD_FLASH_ERASE",
         0x86: "VCSFW_CMD_EVENT_CONFIG",
         0x87: "VCSFW_CMD_EVENT_READ",
         0x8B: "VCSFW_CMD_FRAME_STREAM",
         0x8E: "VCSFW_CMD_IOTA_FIND",
         0x93: "pair",
-        0x96: "enroll start / commit",
-        0x99: "identify match",
-        0x9D: "get image metrics",
+        0x96: "VCSFW_CMD_ENROLL_WBF",
+        0x99: "VCSFW_CMD_IDENTIFY_WBF",
+        0x9D: "VCSFW_CMD_IMAGE_METRICS",
         0x9E: "VCSFW_CMD_DB2_GET_DB_INFO",
         0x9F: "VCSFW_CMD_DB2_GET_OBJECT_LIST",
         0xA0: "VCSFW_CMD_DB2_GET_OBJECT_INFO",
         0xA1: "VCSFW_CMD_DB2_GET_OBJECT_DATA",
         0xA2: "VCSFW_CMD_DB2_WRITE_OBJECT",
-        0xA3: "VCSFW_CMD_DB2_[DELETE_OBJECT or CLEANUP]",
+        0xA3: "VCSFW_CMD_DB2_DELETE_OBJECT",
+        0xA4: "VCSFW_CMD_DB2_CLEANUP",
         0xA5: "VCSFW_CMD_DB2_FORMAT",
-        0xA6: UNKNOWN_NAME,
+        0xA6: "VCSFW_CMD_MSBM_CONNECT",
         0xAA: "reset SBL mode",
+        0xAB: "VCSFW_CMD_EXTSIG",
         0xAC: "VCSFW_CMD_SSO",
         0xAE: "VCSFW_CMD_OPINFO_GET",
         0xAF: "VCSFW_CMD_HW_INFO_GET",
+        0xB4: "VCSFW_CMD_GET_VERSION2",
+        0xE5: "VCSFW_CMD_EXT_COMMAND",
         -1: UNKNOWN_NAME,
     }
 

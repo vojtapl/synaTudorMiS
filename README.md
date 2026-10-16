@@ -32,14 +32,28 @@ writing tests.
 
 ### Most likely supported devices
 
-- per synaWudfBioUsbUwp.inf
-- 06CB:00C9 (tested)
-- 06CB:00D1
-- 06CB:00E7 (tested)
-- 06CB:00FF (tested)
-- 06CB:0124
-- 06CB:0169 (is in the newer driver - the one currently not being looked into)
-- possibly others from non-HP vendors and newer from HP
+- If any of these work for you feel free to submit an issue/PR.
+- per synaWudfBioUsbUwp.inf (Synaptics)
+  - 06CB:00C9 (tested)
+  - 06CB:00D1
+  - 06CB:00E7 (tested)
+  - 06CB:00FF (tested)
+  - 06CB:0124
+  - 06CB:0169 (is in the newer driver - the one currently not being looked into)
+  - possibly others from non-HP vendors and newer from HP (to try these add line
+    with PID-VID combination to synatlsmoc.c), llm found e.g.:
+    - 00C0, 0109, 010A (dll v110);
+    - 019F, 01A4 (dll v171);
+    - 00CA, 00EB, 00E4, 00FD (pre v110)
+
+    - 00FB, 016D (dll v136 - these need a newer sensor_pub_key from dll, and
+      changing supported firmware flag as they run 10.2 or 10.10, which are
+      rejected today)
+    - 0124 (upstream synaptics also claims it)
+
+- per synaWudfBioUsbUwpOne.inf (Kensington)
+  - 047D:8054 (tested)
+  - 06CB:00D6
 
 ### What works:
 
@@ -145,7 +159,8 @@ writing tests.
 - tuid = template UID
 - SID = windows security identifier
 - FW = firmware
-- SBL = ?
+- SBL = something like "Secure/Sensor Boot Loader"
+- WBF = Windows Biometric Framework
 - MiS = match in sensor
 - qm = Synaptics Quantum Matcher
 

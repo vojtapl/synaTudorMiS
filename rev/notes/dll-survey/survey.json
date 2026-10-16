@@ -1,0 +1,2466 @@
+[
+ {
+  "sha": "7fd2b3b55a4676ee573687e5cd3df5ef39bae4b9a72bfa21716a8f5e13e5a4f7",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsbSGX098.dll"
+  ],
+  "size": 2680056,
+  "arch": "x64",
+  "ts": 1553032769,
+  "ver": "6.0.13.1098",
+  "prodver": "6.0.13.1098",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "C:\\work\\dellmouse098-HDRFP-4377\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\SGXProduction\\OutDir\\synaWudfBioUsbSGX098.pdb"
+  ],
+  "nA": 8263,
+  "nU": 312,
+  "kw": {
+   "tudor": 0,
+   "vfm": 123,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 71,
+   "pal": 53,
+   "ssi": 110,
+   "iota": 0,
+   "provision": 8,
+   "pair": 23,
+   "owner": 5
+  },
+  "nuniq": 5451
+ },
+ {
+  "sha": "5463e4c0d75adf1d14580a047ae4e0330e73e5756b308365838fce9038110a94",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsb110_1.dll"
+  ],
+  "size": 1957816,
+  "arch": "x64",
+  "ts": 1658916299,
+  "ver": "6.0.117.1110",
+  "prodver": "6.0.117.1110",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\HPCMIT-110\\HDRFP-8494\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\OutDirUwp\\synaWudfBioUsb110.pdb"
+  ],
+  "nA": 8673,
+  "nU": 189,
+  "kw": {
+   "tudor": 162,
+   "vfm": 209,
+   "VCSFW_CMD_": 38,
+   "VCS_RESULT_": 71,
+   "pal": 133,
+   "ssi": 109,
+   "iota": 20,
+   "provision": 13,
+   "pair": 47,
+   "owner": 6
+  },
+  "nuniq": 4402
+ },
+ {
+  "sha": "4915a353cd30a34bb8fd47f223a66b549f9238df6a7a4f5e72e96f3b0bc68766",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/fp_MSISecurePad-086 _v5_5_5_1086_x64_inf_5.5.5.1086_0x3ca86890/synaWudfBioUsb.dll"
+  ],
+  "size": 2621096,
+  "arch": "x64",
+  "ts": 1518471525,
+  "ver": "5.5.5.1086",
+  "prodver": "5.5.5.1086",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\workspace\\MSI-HDRFP-2578\\sw\\usdk5Wrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\synaWudfBioUsb.pdb"
+  ],
+  "nA": 8651,
+  "nU": 195,
+  "kw": {
+   "tudor": 0,
+   "vfm": 8,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 21,
+   "ssi": 10,
+   "iota": 0,
+   "provision": 0,
+   "pair": 10,
+   "owner": 4
+  },
+  "nuniq": 3543
+ },
+ {
+  "sha": "30133171638eb2ba7515e9f020a18ff54d5f5bbcf2e584db9e7c61efb5114f31",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsb141.dll"
+  ],
+  "size": 1753048,
+  "arch": "x64",
+  "ts": 1633496626,
+  "ver": "6.0.9.1141",
+  "prodver": "6.0.9.1141",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\HPCNBMisPowerButton-141\\HDRFP-7557\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\OutDirUwp\\synaWudfBioUsb141.pdb"
+  ],
+  "nA": 8395,
+  "nU": 206,
+  "kw": {
+   "tudor": 175,
+   "vfm": 226,
+   "VCSFW_CMD_": 39,
+   "VCS_RESULT_": 72,
+   "pal": 143,
+   "ssi": 112,
+   "iota": 26,
+   "provision": 4,
+   "pair": 49,
+   "owner": 6
+  },
+  "nuniq": 4165
+ },
+ {
+  "sha": "6b39051d97e7d28388d1b2f3378f673a261c7164859bd0c0d1694712c2290e56",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/102/synaWudfBioUsb102SGX.dll"
+  ],
+  "size": 1903560,
+  "arch": "x64",
+  "ts": 1552894835,
+  "ver": "5.5.16.1102",
+  "prodver": "5.5.16.1102",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "C:\\workspace\\FPS\\HDRFP-4249\\sw\\usdk5Wrappers\\wbf\\wbdi\\driver\\x64\\x64\\SGXProduction\\synaWudfBioUsb102SGX.pdb"
+  ],
+  "nA": 7322,
+  "nU": 182,
+  "kw": {
+   "tudor": 0,
+   "vfm": 6,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 22,
+   "ssi": 13,
+   "iota": 0,
+   "provision": 0,
+   "pair": 9,
+   "owner": 4
+  },
+  "nuniq": 3169
+ },
+ {
+  "sha": "47be3384339d218bf174b2e2a39b5abeee4cc5e68025d10666829ae78ae5ef56",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsb104.dll"
+  ],
+  "size": 1637848,
+  "arch": "x64",
+  "ts": 1646826407,
+  "ver": "6.0.52.1104",
+  "prodver": "6.0.52.1104",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\LenovoMOH-HyperionBuild\\HDRFP-8013\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\Release\\OutDirUwp\\synaWudfBioUsb104.pdb"
+  ],
+  "nA": 7205,
+  "nU": 184,
+  "kw": {
+   "tudor": 100,
+   "vfm": 149,
+   "VCSFW_CMD_": 35,
+   "VCS_RESULT_": 71,
+   "pal": 129,
+   "ssi": 90,
+   "iota": 30,
+   "provision": 4,
+   "pair": 43,
+   "owner": 6
+  },
+  "nuniq": 3698
+ },
+ {
+  "sha": "5c714d2f3697842aff5daa55709e81a56e59af2625b89d6875bb125641175066",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsb098.dll"
+  ],
+  "size": 1237240,
+  "arch": "x64",
+  "ts": 1553032635,
+  "ver": "6.0.13.1098",
+  "prodver": "6.0.13.1098",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "C:\\work\\dellmouse098-HDRFP-4377\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\Release\\OutDir\\synaWudfBioUsb098.pdb"
+  ],
+  "nA": 6033,
+  "nU": 178,
+  "kw": {
+   "tudor": 0,
+   "vfm": 134,
+   "VCSFW_CMD_": 23,
+   "VCS_RESULT_": 71,
+   "pal": 124,
+   "ssi": 87,
+   "iota": 13,
+   "provision": 4,
+   "pair": 41,
+   "owner": 9
+  },
+  "nuniq": 2796
+ },
+ {
+  "sha": "a459d54cef471c11fe68ee290c3c5677d4669ae6693a6fde092aaa17a1562a1b",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsbSGX104.dll"
+  ],
+  "size": 674264,
+  "arch": "x64",
+  "ts": 1646832403,
+  "ver": "6.0.52.1104",
+  "prodver": "6.0.52.1104",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\LenovoMOH-HyperionBuild\\HDRFP-8013\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\SGXProduction\\OutDirUwp\\synaWudfBioUsbSGX104.pdb"
+  ],
+  "nA": 3089,
+  "nU": 180,
+  "kw": {
+   "tudor": 0,
+   "vfm": 137,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 71,
+   "pal": 54,
+   "ssi": 26,
+   "iota": 3,
+   "provision": 2,
+   "pair": 12,
+   "owner": 4
+  },
+  "nuniq": 1783
+ },
+ {
+  "sha": "62e4420d292694ca6e619b1fb895177d7c3b188224e505dbf5c6204c2917b94b",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/139/synaFpAdapter139.dll"
+  ],
+  "size": 188328,
+  "arch": "x64",
+  "ts": 1611838246,
+  "ver": "6.0.503.1139",
+  "prodver": "6.0.503.1139",
+  "desc": "Synaptics Fingeprint Sensor Driver Adapter",
+  "pdb": [
+   "c:\\work\\YH_HDRFP_6837\\sw\\niseWrappers\\wbf\\adapters\\synaFpAdapter\\x64\\Release\\OutDirUwp\\synaFpAdapter139.pdb"
+  ],
+  "nA": 729,
+  "nU": 116,
+  "kw": {
+   "tudor": 0,
+   "vfm": 0,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 1,
+   "ssi": 1,
+   "iota": 0,
+   "provision": 0,
+   "pair": 0,
+   "owner": 1
+  },
+  "nuniq": 682
+ },
+ {
+  "sha": "7d964d4af88bb4de4f8499e70688cc486753caaf2fdd6f1df1957a3ae25479d6",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/139/synaWudfBioUsb139.dll"
+  ],
+  "size": 1624968,
+  "arch": "x64",
+  "ts": 1611838237,
+  "ver": "6.0.503.1139",
+  "prodver": "6.0.503.1139",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "c:\\work\\YH_HDRFP_6837\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\Release\\OutDirUwp\\synaWudfBioUsb139.pdb"
+  ],
+  "nA": 7213,
+  "nU": 191,
+  "kw": {
+   "tudor": 110,
+   "vfm": 157,
+   "VCSFW_CMD_": 36,
+   "VCS_RESULT_": 71,
+   "pal": 128,
+   "ssi": 96,
+   "iota": 30,
+   "provision": 4,
+   "pair": 40,
+   "owner": 6
+  },
+  "nuniq": 3804
+ },
+ {
+  "sha": "7dae9edd913b6f665e8b8a056dc6f7cb0cb200b6d83e50ad1e6ff040a16fe48d",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsbSGX111.dll"
+  ],
+  "size": 2690960,
+  "arch": "x64",
+  "ts": 1619505822,
+  "ver": "6.0.50.1111",
+  "prodver": "6.0.50.1111",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\HPCNB-111\\HDRFP-7014\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\x64\\SGXProduction\\OutDirUwp\\synaWudfBioUsbSGX111.pdb"
+  ],
+  "nA": 8433,
+  "nU": 268,
+  "kw": {
+   "tudor": 0,
+   "vfm": 181,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 71,
+   "pal": 53,
+   "ssi": 106,
+   "iota": 2,
+   "provision": 6,
+   "pair": 25,
+   "owner": 5
+  },
+  "nuniq": 5413
+ },
+ {
+  "sha": "9749c7dd95ac1313e068fd6d661640d359c763f46fe6ef27da61d71326fcd62e",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsb125.dll"
+  ],
+  "size": 1719720,
+  "arch": "x64",
+  "ts": 1689232334,
+  "ver": "6.0.26.1125",
+  "prodver": "6.0.26.1125",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\Dynabook-125-PipeLine\\DYNABOOK_JIRA-0001\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\OutDirUwp\\synaWudfBioUsb125.pdb"
+  ],
+  "nA": 7911,
+  "nU": 184,
+  "kw": {
+   "tudor": 145,
+   "vfm": 202,
+   "VCSFW_CMD_": 39,
+   "VCS_RESULT_": 71,
+   "pal": 136,
+   "ssi": 94,
+   "iota": 16,
+   "provision": 4,
+   "pair": 41,
+   "owner": 6
+  },
+  "nuniq": 3759
+ },
+ {
+  "sha": "7aadded5e0ede52b6aa9eba2eda0421618d3f7710dc98fcb2f3b8a4c845b7365",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsb061.dll"
+  ],
+  "size": 2705904,
+  "arch": "x64",
+  "ts": 1640239494,
+  "ver": "5.5.2339.1061",
+  "prodver": "5.5.2339.1061",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\WhiteBoxHLK-061_YH\\HDRFP-7849\\sw\\usdk5Wrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\synaWudfBioUsb061.pdb"
+  ],
+  "nA": 9022,
+  "nU": 201,
+  "kw": {
+   "tudor": 0,
+   "vfm": 11,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 22,
+   "ssi": 10,
+   "iota": 1,
+   "provision": 0,
+   "pair": 10,
+   "owner": 4
+  },
+  "nuniq": 3784
+ },
+ {
+  "sha": "2dcb9478b6af3765ff0b0ada353c19bd4a732677f9562eaf25077a07723f24ec",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/102_2/synaWudfBioUsb102SGX.dll"
+  ],
+  "size": 1844680,
+  "arch": "x64",
+  "ts": 1641289400,
+  "ver": "5.5.34.1102",
+  "prodver": "5.5.34.1102",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\HP-CNB-102-116\\HDRFP-7861\\sw\\usdk5Wrappers\\wbf\\wbdi\\driver\\x64\\x64\\SGXProduction\\synaWudfBioUsb102SGX.pdb"
+  ],
+  "nA": 7050,
+  "nU": 104,
+  "kw": {
+   "tudor": 0,
+   "vfm": 6,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 21,
+   "ssi": 12,
+   "iota": 1,
+   "provision": 0,
+   "pair": 9,
+   "owner": 4
+  },
+  "nuniq": 3053
+ },
+ {
+  "sha": "f316c3102ebefa59810195d7f30c1b034e5f844ce9d03de1c25f3bc73d5d25e1",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsb106SGX.dll"
+  ],
+  "size": 1916680,
+  "arch": "x64",
+  "ts": 1588675799,
+  "ver": "5.5.18.1106",
+  "prodver": "5.5.18.1106",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "c:\\workspace\\FPS\\HDRFP-5960\\sw\\usdk5Wrappers\\wbf\\wbdi\\driver\\x64\\x64\\SGXProduction\\synaWudfBioUsb106SGX.pdb"
+  ],
+  "nA": 7290,
+  "nU": 184,
+  "kw": {
+   "tudor": 0,
+   "vfm": 6,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 22,
+   "ssi": 13,
+   "iota": 0,
+   "provision": 0,
+   "pair": 9,
+   "owner": 4
+  },
+  "nuniq": 3211
+ },
+ {
+  "sha": "cdd1c043612361f592918b95024b2735f0afc2a03db8ca8d02b04a7b48275cbd",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsb107.dll"
+  ],
+  "size": 1631176,
+  "arch": "x64",
+  "ts": 1634534121,
+  "ver": "6.0.56.1107",
+  "prodver": "6.0.56.1107",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\LenovoMOH-HyperionBuild\\HDRFP-7626\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\Release\\OutDirUwp\\synaWudfBioUsb107.pdb"
+  ],
+  "nA": 7158,
+  "nU": 185,
+  "kw": {
+   "tudor": 99,
+   "vfm": 152,
+   "VCSFW_CMD_": 35,
+   "VCS_RESULT_": 71,
+   "pal": 125,
+   "ssi": 90,
+   "iota": 29,
+   "provision": 4,
+   "pair": 43,
+   "owner": 6
+  },
+  "nuniq": 3674
+ },
+ {
+  "sha": "ac74b5c7a85a907732b3ab1d90152d6b44eede673f7b91cd19cc1f5601d35d80",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/110/synaWudfBioUsb110.dll"
+  ],
+  "size": 1976760,
+  "arch": "x64",
+  "ts": 1702026351,
+  "ver": "6.0.129.1110",
+  "prodver": "6.0.129.1110",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\HPCMIT-110-Pipeline\\HDRFP-9988\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\OutDirUwp\\synaWudfBioUsb110.pdb"
+  ],
+  "nA": 8938,
+  "nU": 194,
+  "kw": {
+   "tudor": 186,
+   "vfm": 219,
+   "VCSFW_CMD_": 41,
+   "VCS_RESULT_": 71,
+   "pal": 136,
+   "ssi": 120,
+   "iota": 28,
+   "provision": 4,
+   "pair": 48,
+   "owner": 6
+  },
+  "nuniq": 4486
+ },
+ {
+  "sha": "05fc2290708aafe5cb8a45334866266c87b3a45cd1f925a7393238b1fc256357",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/110/synaFpAdapter110.dll"
+  ],
+  "size": 199616,
+  "arch": "x64",
+  "ts": 1702026487,
+  "ver": "6.0.129.1110",
+  "prodver": "6.0.129.1110",
+  "desc": "Synaptics Fingeprint Sensor Driver Adapter",
+  "pdb": [
+   "d:\\Jenkins\\workspace\\HPCMIT-110-Pipeline\\HDRFP-9988\\sw\\niseWrappers\\wbf\\adapters\\synaFpAdapter\\x64\\Release\\OutDirUwp\\synaFpAdapter110.pdb"
+  ],
+  "nA": 728,
+  "nU": 117,
+  "kw": {
+   "tudor": 0,
+   "vfm": 0,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 1,
+   "ssi": 1,
+   "iota": 0,
+   "provision": 0,
+   "pair": 0,
+   "owner": 1
+  },
+  "nuniq": 687
+ },
+ {
+  "sha": "c7847c9408545054f5af52f5a97d228636848c71dd9924af7255e03ef59b05d5",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsb110.dll"
+  ],
+  "size": 1786792,
+  "arch": "x64",
+  "ts": 1686408933,
+  "ver": "6.0.124.1110",
+  "prodver": "6.0.124.1110",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\HPCMIT-110-Pipeline\\HDRFP-9529\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\OutDirUwp\\synaWudfBioUsb110.pdb"
+  ],
+  "nA": 8457,
+  "nU": 192,
+  "kw": {
+   "tudor": 170,
+   "vfm": 211,
+   "VCSFW_CMD_": 41,
+   "VCS_RESULT_": 71,
+   "pal": 134,
+   "ssi": 112,
+   "iota": 22,
+   "provision": 4,
+   "pair": 48,
+   "owner": 6
+  },
+  "nuniq": 4217
+ },
+ {
+  "sha": "d4da276cf20413dc307152d85873aa49cd4b34258f1a24cff8359f1192cfb2dc",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsb147.dll"
+  ],
+  "size": 1730992,
+  "arch": "x64",
+  "ts": 1673243029,
+  "ver": "6.0.15.1147",
+  "prodver": "6.0.15.1147",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\DynabookPB147\\1\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\Release\\OutDirUwp\\synaWudfBioUsb147.pdb"
+  ],
+  "nA": 8237,
+  "nU": 187,
+  "kw": {
+   "tudor": 171,
+   "vfm": 212,
+   "VCSFW_CMD_": 39,
+   "VCS_RESULT_": 71,
+   "pal": 144,
+   "ssi": 105,
+   "iota": 16,
+   "provision": 4,
+   "pair": 50,
+   "owner": 6
+  },
+  "nuniq": 4076
+ },
+ {
+  "sha": "06608422e924da35d958342bd42f94de08f0fec9118b242928787f4bc6b49008",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsbSGX.dll"
+  ],
+  "size": 1661872,
+  "arch": "x64",
+  "ts": 1670215805,
+  "ver": "5.03.3545.0026",
+  "prodver": "5.03.3545.0026",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "c:\\work\\swPreRelease_5_3_3545_26_20221205_HDRFP-8970\\sw\\usdk5Wrappers\\wbf\\wbdi\\driver\\x64\\x64\\LenovoMiSSGXRelease\\synaWudfBioUsb.pdb"
+  ],
+  "nA": 5812,
+  "nU": 187,
+  "kw": {
+   "tudor": 0,
+   "vfm": 4,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 20,
+   "ssi": 8,
+   "iota": 0,
+   "provision": 0,
+   "pair": 9,
+   "owner": 4
+  },
+  "nuniq": 2546
+ },
+ {
+  "sha": "d9aa7e54f3bccf91e9f38e735243f5e1eb1cee0acc0f86e844d657ffe61b92dc",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsb111.dll"
+  ],
+  "size": 1859976,
+  "arch": "x64",
+  "ts": 1665628509,
+  "ver": "6.0.63.1111",
+  "prodver": "6.0.63.1111",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\HPCNB-111_Pipeline_22H2\\HDRFP-8761\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\OutDirUwp\\synaWudfBioUsb111.pdb"
+  ],
+  "nA": 8216,
+  "nU": 183,
+  "kw": {
+   "tudor": 152,
+   "vfm": 199,
+   "VCSFW_CMD_": 37,
+   "VCS_RESULT_": 71,
+   "pal": 132,
+   "ssi": 92,
+   "iota": 22,
+   "provision": 2,
+   "pair": 51,
+   "owner": 6
+  },
+  "nuniq": 4073
+ },
+ {
+  "sha": "1d64c04eb7a8d4985bf381273e57242fa489fc4bac1ed7076ed486a06824c90b",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsb127.dll"
+  ],
+  "size": 1486600,
+  "arch": "x64",
+  "ts": 1585047314,
+  "ver": "6.0.6.1127",
+  "prodver": "6.0.6.1127",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "C:\\work\\HDRFP-5813\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\Release\\OutDirUwp\\synaWudfBioUsb127.pdb"
+  ],
+  "nA": 7692,
+  "nU": 193,
+  "kw": {
+   "tudor": 163,
+   "vfm": 222,
+   "VCSFW_CMD_": 37,
+   "VCS_RESULT_": 71,
+   "pal": 143,
+   "ssi": 105,
+   "iota": 16,
+   "provision": 4,
+   "pair": 50,
+   "owner": 6
+  },
+  "nuniq": 3573
+ },
+ {
+  "sha": "814ee27fabe88e47690c5340708a9ec86833b5c7755b645a8b21cd0c770b3e70",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsb105.dll"
+  ],
+  "size": 2017512,
+  "arch": "x64",
+  "ts": 1691930127,
+  "ver": "6.0.64.1105",
+  "prodver": "6.0.64.1105",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\LenovoMis-105-136-154-pipeline\\HDRFP-9678\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\OutDirUwp\\synaWudfBioUsb105.pdb"
+  ],
+  "nA": 9292,
+  "nU": 211,
+  "kw": {
+   "tudor": 188,
+   "vfm": 251,
+   "VCSFW_CMD_": 44,
+   "VCS_RESULT_": 72,
+   "pal": 147,
+   "ssi": 114,
+   "iota": 35,
+   "provision": 13,
+   "pair": 59,
+   "owner": 6
+  },
+  "nuniq": 4535
+ },
+ {
+  "sha": "ef5ebbaace5391cabaa1445642395be7f0fb59d03d11d38f25e1e5546f656ebe",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsb106.dll"
+  ],
+  "size": 2504968,
+  "arch": "x64",
+  "ts": 1588676481,
+  "ver": "5.5.18.1106",
+  "prodver": "5.5.18.1106",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "c:\\workspace\\FPS\\HDRFP-5960\\sw\\usdk5Wrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\synaWudfBioUsb106.pdb"
+  ],
+  "nA": 8808,
+  "nU": 182,
+  "kw": {
+   "tudor": 0,
+   "vfm": 11,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 22,
+   "ssi": 11,
+   "iota": 0,
+   "provision": 0,
+   "pair": 10,
+   "owner": 4
+  },
+  "nuniq": 3578
+ },
+ {
+  "sha": "5b0ab4c4c44d7858c169e3b3c09141b2e66cbe4a111f89ef0000621abb10087c",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsb52.dll"
+  ],
+  "size": 2613336,
+  "arch": "x64",
+  "ts": 1508274247,
+  "ver": "5.5.4020.1052",
+  "prodver": "5.5.4020.1052",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\workspace\\pqi-HDRFP-1948\\sw\\usdk5Wrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\synaWudfBioUsb52.pdb"
+  ],
+  "nA": 8670,
+  "nU": 195,
+  "kw": {
+   "tudor": 0,
+   "vfm": 9,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 21,
+   "ssi": 10,
+   "iota": 0,
+   "provision": 0,
+   "pair": 10,
+   "owner": 4
+  },
+  "nuniq": 3561
+ },
+ {
+  "sha": "03b8b6ec797897816b4739456caa5dc47fb19e26ce3a1985c33d11dd7a5abc59",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsb134.dll"
+  ],
+  "size": 1484168,
+  "arch": "x64",
+  "ts": 1660113610,
+  "ver": "6.0.17.1134",
+  "prodver": "6.0.17.1134",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\FujitsuPB-134Pipeline\\Fujitsu_JIRA-01\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\Release\\OutDirUwp\\synaWudfBioUsb134.pdb"
+  ],
+  "nA": 7814,
+  "nU": 194,
+  "kw": {
+   "tudor": 168,
+   "vfm": 212,
+   "VCSFW_CMD_": 38,
+   "VCS_RESULT_": 71,
+   "pal": 144,
+   "ssi": 106,
+   "iota": 16,
+   "provision": 4,
+   "pair": 50,
+   "owner": 6
+  },
+  "nuniq": 3692
+ },
+ {
+  "sha": "644d9915b92a443142f64d397544a04f39bcb8fbab387d5753edb23486af50f8",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsb115.dll"
+  ],
+  "size": 1517136,
+  "arch": "x64",
+  "ts": 1550582441,
+  "ver": "6.0.5.1115",
+  "prodver": "6.0.5.1115",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "C:\\work\\ClevoGamma-115_HDRFP-4271\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\OutDirUwp\\synaWudfBioUsb115.pdb"
+  ],
+  "nA": 6670,
+  "nU": 172,
+  "kw": {
+   "tudor": 0,
+   "vfm": 156,
+   "VCSFW_CMD_": 34,
+   "VCS_RESULT_": 71,
+   "pal": 124,
+   "ssi": 83,
+   "iota": 24,
+   "provision": 2,
+   "pair": 40,
+   "owner": 6
+  },
+  "nuniq": 3397
+ },
+ {
+  "sha": "a38a206fd0b8d078d5267c803dbe9a85f502935c9aa08414333f04e959a6737c",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsb116SGX.dll"
+  ],
+  "size": 1817368,
+  "arch": "x64",
+  "ts": 1599626316,
+  "ver": "5.5.13.1116",
+  "prodver": "5.5.13.1116",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\HP-CNB\\HDRFP-6330\\sw\\usdk5Wrappers\\wbf\\wbdi\\driver\\x64\\x64\\SGXProduction\\synaWudfBioUsb116SGX.pdb"
+  ],
+  "nA": 7036,
+  "nU": 105,
+  "kw": {
+   "tudor": 0,
+   "vfm": 6,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 21,
+   "ssi": 9,
+   "iota": 1,
+   "provision": 0,
+   "pair": 9,
+   "owner": 4
+  },
+  "nuniq": 3046
+ },
+ {
+  "sha": "e52037189ba0f45aafa4b6705ffc452de3cade5920db6fc7e18b5114df0678e6",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsb139.dll"
+  ],
+  "size": 1635320,
+  "arch": "x64",
+  "ts": 1630049985,
+  "ver": "6.0.24.1139",
+  "prodver": "6.0.24.1139",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\LNV_MohPBT\\HDRFP-7490\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\Release\\OutDirUwp\\synaWudfBioUsb139.pdb"
+  ],
+  "nA": 7399,
+  "nU": 190,
+  "kw": {
+   "tudor": 110,
+   "vfm": 157,
+   "VCSFW_CMD_": 36,
+   "VCS_RESULT_": 71,
+   "pal": 128,
+   "ssi": 96,
+   "iota": 30,
+   "provision": 4,
+   "pair": 43,
+   "owner": 6
+  },
+  "nuniq": 3886
+ },
+ {
+  "sha": "84ea7be162521ccf8a0bb7deb72e1d9c9f288cbb14104c5a1bad98d21859cf11",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/127/synaWudfBioUsb127.dll"
+  ],
+  "size": 1486816,
+  "arch": "x64",
+  "ts": 1585047314,
+  "ver": "6.0.6.1127",
+  "prodver": "6.0.6.1127",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "C:\\work\\HDRFP-5813\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\Release\\OutDirUwp\\synaWudfBioUsb127.pdb"
+  ],
+  "nA": 7698,
+  "nU": 193,
+  "kw": {
+   "tudor": 163,
+   "vfm": 222,
+   "VCSFW_CMD_": 37,
+   "VCS_RESULT_": 71,
+   "pal": 143,
+   "ssi": 105,
+   "iota": 16,
+   "provision": 4,
+   "pair": 50,
+   "owner": 6
+  },
+  "nuniq": 3579
+ },
+ {
+  "sha": "92d4449fc049ae3378242edf73af853a9b9e9ae58778fee1a3008c3289dcd23e",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/127/synaFpAdapter127.dll"
+  ],
+  "size": 185328,
+  "arch": "x64",
+  "ts": 1585047374,
+  "ver": "6.0.6.1127",
+  "prodver": "6.0.6.1127",
+  "desc": "Synaptics Fingeprint Sensor Driver Adapter",
+  "pdb": [
+   "C:\\work\\HDRFP-5813\\sw\\niseWrappers\\wbf\\adapters\\synaFpAdapter\\x64\\Release\\OutDirUwp\\synaFpAdapter127.pdb"
+  ],
+  "nA": 727,
+  "nU": 117,
+  "kw": {
+   "tudor": 0,
+   "vfm": 0,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 1,
+   "ssi": 1,
+   "iota": 0,
+   "provision": 0,
+   "pair": 0,
+   "owner": 1
+  },
+  "nuniq": 678
+ },
+ {
+  "sha": "4731ed2db5dc85cac9dd651ac356a1c55cf3fbc9e8c26fd4342707a16ea6f33d",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsb061SGX.dll"
+  ],
+  "size": 1852864,
+  "arch": "x64",
+  "ts": 1640239370,
+  "ver": "5.5.2339.1061",
+  "prodver": "5.5.2339.1061",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\WhiteBoxHLK-061_YH\\HDRFP-7849\\sw\\usdk5Wrappers\\wbf\\wbdi\\driver\\x64\\x64\\SGXProduction\\synaWudfBioUsb061SGX.pdb"
+  ],
+  "nA": 6922,
+  "nU": 112,
+  "kw": {
+   "tudor": 0,
+   "vfm": 6,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 21,
+   "ssi": 12,
+   "iota": 1,
+   "provision": 0,
+   "pair": 9,
+   "owner": 4
+  },
+  "nuniq": 3054
+ },
+ {
+  "sha": "f131c96e834851448af5846c0681f5b4257c87cb3160c95373b89667d22eca17",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsb102.dll"
+  ],
+  "size": 2379016,
+  "arch": "x64",
+  "ts": 1593677983,
+  "ver": "5.5.30.1102",
+  "prodver": "5.5.30.1102",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "C:\\work\\HDRFP-6111\\sw\\usdk5Wrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\synaWudfBioUsb102.pdb"
+  ],
+  "nA": 8943,
+  "nU": 196,
+  "kw": {
+   "tudor": 0,
+   "vfm": 11,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 22,
+   "ssi": 7,
+   "iota": 1,
+   "provision": 0,
+   "pair": 10,
+   "owner": 4
+  },
+  "nuniq": 3685
+ },
+ {
+  "sha": "9c509164fce76f2c16629182d57ac701d39a0f186ba26b6917a2069151bd8199",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsb101.dll"
+  ],
+  "size": 1135328,
+  "arch": "x64",
+  "ts": 1528997745,
+  "ver": "6.0.8.1101",
+  "prodver": "6.0.8.1101",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "C:\\src\\pqidongle\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\Release\\OutDir\\synaWudfBioUsb101.pdb"
+  ],
+  "nA": 4688,
+  "nU": 168,
+  "kw": {
+   "tudor": 63,
+   "vfm": 125,
+   "VCSFW_CMD_": 33,
+   "VCS_RESULT_": 71,
+   "pal": 54,
+   "ssi": 30,
+   "iota": 2,
+   "provision": 1,
+   "pair": 20,
+   "owner": 6
+  },
+  "nuniq": 2108
+ },
+ {
+  "sha": "ea310a53eb4e761451034c01809a3b320b6b09ecf84f518a282aabac24726690",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsbSGX108.dll"
+  ],
+  "size": 711128,
+  "arch": "x64",
+  "ts": 1643264305,
+  "ver": "6.0.32.1108",
+  "prodver": "6.0.32.1108",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\LenovoPowerButton-108\\HDRFP-7931\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\SGXProduction\\OutDirUwp\\synaWudfBioUsbSGX108.pdb"
+  ],
+  "nA": 3524,
+  "nU": 188,
+  "kw": {
+   "tudor": 0,
+   "vfm": 136,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 71,
+   "pal": 91,
+   "ssi": 29,
+   "iota": 2,
+   "provision": 2,
+   "pair": 10,
+   "owner": 4
+  },
+  "nuniq": 1938
+ },
+ {
+  "sha": "0067b8e879bb489441b97fe5d024f8af7367ce1a07ea432461edc57e45d87344",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsb108.dll"
+  ],
+  "size": 1609712,
+  "arch": "x64",
+  "ts": 1643262209,
+  "ver": "6.0.32.1108",
+  "prodver": "6.0.32.1108",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\LenovoPowerButton-108\\HDRFP-7931\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\Release\\OutDirUwp\\synaWudfBioUsb108.pdb"
+  ],
+  "nA": 6973,
+  "nU": 182,
+  "kw": {
+   "tudor": 107,
+   "vfm": 147,
+   "VCSFW_CMD_": 36,
+   "VCS_RESULT_": 71,
+   "pal": 126,
+   "ssi": 90,
+   "iota": 29,
+   "provision": 4,
+   "pair": 40,
+   "owner": 6
+  },
+  "nuniq": 3588
+ },
+ {
+  "sha": "e903873b94d7189b17990ccf23e5ab25c3ad4e44a58f85301300efb65165c1b7",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsb148.dll"
+  ],
+  "size": 1872896,
+  "arch": "ARM64",
+  "ts": 1652466153,
+  "ver": "6.0.8.1148",
+  "prodver": "6.0.8.1148",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\LenovoMis-ARMBuild\\HDRFP-8188\\sw\\niseWrappers\\wbf\\wbdi\\driver\\ARM64\\ARM64\\Release\\OutDirUwp\\synaWudfBioUsb148.pdb"
+  ],
+  "nA": 8010,
+  "nU": 197,
+  "kw": {
+   "tudor": 182,
+   "vfm": 242,
+   "VCSFW_CMD_": 41,
+   "VCS_RESULT_": 72,
+   "pal": 144,
+   "ssi": 115,
+   "iota": 30,
+   "provision": 3,
+   "pair": 49,
+   "owner": 6
+  },
+  "nuniq": 3854
+ },
+ {
+  "sha": "ab3aa46e9c5edd38cf3ee0ff6d2e531fdeec85677c9c1d3ecf314565c0be7cee",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsb051.dll"
+  ],
+  "size": 3413960,
+  "arch": "x64",
+  "ts": 1630923337,
+  "ver": "5.5.803.1051",
+  "prodver": "5.5.803.1051",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\Toshiba-051_pipeline\\Toshiba_JIRA-01\\sw\\usdk5Wrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\synaWudfBioUsb051.pdb"
+  ],
+  "nA": 12512,
+  "nU": 209,
+  "kw": {
+   "tudor": 0,
+   "vfm": 12,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 23,
+   "ssi": 49,
+   "iota": 1,
+   "provision": 0,
+   "pair": 12,
+   "owner": 4
+  },
+  "nuniq": 6235
+ },
+ {
+  "sha": "0f8d04033c3d6844ccd75cc2da7e118b400306cbddcf02da66428de9576a0f42",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/124/synaWudfBioUsb124.dll"
+  ],
+  "size": 2672392,
+  "arch": "x64",
+  "ts": 1597917651,
+  "ver": "5.5.3.1124",
+  "prodver": "5.5.3.1124",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\AcerAir-124\\Acer_JIRA-6271\\sw\\usdk5Wrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\synaWudfBioUsb124.pdb"
+  ],
+  "nA": 8952,
+  "nU": 204,
+  "kw": {
+   "tudor": 0,
+   "vfm": 10,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 22,
+   "ssi": 10,
+   "iota": 1,
+   "provision": 0,
+   "pair": 10,
+   "owner": 4
+  },
+  "nuniq": 3803
+ },
+ {
+  "sha": "f8157df1911da32972c24e8130e5969ebfeec5a68fe9059453c9499043c87d78",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsb112.dll"
+  ],
+  "size": 1623080,
+  "arch": "x64",
+  "ts": 1649323001,
+  "ver": "6.0.33.1112",
+  "prodver": "6.0.33.1112",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\Panasonic-112-WSpipeline\\Panasonic_JIRA-0001\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\OutDirUwp\\synaWudfBioUsb112.pdb"
+  ],
+  "nA": 7863,
+  "nU": 184,
+  "kw": {
+   "tudor": 145,
+   "vfm": 213,
+   "VCSFW_CMD_": 39,
+   "VCS_RESULT_": 71,
+   "pal": 136,
+   "ssi": 95,
+   "iota": 16,
+   "provision": 4,
+   "pair": 41,
+   "owner": 6
+  },
+  "nuniq": 3814
+ },
+ {
+  "sha": "439585f524fca28f5d019a5e20daee158a8ca5ccdd05ad44adb50503fe0c4db1",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsb136.dll"
+  ],
+  "size": 2036144,
+  "arch": "x64",
+  "ts": 1692503612,
+  "ver": "6.0.39.1136",
+  "prodver": "6.0.39.1136",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\LenovoMis-105-136-154-pipeline\\HDRFP-9703\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\OutDirUwp\\synaWudfBioUsb136.pdb"
+  ],
+  "nA": 9399,
+  "nU": 211,
+  "kw": {
+   "tudor": 193,
+   "vfm": 263,
+   "VCSFW_CMD_": 44,
+   "VCS_RESULT_": 72,
+   "pal": 147,
+   "ssi": 117,
+   "iota": 35,
+   "provision": 13,
+   "pair": 59,
+   "owner": 6
+  },
+  "nuniq": 4563
+ },
+ {
+  "sha": "3f3fc57b4225bf86b6380a6dcec97c04c5d3ebbfe5f1e665e7ec854526d43ca2",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsb129.dll"
+  ],
+  "size": 1650064,
+  "arch": "x64",
+  "ts": 1670248436,
+  "ver": "6.0.23.1129",
+  "prodver": "6.0.23.1129",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\LenovoMOH_PowerButton_Pipeline\\HDRFP-8974\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\Release\\OutDirUwp\\synaWudfBioUsb129.pdb"
+  ],
+  "nA": 7361,
+  "nU": 189,
+  "kw": {
+   "tudor": 111,
+   "vfm": 158,
+   "VCSFW_CMD_": 36,
+   "VCS_RESULT_": 71,
+   "pal": 129,
+   "ssi": 96,
+   "iota": 30,
+   "provision": 4,
+   "pair": 43,
+   "owner": 6
+  },
+  "nuniq": 3869
+ },
+ {
+  "sha": "96227acae19fd3df31fd006941f2ee89626a726146a819abe75fab1bb8c4ccbc",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsbSGX111_2.dll"
+  ],
+  "size": 748504,
+  "arch": "x64",
+  "ts": 1644318356,
+  "ver": "6.0.60.1111",
+  "prodver": "6.0.60.1111",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\HPCNB-111_Pipeline_sgx\\HDRFP-7840\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\x64\\SGXProduction\\OutDirUwp\\synaWudfBioUsbSGX111.pdb"
+  ],
+  "nA": 3398,
+  "nU": 179,
+  "kw": {
+   "tudor": 0,
+   "vfm": 181,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 71,
+   "pal": 53,
+   "ssi": 24,
+   "iota": 2,
+   "provision": 0,
+   "pair": 11,
+   "owner": 4
+  },
+  "nuniq": 1740
+ },
+ {
+  "sha": "3ac74a0768caf6af6f2cc70de9d0595911ae21638184a323973355b4cd846ffe",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsb66.dll"
+  ],
+  "size": 2683672,
+  "arch": "x64",
+  "ts": 1605049652,
+  "ver": "5.5.3534.1066",
+  "prodver": "5.5.3534.1066",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\workspace\\HDRFP-6577\\sw\\usdk5Wrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\synaWudfBioUsb66.pdb"
+  ],
+  "nA": 9230,
+  "nU": 220,
+  "kw": {
+   "tudor": 0,
+   "vfm": 10,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 21,
+   "ssi": 12,
+   "iota": 0,
+   "provision": 0,
+   "pair": 10,
+   "owner": 4
+  },
+  "nuniq": 3749
+ },
+ {
+  "sha": "d4d8ca1c15c70047aaaa857f82b4b738aabab377be351e585c814ae0d4bac008",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsb124.dll"
+  ],
+  "size": 2652632,
+  "arch": "x64",
+  "ts": 1634270305,
+  "ver": "5.5.7.1124",
+  "prodver": "5.5.7.1124",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\Acer-124\\HDRFP-7603\\sw\\usdk5Wrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\synaWudfBioUsb124.pdb"
+  ],
+  "nA": 8944,
+  "nU": 202,
+  "kw": {
+   "tudor": 0,
+   "vfm": 10,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 22,
+   "ssi": 7,
+   "iota": 1,
+   "provision": 0,
+   "pair": 10,
+   "owner": 4
+  },
+  "nuniq": 3845
+ },
+ {
+  "sha": "54c03e1116658b17d46ce00bcc6301819bf671c67bfcb3b9b9890b4bbe9b531b",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsb61.dll"
+  ],
+  "size": 2597976,
+  "arch": "x64",
+  "ts": 1502691174,
+  "ver": "5.5.2316.1061",
+  "prodver": "5.5.2316.1061",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\workspace\\WBHLK_2315\\sw\\usdk5Wrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\synaWudfBioUsb61.pdb"
+  ],
+  "nA": 8664,
+  "nU": 195,
+  "kw": {
+   "tudor": 0,
+   "vfm": 9,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 21,
+   "ssi": 10,
+   "iota": 0,
+   "provision": 0,
+   "pair": 10,
+   "owner": 4
+  },
+  "nuniq": 3553
+ },
+ {
+  "sha": "5f1172dff5911f0e375d7002a934ff5afe86db71d6a58fc3dbd8f99cb9126c48",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/111/synaWudfBioUsb111.dll"
+  ],
+  "size": 1662744,
+  "arch": "x64",
+  "ts": 1600937436,
+  "ver": "6.0.46.1111",
+  "prodver": "6.0.46.1111",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\HPCNB-111\\HDRFP-6462\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\OutDirUwp\\synaWudfBioUsb111.pdb"
+  ],
+  "nA": 7665,
+  "nU": 185,
+  "kw": {
+   "tudor": 144,
+   "vfm": 195,
+   "VCSFW_CMD_": 36,
+   "VCS_RESULT_": 71,
+   "pal": 131,
+   "ssi": 89,
+   "iota": 23,
+   "provision": 2,
+   "pair": 51,
+   "owner": 6
+  },
+  "nuniq": 3693
+ },
+ {
+  "sha": "b11a700a1f04ece4a0314b9446ead043aada164e8457df265f16d26d0d1ab445",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/111/synaFpAdapter111.dll"
+  ],
+  "size": 186152,
+  "arch": "x64",
+  "ts": 1600937456,
+  "ver": "6.0.46.1111",
+  "prodver": "6.0.46.1111",
+  "desc": "Synaptics Fingeprint Sensor Driver Adapter",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\HPCNB-111\\HDRFP-6462\\sw\\niseWrappers\\wbf\\adapters\\synaFpAdapter\\x64\\Release\\OutDirUwp\\synaFpAdapter111.pdb"
+  ],
+  "nA": 721,
+  "nU": 117,
+  "kw": {
+   "tudor": 0,
+   "vfm": 0,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 1,
+   "ssi": 1,
+   "iota": 0,
+   "provision": 0,
+   "pair": 0,
+   "owner": 1
+  },
+  "nuniq": 673
+ },
+ {
+  "sha": "6f23f6de1a885d5515ae10434efb4847c3e26b5b95123237936ddcab94625254",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsb146.dll"
+  ],
+  "size": 2838600,
+  "arch": "x64",
+  "ts": 1624520860,
+  "ver": "5.02.5029.0026",
+  "prodver": "5.02.5029.0026",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\HP-IPT-026\\swPreRelease_5_2_5029_26_20210624_HDRFP-HDRFP-7250\\sw\\usdk5Wrappers\\wbf\\wbdi\\driver\\x64\\x64\\HPRelease\\synaWudfBioUsb146.pdb"
+  ],
+  "nA": 8795,
+  "nU": 185,
+  "kw": {
+   "tudor": 0,
+   "vfm": 10,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 20,
+   "ssi": 8,
+   "iota": 0,
+   "provision": 0,
+   "pair": 4,
+   "owner": 9
+  },
+  "nuniq": 3561
+ },
+ {
+  "sha": "2f9403a9248928762edb596f1c480bf77c0f6d15a3cbad2b92718dc17c93eadc",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/107/synaWudfBioUsbSGX107.dll"
+  ],
+  "size": 2575112,
+  "arch": "x64",
+  "ts": 1587548864,
+  "ver": "6.0.48.1107",
+  "prodver": "6.0.48.1107",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "c:\\work\\107_HDRFP_5919\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\x64\\SGXProduction\\OutDirUwp\\synaWudfBioUsbSGX107.pdb"
+  ],
+  "nA": 7908,
+  "nU": 270,
+  "kw": {
+   "tudor": 0,
+   "vfm": 125,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 71,
+   "pal": 53,
+   "ssi": 107,
+   "iota": 2,
+   "provision": 8,
+   "pair": 25,
+   "owner": 5
+  },
+  "nuniq": 5346
+ },
+ {
+  "sha": "0a9e03922370948ab34b9d262247f3567770e3220eec99ec0f19c147b2ba02c0",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/107/synaFpAdapter107.dll"
+  ],
+  "size": 189728,
+  "arch": "x64",
+  "ts": 1587548881,
+  "ver": "6.0.48.1107",
+  "prodver": "6.0.48.1107",
+  "desc": "Synaptics Fingeprint Sensor Driver Adapter",
+  "pdb": [
+   "c:\\work\\107_HDRFP_5919\\sw\\niseWrappers\\wbf\\adapters\\synaFpAdapter\\x64\\SGX Release\\OutDirUwp\\synaFpAdapter107.pdb"
+  ],
+  "nA": 717,
+  "nU": 117,
+  "kw": {
+   "tudor": 0,
+   "vfm": 0,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 1,
+   "ssi": 1,
+   "iota": 0,
+   "provision": 0,
+   "pair": 0,
+   "owner": 1
+  },
+  "nuniq": 672
+ },
+ {
+  "sha": "5301804fcabbbbf4d9ec62b3932eccb90a79997e28bb09373a1cc843f7e483b1",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsb151.dll"
+  ],
+  "size": 1776520,
+  "arch": "x64",
+  "ts": 1654595470,
+  "ver": "6.0.8.1151",
+  "prodver": "6.0.8.1151",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\Targus-151-Pipeline\\Targus-151_v9999\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\OutDirUwp\\synaWudfBioUsb151.pdb"
+  ],
+  "nA": 8556,
+  "nU": 208,
+  "kw": {
+   "tudor": 175,
+   "vfm": 237,
+   "VCSFW_CMD_": 39,
+   "VCS_RESULT_": 72,
+   "pal": 143,
+   "ssi": 114,
+   "iota": 26,
+   "provision": 4,
+   "pair": 49,
+   "owner": 6
+  },
+  "nuniq": 4218
+ },
+ {
+  "sha": "6551fc79dc9849e8a56dd5e6ed2b140a58d472f911a7ed262f36aaa54aea7f61",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/synaWudfBioUsb142.dll"
+  ],
+  "size": 1704392,
+  "arch": "x64",
+  "ts": 1626402927,
+  "ver": "6.0.2.1142",
+  "prodver": "6.0.2.1142",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\DynabookAltairG-142PipeLine\\Dynabook_JIRA-0001\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\OutDirUwp\\synaWudfBioUsb142.pdb"
+  ],
+  "nA": 7859,
+  "nU": 184,
+  "kw": {
+   "tudor": 142,
+   "vfm": 200,
+   "VCSFW_CMD_": 34,
+   "VCS_RESULT_": 71,
+   "pal": 132,
+   "ssi": 92,
+   "iota": 16,
+   "provision": 4,
+   "pair": 41,
+   "owner": 6
+  },
+  "nuniq": 3750
+ },
+ {
+  "sha": "0e21ae43096b4a7189b92cbb29251e9266d46293bd421f16add39b60f6db1208",
+  "paths": [
+   "/home/vojtapl/Projects/synaTudorMiS/HP drivers/SP141455/src/dchu_Driver/synaWudfBioUsb111.dll",
+   "/home/vojtapl/Projects/synaTudorMiS/reverse engineering/SP141455/Ghidra/synaWudfBioUsb111.dll"
+  ],
+  "size": 1809368,
+  "arch": "x64",
+  "ts": 1642149609,
+  "ver": "6.0.59.1111",
+  "prodver": "6.0.59.1111",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\HPCNB-111_Pipeline_sgx\\HDRFP-7900\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\OutDirUwp\\synaWudfBioUsb111.pdb"
+  ],
+  "nA": 8167,
+  "nU": 183,
+  "kw": {
+   "tudor": 150,
+   "vfm": 199,
+   "VCSFW_CMD_": 36,
+   "VCS_RESULT_": 71,
+   "pal": 132,
+   "ssi": 92,
+   "iota": 22,
+   "provision": 2,
+   "pair": 51,
+   "owner": 6
+  },
+  "nuniq": 4046
+ },
+ {
+  "sha": "0f7fdffcf4a694a47e6b2c0d9523581ff4338971e563f4be6b5e130f2bf20c2c",
+  "paths": [
+   "/home/vojtapl/Projects/synaTudorMiS/HP drivers/SP141455/src/dchu_Driver/synaFpAdapter111.dll",
+   "/home/vojtapl/Projects/synaTudorMiS/reverse engineering/SP141455/Ghidra/synaFpAdapter111.dll"
+  ],
+  "size": 189408,
+  "arch": "x64",
+  "ts": 1642149792,
+  "ver": "6.0.59.1111",
+  "prodver": "6.0.59.1111",
+  "desc": "Synaptics Fingeprint Sensor Driver Adapter",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\HPCNB-111_Pipeline_sgx\\HDRFP-7900\\sw\\niseWrappers\\wbf\\adapters\\synaFpAdapter\\x64\\Release\\OutDirUwp\\synaFpAdapter111.pdb"
+  ],
+  "nA": 733,
+  "nU": 116,
+  "kw": {
+   "tudor": 0,
+   "vfm": 0,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 1,
+   "ssi": 1,
+   "iota": 0,
+   "provision": 0,
+   "pair": 0,
+   "owner": 1
+  },
+  "nuniq": 688
+ },
+ {
+  "sha": "3974b4ac7fddb0932877a16fe9919bdea5a6dd4ed889e233771f9e33e6357e19",
+  "paths": [
+   "/home/vojtapl/Projects/synaTudorMiS/HP drivers/SP148234/dchu_Driver/synaWudfBioUsb111.dll",
+   "/home/vojtapl/Projects/synaTudorMiS/reverse engineering/SP148234/Ghidra/synaWudfBioUsb111.dll"
+  ],
+  "size": 1838016,
+  "arch": "x64",
+  "ts": 1657064128,
+  "ver": "6.0.62.1111",
+  "prodver": "6.0.62.1111",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\HPCNB-111_Pipeline_22H2\\HDRFP-8405\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\OutDirUwp\\synaWudfBioUsb111.pdb"
+  ],
+  "nA": 8188,
+  "nU": 182,
+  "kw": {
+   "tudor": 150,
+   "vfm": 199,
+   "VCSFW_CMD_": 36,
+   "VCS_RESULT_": 71,
+   "pal": 132,
+   "ssi": 92,
+   "iota": 22,
+   "provision": 2,
+   "pair": 51,
+   "owner": 6
+  },
+  "nuniq": 4069
+ },
+ {
+  "sha": "edaf4ebc0b03780de2ac0be9350cb99ace14350da45bcb3dd787d56631b6b25a",
+  "paths": [
+   "/home/vojtapl/Projects/synaTudorMiS/HP drivers/SP148234/dchu_Driver/synaFpAdapter111.dll",
+   "/home/vojtapl/Projects/synaTudorMiS/reverse engineering/SP148234/Ghidra/synaFpAdapter111.dll"
+  ],
+  "size": 192464,
+  "arch": "x64",
+  "ts": 1657064221,
+  "ver": "6.0.62.1111",
+  "prodver": "6.0.62.1111",
+  "desc": "Synaptics Fingeprint Sensor Driver Adapter",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\HPCNB-111_Pipeline_22H2\\HDRFP-8405\\sw\\niseWrappers\\wbf\\adapters\\synaFpAdapter\\x64\\Release\\OutDirUwp\\synaFpAdapter111.pdb"
+  ],
+  "nA": 721,
+  "nU": 114,
+  "kw": {
+   "tudor": 0,
+   "vfm": 0,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 1,
+   "ssi": 1,
+   "iota": 0,
+   "provision": 0,
+   "pair": 0,
+   "owner": 1
+  },
+  "nuniq": 681
+ },
+ {
+  "sha": "97109c9876c4dcee3e89b003c00d6420289e37f176b7a77296dbfefc69bd581a",
+  "paths": [
+   "/home/vojtapl/Projects/synaTudorMiS/HP drivers/SP132990/dchu_Driver/synaWudfBioUsb111.dll"
+  ],
+  "size": 1662352,
+  "arch": "x64",
+  "ts": 1615888743,
+  "ver": "6.0.49.1111",
+  "prodver": "6.0.49.1111",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\HPCNB-111\\HDRFP-6824\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\OutDirUwp\\synaWudfBioUsb111.pdb"
+  ],
+  "nA": 7668,
+  "nU": 184,
+  "kw": {
+   "tudor": 144,
+   "vfm": 195,
+   "VCSFW_CMD_": 36,
+   "VCS_RESULT_": 71,
+   "pal": 131,
+   "ssi": 89,
+   "iota": 23,
+   "provision": 2,
+   "pair": 51,
+   "owner": 6
+  },
+  "nuniq": 3704
+ },
+ {
+  "sha": "9e799ed61d85f8391f77b0f20f6baa34ed1a4fff53886f79f8c5f7ef878a8632",
+  "paths": [
+   "/home/vojtapl/Projects/synaTudorMiS/HP drivers/SP132990/dchu_Driver/synaFpAdapter111.dll"
+  ],
+  "size": 185752,
+  "arch": "x64",
+  "ts": 1615888751,
+  "ver": "6.0.49.1111",
+  "prodver": "6.0.49.1111",
+  "desc": "Synaptics Fingeprint Sensor Driver Adapter",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\HPCNB-111\\HDRFP-6824\\sw\\niseWrappers\\wbf\\adapters\\synaFpAdapter\\x64\\Release\\OutDirUwp\\synaFpAdapter111.pdb"
+  ],
+  "nA": 725,
+  "nU": 116,
+  "kw": {
+   "tudor": 0,
+   "vfm": 0,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 1,
+   "ssi": 1,
+   "iota": 0,
+   "provision": 0,
+   "pair": 0,
+   "owner": 1
+  },
+  "nuniq": 678
+ },
+ {
+  "sha": "64f2e6d1631c4c1ed4fbd54369c2b16fc4dae0271405a13211c1222b55c84a4b",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/downloads/msucat-6.0.19.1167/x/synaWudfBioUsb167.dll"
+  ],
+  "size": 2040384,
+  "arch": "x64",
+  "ts": 1775738191,
+  "ver": "6.0.19.1167",
+  "prodver": "6.0.19.1167",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\LenovoMis-105-136-154-pipeline\\HDRFP-12060\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\OutDirUwp\\synaWudfBioUsb167.pdb"
+  ],
+  "nA": 9860,
+  "nU": 226,
+  "kw": {
+   "tudor": 212,
+   "vfm": 272,
+   "VCSFW_CMD_": 47,
+   "VCS_RESULT_": 72,
+   "pal": 151,
+   "ssi": 131,
+   "iota": 48,
+   "provision": 13,
+   "pair": 62,
+   "owner": 6
+  },
+  "nuniq": 4758
+ },
+ {
+  "sha": "bfb5352793e2ca56964be630f23c15a56de6b021c82e4692796772541ce22be5",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/downloads/msucat-6.0.19.1167/x/synaFpAdapter167.dll"
+  ],
+  "size": 210008,
+  "arch": "x64",
+  "ts": 1775738335,
+  "ver": "6.0.19.1167",
+  "prodver": "6.0.19.1167",
+  "desc": "Synaptics Fingeprint Sensor Driver Adapter",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\LenovoMis-105-136-154-pipeline\\HDRFP-12060\\sw\\niseWrappers\\wbf\\adapters\\synaFpAdapter\\x64\\Release\\OutDirUwp\\synaFpAdapter167.pdb"
+  ],
+  "nA": 754,
+  "nU": 117,
+  "kw": {
+   "tudor": 0,
+   "vfm": 0,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 1,
+   "ssi": 2,
+   "iota": 0,
+   "provision": 0,
+   "pair": 0,
+   "owner": 1
+  },
+  "nuniq": 701
+ },
+ {
+  "sha": "1a6ccff994af41d1b30dcdee37094796ad19cbb784f88614b7d870471daf886f",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/downloads/msucat-6.0.2.1128/x/synaFpAdapter128.dll"
+  ],
+  "size": 192760,
+  "arch": "x64",
+  "ts": 1568019474,
+  "ver": "6.0.2.1128",
+  "prodver": "6.0.2.1128",
+  "desc": "Synaptics Fingeprint Sensor Driver Adapter",
+  "pdb": [
+   "C:\\work\\Toshiba-128_2\\sw\\niseWrappers\\wbf\\adapters\\synaFpAdapter\\x64\\Release\\OutDirUwp\\synaFpAdapter128.pdb"
+  ],
+  "nA": 823,
+  "nU": 115,
+  "kw": {
+   "tudor": 0,
+   "vfm": 0,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 1,
+   "ssi": 1,
+   "iota": 0,
+   "provision": 0,
+   "pair": 0,
+   "owner": 1
+  },
+  "nuniq": 685
+ },
+ {
+  "sha": "731c7373e1a13ccae09fa2fdbc307cb34c4ec9cb6a27513eb5d787a747274c16",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/downloads/msucat-6.0.2.1128/x/synaWudfBioUsb128.dll"
+  ],
+  "size": 1398504,
+  "arch": "x64",
+  "ts": 1568019452,
+  "ver": "6.0.2.1128",
+  "prodver": "6.0.2.1128",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "C:\\work\\Toshiba-128_2\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\OutDirUwp\\synaWudfBioUsb128.pdb"
+  ],
+  "nA": 7306,
+  "nU": 179,
+  "kw": {
+   "tudor": 140,
+   "vfm": 204,
+   "VCSFW_CMD_": 33,
+   "VCS_RESULT_": 71,
+   "pal": 131,
+   "ssi": 91,
+   "iota": 16,
+   "provision": 4,
+   "pair": 40,
+   "owner": 6
+  },
+  "nuniq": 3386
+ },
+ {
+  "sha": "e789bbc9b11bc0b8ead3077fda85677e0558ff5806e396e5fa444ffa5c6b3de9",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/downloads/msucat-6.0.12.1171/x/synaFpAdapter171.dll"
+  ],
+  "size": 210520,
+  "arch": "x64",
+  "ts": 1780038632,
+  "ver": "6.0.12.1171",
+  "prodver": "6.0.12.1171",
+  "desc": "Synaptics Fingeprint Sensor Driver Adapter",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\LenovoMis-105-136-154-pipeline\\HDRFP-12095\\sw\\niseWrappers\\wbf\\adapters\\synaFpAdapter\\x64\\Release\\OutDirUwp\\synaFpAdapter171.pdb"
+  ],
+  "nA": 753,
+  "nU": 117,
+  "kw": {
+   "tudor": 0,
+   "vfm": 0,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 1,
+   "ssi": 2,
+   "iota": 0,
+   "provision": 0,
+   "pair": 0,
+   "owner": 1
+  },
+  "nuniq": 701
+ },
+ {
+  "sha": "1dff74bd1898cbc4e3bfe60bbc3c4a8459b5f72e5a47a5543db547033bcc5b60",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/downloads/msucat-6.0.12.1171/x/synaWudfBioUsb171.dll"
+  ],
+  "size": 2089544,
+  "arch": "x64",
+  "ts": 1780038472,
+  "ver": "6.0.12.1171",
+  "prodver": "6.0.12.1171",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\LenovoMis-105-136-154-pipeline\\HDRFP-12095\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\OutDirUwp\\synaWudfBioUsb171.pdb"
+  ],
+  "nA": 10417,
+  "nU": 222,
+  "kw": {
+   "tudor": 241,
+   "vfm": 272,
+   "VCSFW_CMD_": 47,
+   "VCS_RESULT_": 72,
+   "pal": 168,
+   "ssi": 147,
+   "iota": 50,
+   "provision": 4,
+   "pair": 63,
+   "owner": 6
+  },
+  "nuniq": 4712
+ },
+ {
+  "sha": "94615a52c6e2df1a83614f26e133944289c115df547615b77dfd060024c09171",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/downloads/msucat-6.0.5.1154/x/synaWudfBioUsb154.dll"
+  ],
+  "size": 1992120,
+  "arch": "x64",
+  "ts": 1684748430,
+  "ver": "6.0.5.1154",
+  "prodver": "6.0.5.1154",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\LenovoMis-105-136-154-pipeline\\HDRFP-9455\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\OutDirUwp\\synaWudfBioUsb154.pdb"
+  ],
+  "nA": 9309,
+  "nU": 210,
+  "kw": {
+   "tudor": 192,
+   "vfm": 260,
+   "VCSFW_CMD_": 44,
+   "VCS_RESULT_": 72,
+   "pal": 147,
+   "ssi": 117,
+   "iota": 35,
+   "provision": 13,
+   "pair": 58,
+   "owner": 6
+  },
+  "nuniq": 4521
+ },
+ {
+  "sha": "c41f62df8fa247318597e49566c5b4a9d061baf0329c5c3a02c8bfac8b5a952a",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/downloads/msucat-6.0.5.1154/x/synaFpAdapter154.dll"
+  ],
+  "size": 195984,
+  "arch": "x64",
+  "ts": 1684748534,
+  "ver": "6.0.5.1154",
+  "prodver": "6.0.5.1154",
+  "desc": "Synaptics Fingeprint Sensor Driver Adapter",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\LenovoMis-105-136-154-pipeline\\HDRFP-9455\\sw\\niseWrappers\\wbf\\adapters\\synaFpAdapter\\x64\\Release\\OutDirUwp\\synaFpAdapter154.pdb"
+  ],
+  "nA": 721,
+  "nU": 114,
+  "kw": {
+   "tudor": 0,
+   "vfm": 0,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 1,
+   "ssi": 1,
+   "iota": 0,
+   "provision": 0,
+   "pair": 0,
+   "owner": 1
+  },
+  "nuniq": 680
+ },
+ {
+  "sha": "64633c4c3d29066c0369058fa57b96acb072a2f9af45640368521c43b8158428",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/downloads/msucat-6.1.13.1164/x/synaWudfBioUsb164.dll"
+  ],
+  "size": 1813064,
+  "arch": "x64",
+  "ts": 1782728231,
+  "ver": "6.1.13.1164",
+  "prodver": "6.1.13.1164",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\Dell-164\\HDRFP-12181\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\Release\\OutDirUwp\\synaWudfBioUsb164.pdb"
+  ],
+  "nA": 9101,
+  "nU": 195,
+  "kw": {
+   "tudor": 212,
+   "vfm": 249,
+   "VCSFW_CMD_": 45,
+   "VCS_RESULT_": 72,
+   "pal": 152,
+   "ssi": 115,
+   "iota": 54,
+   "provision": 4,
+   "pair": 65,
+   "owner": 6
+  },
+  "nuniq": 4381
+ },
+ {
+  "sha": "fdf9a57f5c82832a84ea65de89429e1e0fd3a22cc8bb39d5eeeccc79e2496118",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/downloads/msucat-6.1.13.1164/x/synaFpAdapter164.dll"
+  ],
+  "size": 202840,
+  "arch": "x64",
+  "ts": 1782728386,
+  "ver": "6.1.13.1164",
+  "prodver": "6.1.13.1164",
+  "desc": "Synaptics Fingeprint Sensor Driver Adapter",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\Dell-164\\HDRFP-12181\\sw\\niseWrappers\\wbf\\adapters\\synaFpAdapter\\x64\\Release\\OutDirUwp\\synaFpAdapter164.pdb"
+  ],
+  "nA": 736,
+  "nU": 114,
+  "kw": {
+   "tudor": 0,
+   "vfm": 0,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 1,
+   "ssi": 1,
+   "iota": 1,
+   "provision": 0,
+   "pair": 0,
+   "owner": 1
+  },
+  "nuniq": 678
+ },
+ {
+  "sha": "373e2d41851052b6ea1a09af8b4d1560cc02fbbb28c62520618cd92b2ac185f1",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/downloads/msucat-6.0.7.1117/x/synaWudfBioUsb117.dll"
+  ],
+  "size": 1359496,
+  "arch": "x64",
+  "ts": 1545985186,
+  "ver": "6.0.7.1117",
+  "prodver": "6.0.7.1117",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "C:\\work\\Acer-117-5\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\OutDirUwp\\synaWudfBioUsb117.pdb"
+  ],
+  "nA": 7203,
+  "nU": 175,
+  "kw": {
+   "tudor": 140,
+   "vfm": 204,
+   "VCSFW_CMD_": 33,
+   "VCS_RESULT_": 71,
+   "pal": 131,
+   "ssi": 91,
+   "iota": 14,
+   "provision": 2,
+   "pair": 40,
+   "owner": 6
+  },
+  "nuniq": 3359
+ },
+ {
+  "sha": "87cb03f7258c3c52e780c7732e674668713fbf10b08335d921c57a4f38b07e02",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/downloads/msucat-6.0.7.1117/x/synaFpAdapter117.dll"
+  ],
+  "size": 192152,
+  "arch": "x64",
+  "ts": 1545985201,
+  "ver": "6.0.7.1117",
+  "prodver": "6.0.7.1117",
+  "desc": "Synaptics Fingeprint Sensor Driver Adapter",
+  "pdb": [
+   "C:\\work\\Acer-117-5\\sw\\niseWrappers\\wbf\\adapters\\synaFpAdapter\\x64\\Release\\OutDirUwp\\synaFpAdapter117.pdb"
+  ],
+  "nA": 806,
+  "nU": 115,
+  "kw": {
+   "tudor": 0,
+   "vfm": 0,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 1,
+   "ssi": 1,
+   "iota": 0,
+   "provision": 0,
+   "pair": 0,
+   "owner": 1
+  },
+  "nuniq": 720
+ },
+ {
+  "sha": "e3ee53da6566c0c5a86834e335ba537617624f8b3db4baa7db468e9c3c3482c3",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/downloads/msucat-6.0.66.1111/x/synaWudfBioUsb111.dll"
+  ],
+  "size": 1866792,
+  "arch": "x64",
+  "ts": 1723536489,
+  "ver": "6.0.66.1111",
+  "prodver": "6.0.66.1111",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\HPCNB-111_Pipeline_22H2\\HDRFP-10574\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\OutDirUwp\\synaWudfBioUsb111.pdb"
+  ],
+  "nA": 8243,
+  "nU": 184,
+  "kw": {
+   "tudor": 154,
+   "vfm": 200,
+   "VCSFW_CMD_": 37,
+   "VCS_RESULT_": 71,
+   "pal": 132,
+   "ssi": 92,
+   "iota": 22,
+   "provision": 2,
+   "pair": 51,
+   "owner": 6
+  },
+  "nuniq": 4075
+ },
+ {
+  "sha": "a4d480757a712322307892d7f25398a6014bf7aa9be4f78ed08ff7474f3501f3",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/downloads/msucat-6.0.66.1111/x/synaFpAdapter111.dll"
+  ],
+  "size": 208448,
+  "arch": "x64",
+  "ts": 1723536577,
+  "ver": "6.0.66.1111",
+  "prodver": "6.0.66.1111",
+  "desc": "Synaptics Fingeprint Sensor Driver Adapter",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\HPCNB-111_Pipeline_22H2\\HDRFP-10574\\sw\\niseWrappers\\wbf\\adapters\\synaFpAdapter\\x64\\Release\\OutDirUwp\\synaFpAdapter111.pdb"
+  ],
+  "nA": 761,
+  "nU": 115,
+  "kw": {
+   "tudor": 0,
+   "vfm": 0,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 1,
+   "ssi": 1,
+   "iota": 0,
+   "provision": 0,
+   "pair": 0,
+   "owner": 1
+  },
+  "nuniq": 713
+ },
+ {
+  "sha": "df30dd7f21c84eccce536b3bcd3ebc6be3733dd068a11405a435e0495c828185",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/downloads/msucat-6.0.205.1110/x/synaWudfBioUsb110.dll"
+  ],
+  "size": 2068448,
+  "arch": "x64",
+  "ts": 1750648311,
+  "ver": "6.0.205.1110",
+  "prodver": "6.0.205.1110",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\HPCMIT-110-pipe\\HDRFP-11416\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\OutDirUwp\\synaWudfBioUsb110.pdb"
+  ],
+  "nA": 9357,
+  "nU": 201,
+  "kw": {
+   "tudor": 214,
+   "vfm": 221,
+   "VCSFW_CMD_": 41,
+   "VCS_RESULT_": 71,
+   "pal": 138,
+   "ssi": 124,
+   "iota": 30,
+   "provision": 4,
+   "pair": 56,
+   "owner": 7
+  },
+  "nuniq": 4698
+ },
+ {
+  "sha": "2c49d421deccd2a453bd086d495162f2f2e7379dbfe38df873807d18daa26ce5",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/downloads/msucat-6.0.205.1110/x/synaFpAdapter110.dll"
+  ],
+  "size": 223728,
+  "arch": "x64",
+  "ts": 1750648427,
+  "ver": "6.0.205.1110",
+  "prodver": "6.0.205.1110",
+  "desc": "Synaptics Fingeprint Sensor Driver Adapter",
+  "pdb": [
+   "d:\\Jenkins\\workspace\\HPCMIT-110-pipe\\HDRFP-11416\\sw\\niseWrappers\\wbf\\adapters\\synaFpAdapter\\x64\\Release\\OutDirUwp\\synaFpAdapter110.pdb"
+  ],
+  "nA": 774,
+  "nU": 118,
+  "kw": {
+   "tudor": 0,
+   "vfm": 0,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 1,
+   "ssi": 1,
+   "iota": 0,
+   "provision": 0,
+   "pair": 0,
+   "owner": 1
+  },
+  "nuniq": 720
+ },
+ {
+  "sha": "47af26fc80ad35cc4a26b38847dbcf655402169f00f7b4bd8ffad392219aa4f4",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/downloads/msucat-6.0.73.1105/x/synaWudfBioUsb105.dll"
+  ],
+  "size": 2141256,
+  "arch": "x64",
+  "ts": 1776563109,
+  "ver": "6.0.73.1105",
+  "prodver": "6.0.73.1105",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\LenovoMis-105-136-154-pipeline\\HDRFP-12061\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\OutDirUwp\\synaWudfBioUsb105.pdb"
+  ],
+  "nA": 9903,
+  "nU": 226,
+  "kw": {
+   "tudor": 202,
+   "vfm": 259,
+   "VCSFW_CMD_": 47,
+   "VCS_RESULT_": 72,
+   "pal": 151,
+   "ssi": 126,
+   "iota": 48,
+   "provision": 13,
+   "pair": 62,
+   "owner": 6
+  },
+  "nuniq": 4836
+ },
+ {
+  "sha": "59fdd18dee7a264a9ecf3d08b450139e9d16d93f76ac2ebc15fd2d3f1e9412e4",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/downloads/msucat-6.0.73.1105/x/synaFpAdapter105.dll"
+  ],
+  "size": 210008,
+  "arch": "x64",
+  "ts": 1776563253,
+  "ver": "6.0.73.1105",
+  "prodver": "6.0.73.1105",
+  "desc": "Synaptics Fingeprint Sensor Driver Adapter",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\LenovoMis-105-136-154-pipeline\\HDRFP-12061\\sw\\niseWrappers\\wbf\\adapters\\synaFpAdapter\\x64\\Release\\OutDirUwp\\synaFpAdapter105.pdb"
+  ],
+  "nA": 751,
+  "nU": 117,
+  "kw": {
+   "tudor": 0,
+   "vfm": 0,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 1,
+   "ssi": 2,
+   "iota": 0,
+   "provision": 0,
+   "pair": 0,
+   "owner": 1
+  },
+  "nuniq": 698
+ },
+ {
+  "sha": "d08f17dd8c9141c0bda488b156ce536b4ab389868dfb99ede7d8e9b22d680c4f",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/downloads/msucat-6.0.69.1136/x/synaFpAdapter136.dll"
+  ],
+  "size": 210008,
+  "arch": "x64",
+  "ts": 1779703608,
+  "ver": "6.0.69.1136",
+  "prodver": "6.0.69.1136",
+  "desc": "Synaptics Fingeprint Sensor Driver Adapter",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\LenovoMis-105-136-154-pipeline\\HDRFP-12124\\sw\\niseWrappers\\wbf\\adapters\\synaFpAdapter\\x64\\Release\\OutDirUwp\\synaFpAdapter136.pdb"
+  ],
+  "nA": 755,
+  "nU": 117,
+  "kw": {
+   "tudor": 0,
+   "vfm": 0,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 1,
+   "ssi": 2,
+   "iota": 0,
+   "provision": 0,
+   "pair": 0,
+   "owner": 1
+  },
+  "nuniq": 702
+ },
+ {
+  "sha": "7c0ee23cc6043a7e11563fdbd52ffd1addb7225820f98f2d6b9655b7dd346803",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/downloads/msucat-6.0.69.1136/x/synaWudfBioUsb136.dll"
+  ],
+  "size": 2243656,
+  "arch": "x64",
+  "ts": 1779703452,
+  "ver": "6.0.69.1136",
+  "prodver": "6.0.69.1136",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\LenovoMis-105-136-154-pipeline\\HDRFP-12124\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\OutDirUwp\\synaWudfBioUsb136.pdb"
+  ],
+  "nA": 10195,
+  "nU": 227,
+  "kw": {
+   "tudor": 212,
+   "vfm": 271,
+   "VCSFW_CMD_": 47,
+   "VCS_RESULT_": 72,
+   "pal": 151,
+   "ssi": 131,
+   "iota": 48,
+   "provision": 13,
+   "pair": 62,
+   "owner": 6
+  },
+  "nuniq": 4909
+ },
+ {
+  "sha": "7ad19c0496222b5e16139b6e2e54b55093f1aad57580cf76ecfa4a59d26ebc48",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/downloads/hp-sp154167/x/src/driver/INF/x64/synaWudfBioUsb110.dll"
+  ],
+  "size": 1996800,
+  "arch": "x64",
+  "ts": 1715224132,
+  "ver": "6.0.130.1110",
+  "prodver": "6.0.130.1110",
+  "desc": "Synaptics Fingeprint Sensor Driver ",
+  "pdb": [
+   "D:\\Jenkins\\workspace\\HPCMIT-110-pipe2\\HDRFP-10257\\sw\\niseWrappers\\wbf\\wbdi\\driver\\x64\\x64\\Release\\OutDirUwp\\synaWudfBioUsb110.pdb"
+  ],
+  "nA": 9123,
+  "nU": 195,
+  "kw": {
+   "tudor": 204,
+   "vfm": 219,
+   "VCSFW_CMD_": 41,
+   "VCS_RESULT_": 71,
+   "pal": 138,
+   "ssi": 121,
+   "iota": 28,
+   "provision": 4,
+   "pair": 53,
+   "owner": 6
+  },
+  "nuniq": 4530
+ },
+ {
+  "sha": "f281317d225c134072487504575947c38dadc7ae921ee92cf8020d25f89a7815",
+  "paths": [
+   "/home/vojtapl/Projects/done/other synaptics drivers/downloads/hp-sp154167/x/src/driver/INF/x64/synaFpAdapter110.dll"
+  ],
+  "size": 233496,
+  "arch": "x64",
+  "ts": 1715224260,
+  "ver": "6.0.130.1110",
+  "prodver": "6.0.130.1110",
+  "desc": "Synaptics Fingeprint Sensor Driver Adapter",
+  "pdb": [
+   "d:\\Jenkins\\workspace\\HPCMIT-110-pipe2\\HDRFP-10257\\sw\\niseWrappers\\wbf\\adapters\\synaFpAdapter\\x64\\Release\\OutDirUwp\\synaFpAdapter110.pdb"
+  ],
+  "nA": 871,
+  "nU": 119,
+  "kw": {
+   "tudor": 0,
+   "vfm": 0,
+   "VCSFW_CMD_": 0,
+   "VCS_RESULT_": 0,
+   "pal": 1,
+   "ssi": 1,
+   "iota": 0,
+   "provision": 0,
+   "pair": 0,
+   "owner": 1
+  },
+  "nuniq": 734
+ }
+]
