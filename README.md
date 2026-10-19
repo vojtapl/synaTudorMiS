@@ -44,7 +44,8 @@ writing tests.
     with PID-VID combination to synatlsmoc.c), llm found e.g.:
     - 00C0, 0109, 010A (dll v110);
     - 019F, 01A4 (dll v171);
-    - 00CA, 00EB, 00E4, 00FD (pre v110)
+    - 00CA, 00E4, 00FD (pre v110)
+    - 00EB (tested: Dynabook Satellite Pro L50-G, fw 10.1 — see vojtapl/libfprint#6)
 
     - 00FB, 016D (dll v136 - these need a newer sensor_pub_key from dll, and
       changing supported firmware flag as they run 10.2 or 10.10, which are
