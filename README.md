@@ -33,6 +33,7 @@ writing tests.
 ### Most likely supported devices
 
 - If any of these work for you feel free to submit an issue/PR.
+- 06CB:00F3 (tested)
 - per synaWudfBioUsbUwp.inf (Synaptics)
   - 06CB:00C9 (tested)
   - 06CB:00D1
