@@ -9,9 +9,9 @@ questions/additions, feel free to reach out/open an issue/merge request.
 ### Building
 
 For building use a
-[cleaned version of libfprint](https://github.com/vojtapl/libfprint). You will
+[cleaned version of libfprint](https://github.com/vojtapl/libfprint). **You will
 also need to modify fprintd with
-[this patch](./libfprint/fprintd-load-store-persistent-data-from-device.patch).
+[this patch](./libfprint/fprintd-load-store-persistent-data-from-device.patch).**
 
 ### Some notes on not continuing development
 
