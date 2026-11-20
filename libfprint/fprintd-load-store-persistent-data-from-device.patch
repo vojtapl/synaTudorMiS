@@ -59,7 +59,7 @@ index 4de4a10..248279f 100644
  }
  
 diff --git a/src/file_storage.c b/src/file_storage.c
-index e12fe58..2a379a0 100644
+index e12fe58..b1b13f5 100644
 --- a/src/file_storage.c
 +++ b/src/file_storage.c
 @@ -40,6 +40,8 @@
@@ -71,7 +71,16 @@ index e12fe58..2a379a0 100644
  #define DIR_PERMS 0700
  
  static char *storage_path = NULL;
-@@ -353,6 +355,76 @@ file_storage_discover_users (void)
+@@ -343,7 +345,7 @@ file_storage_discover_users (void)
+   while ((ent = g_dir_read_name (dir)))
+     {
+       /* ent is a username */
+-      if (*ent == 0)
++      if (*ent == 0 || g_str_equal (ent, PERSISTENT_DATA_DIR))
+         continue;
+ 
+       list = g_slist_prepend (list, g_strdup (ent));
+@@ -353,6 +355,93 @@ file_storage_discover_users (void)
    return list;
  }
  
@@ -124,9 +133,26 @@ index e12fe58..2a379a0 100644
 +    return TRUE;
 +
 +  /* Private key material: 0600, written atomically */
++#if GLIB_CHECK_VERSION (2, 66, 0)
++  G_GNUC_BEGIN_IGNORE_DEPRECATIONS
 +  return g_file_set_contents_full (path, (const gchar *) new_contents, new_length,
 +                                   G_FILE_SET_CONTENTS_CONSISTENT | G_FILE_SET_CONTENTS_DURABLE,
 +                                   0600, error);
++  G_GNUC_END_IGNORE_DEPRECATIONS
++#else
++  if (!g_file_set_contents (path, (const gchar *) new_contents, new_length, error))
++    return FALSE;
++
++  if (g_chmod (path, 0600) < 0)
++    {
++      g_set_error (error, G_FILE_ERROR, g_file_error_from_errno (errno),
++                   "Failed to secure persistent storage for driver/device %s/%s",
++                   fp_device_get_driver (dev), fp_device_get_device_id (dev));
++      return FALSE;
++    }
++
++  return TRUE;
++#endif
 +}
 +
 +gboolean
@@ -134,7 +160,7 @@ index e12fe58..2a379a0 100644
 +{
 +  g_autofree gchar *path = NULL;
 +  g_autofree gchar *contents = NULL;
-+  gsize length;
++  gsize length = 0;
 +
 +  path = g_build_filename (get_storage_path (), PERSISTENT_DATA_DIR, fp_device_get_driver (dev), fp_device_get_device_id (dev), NULL);
 +
